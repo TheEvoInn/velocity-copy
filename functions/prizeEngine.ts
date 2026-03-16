@@ -291,8 +291,10 @@ Return JSON:
       const opp = opps[0];
       if (!opp) return Response.json({ error: 'Not found' }, { status: 404 });
 
-      const claimResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-        prompt: `Generate prize claiming instructions for:
+      let claimResult = { claim_steps: [], auto_claimable: false };
+      try {
+        claimResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
+          prompt: `Generate prize claiming instructions for:
 Title: ${opp.title}
 Type: ${opp.type}
 Source: ${opp.source_name}
@@ -311,18 +313,21 @@ Return JSON: {
   "claim_deadline": string,
   "routing_instructions": string
 }`,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            claim_steps: { type: 'array', items: { type: 'string' } },
-            required_info: { type: 'array', items: { type: 'string' } },
-            auto_claimable: { type: 'boolean' },
-            estimated_processing_time: { type: 'string' },
-            claim_deadline: { type: 'string' },
-            routing_instructions: { type: 'string' }
+          response_json_schema: {
+            type: 'object',
+            properties: {
+              claim_steps: { type: 'array', items: { type: 'string' } },
+              required_info: { type: 'array', items: { type: 'string' } },
+              auto_claimable: { type: 'boolean' },
+              estimated_processing_time: { type: 'string' },
+              claim_deadline: { type: 'string' },
+              routing_instructions: { type: 'string' }
+            }
           }
-        }
-      });
+        });
+      } catch (claimErr) {
+        console.error('Claim generation error:', claimErr.message);
+      }
 
       await base44.asServiceRole.entities.PrizeOpportunity.update(opportunity_id, {
         status: 'claimed',

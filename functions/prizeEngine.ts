@@ -151,8 +151,9 @@ Return JSON:
 
       // Auto-select best identity for this opportunity type
       if (!identity) {
-        const aiResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-          prompt: `Select the best identity for this opportunity.
+        try {
+          const aiResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
+            prompt: `Select the best identity for this opportunity.
 Opportunity type: ${opp.type}
 Required identity type: ${opp.required_identity_type || 'any'}
 Opportunity description: ${opp.description?.slice(0, 200) || ''}
@@ -161,13 +162,17 @@ Available identities:
 ${identities.map((id, i) => `${i+1}. ${id.name} (${id.role_label}) - Skills: ${id.skills?.join(', ')}`).join('\n')}
 
 Return JSON: { "selected_index": number, "reasoning": string }`,
-          response_json_schema: {
-            type: 'object',
-            properties: { selected_index: { type: 'number' }, reasoning: { type: 'string' } }
-          }
-        });
-        const idx = Math.max(0, Math.min((aiResult?.selected_index || 1) - 1, identities.length - 1));
-        identity = identities[idx];
+            response_json_schema: {
+              type: 'object',
+              properties: { selected_index: { type: 'number' }, reasoning: { type: 'string' } }
+            }
+          });
+          const idx = Math.max(0, Math.min((aiResult?.selected_index || 1) - 1, identities.length - 1));
+          identity = identities[idx];
+        } catch (selErr) {
+          console.error('Identity selection error:', selErr.message);
+          identity = identities[0] || null;
+        }
       }
 
       if (!identity && identities.length === 0) {

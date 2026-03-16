@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import WalletCard from '../components/dashboard/WalletCard';
 import ProfitChart from '../components/dashboard/ProfitChart';
 import TransactionForm from '../components/wallet/TransactionForm';
+import WithdrawalModal from '../components/wallet/WithdrawalModal';
 
 const categoryColors = {
   arbitrage: "text-emerald-400", service: "text-blue-400", lead_gen: "text-violet-400",
@@ -16,6 +17,7 @@ const categoryColors = {
 
 export default function WalletPage() {
   const [showTxForm, setShowTxForm] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
 
   const { data: userGoals = [] } = useQuery({
     queryKey: ['userGoals'],
@@ -41,6 +43,7 @@ export default function WalletPage() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} currentBalance={goals.wallet_balance || 0} />}
+      {showWithdraw && <WithdrawalModal onClose={() => setShowWithdraw(false)} currentBalance={goals.wallet_balance || 0} />}
 
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -50,9 +53,14 @@ export default function WalletPage() {
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">Financial command center</p>
         </div>
-        <Button size="sm" onClick={() => setShowTxForm(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8">
-          <Plus className="w-3.5 h-3.5 mr-1" /> Add Transaction
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => setShowWithdraw(true)} className="bg-rose-600 hover:bg-rose-500 text-white text-xs h-8">
+            <ArrowDownRight className="w-3.5 h-3.5 mr-1" /> Withdraw
+          </Button>
+          <Button size="sm" onClick={() => setShowTxForm(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8">
+            <Plus className="w-3.5 h-3.5 mr-1" /> Add Transaction
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">

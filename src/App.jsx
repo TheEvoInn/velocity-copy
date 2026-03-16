@@ -14,7 +14,7 @@ import WalletPage from './pages/WalletPage';
 import ActivityPage from './pages/ActivityPage';
 import Chat from './pages/Chat';
 import AutoPilot from './pages/AutoPilot';
-import GoalCenter from './pages/GoalCenter';
+import AutopilotLogs from './pages/AutopilotLogs';
 import AccountManager from './pages/AccountManager';
 import PrizeDashboard from './pages/PrizeDashboard';
 import IdentityManagerExpanded from './pages/IdentityManagerExpanded';

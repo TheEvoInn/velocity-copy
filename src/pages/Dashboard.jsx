@@ -16,6 +16,7 @@ import TransactionForm from '../components/wallet/TransactionForm';
 import OnboardingModal from '../components/onboarding/OnboardingModal';
 import DualStreamCard from '../components/autopilot/DualStreamCard';
 import AutopilotPanel from '../components/autopilot/AutopilotPanel';
+import FinancialOverview from '../components/dashboard/FinancialOverview';
 
 export default function Dashboard() {
   const [selectedOpp, setSelectedOpp] = useState(null);
@@ -127,6 +128,11 @@ export default function Dashboard() {
           <AutopilotPanel goals={goals} />
         </div>
       )}
+
+      {/* Financial Overview */}
+      <div className="mb-4">
+        <FinancialOverview goals={goals} transactions={transactions} />
+      </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

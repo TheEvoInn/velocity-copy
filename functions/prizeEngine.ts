@@ -99,12 +99,14 @@ Return JSON:
         }
       });
 
-      // Save legitimate opportunities
+      // Save all legitimate opportunities, skip only exact-title dupes
       const saved = [];
+      const skipped = [];
       for (const opp of (result?.opportunities || [])) {
         if ((opp.legitimacy_score || 0) < 40 || (opp.risk_score || 0) > 80) continue;
-        const isDupe = existingTitles.some(t => t.includes(opp.title?.toLowerCase()?.slice(0, 20) || ''));
-        if (isDupe) continue;
+        const titleKey = opp.title?.toLowerCase()?.trim();
+        const isDupe = existingTitles.some(t => t === titleKey);
+        if (isDupe) { skipped.push(opp); continue; }
 
         const record = await base44.asServiceRole.entities.PrizeOpportunity.create({
           ...opp,
@@ -114,18 +116,22 @@ Return JSON:
         saved.push(record);
       }
 
+      // All opportunities to show the user (new + existing dupes returned as raw data)
+      const allOpportunities = [...saved, ...skipped.map(o => ({ ...o, _existing: true }))];
+
       // Log the scan
       await base44.asServiceRole.entities.ActivityLog.create({
         action_type: 'scan',
-        message: `🎯 Prize scan complete: ${saved.length} new opportunities discovered. Est. value: $${result?.total_potential_value || 0}`,
+        message: `🎯 Prize scan complete: ${saved.length} new + ${skipped.length} existing opportunities found. Est. value: $${result?.total_potential_value || 0}`,
         severity: 'success',
-        metadata: { saved_count: saved.length, scan_summary: result?.scan_summary }
+        metadata: { saved_count: saved.length, skipped_count: skipped.length, scan_summary: result?.scan_summary }
       });
 
       return Response.json({
         success: true,
         new_opportunities: saved.length,
-        opportunities: saved,
+        total_found: allOpportunities.length,
+        opportunities: allOpportunities,
         scan_summary: result?.scan_summary,
         total_potential_value: result?.total_potential_value || 0
       });

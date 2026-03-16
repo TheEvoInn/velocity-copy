@@ -16,6 +16,7 @@ import UnifiedAutopilotControl from '../components/autopilot/UnifiedAutopilotCon
 import TaskQueueMonitor from '../components/autopilot/TaskQueueMonitor';
 import SmartRetryPanel from '../components/autopilot/SmartRetryPanel';
 import AdvancedResearchPanel from '../components/research/AdvancedResearchPanel';
+import ExecutionDashboard from '../components/execution/ExecutionDashboard';
 
 export default function AutoPilot() {
   const [isManualRunning, setIsManualRunning] = useState(false);
@@ -204,6 +205,9 @@ export default function AutoPilot() {
 
       {/* Smart Retry System */}
       <SmartRetryPanel />
+
+      {/* Intelligent Execution Engine */}
+      <ExecutionDashboard />
 
       {/* Task Review Queue */}
       <TaskReviewQueuePanel />

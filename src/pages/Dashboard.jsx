@@ -18,11 +18,13 @@ import OnboardingModal from '../components/onboarding/OnboardingModal';
 import DualStreamCard from '../components/autopilot/DualStreamCard';
 import AutopilotPanel from '../components/autopilot/AutopilotPanel';
 import FinancialOverview from '../components/dashboard/FinancialOverview';
+import { usePersistentUserData } from '../hooks/usePersistentUserData';
 
 export default function Dashboard() {
   const [selectedOpp, setSelectedOpp] = useState(null);
   const [showTxForm, setShowTxForm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const { userData } = usePersistentUserData();
 
   const { data: userGoals = [], isLoading: goalsLoading } = useQuery({
     queryKey: ['userGoals'],
@@ -51,7 +53,9 @@ export default function Dashboard() {
   });
 
   const goals = userGoals[0] || {};
-  const needsOnboarding = !goalsLoading && userGoals.length === 0;
+  // Check both database (UserGoals) and persistent user data for onboarding completion
+  const hasCompletedOnboarding = userGoals.length > 0 || userData?.onboarding_completed === true;
+  const needsOnboarding = !goalsLoading && !hasCompletedOnboarding;
 
   // Calculate today's earnings split by stream
   const today = new Date().toDateString();
@@ -63,7 +67,7 @@ export default function Dashboard() {
   const activeOpps = opportunities.filter(o => o.status === 'new' || o.status === 'executing');
   const completedToday = opportunities.filter(o => o.status === 'completed' && new Date(o.updated_date).toDateString() === today).length;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (needsOnboarding) setShowOnboarding(true);
   }, [needsOnboarding]);
 

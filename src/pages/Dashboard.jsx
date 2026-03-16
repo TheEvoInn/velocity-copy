@@ -71,7 +71,7 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {showOnboarding && <OnboardingModal onComplete={() => setShowOnboarding(false)} />}
+      {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
       {selectedOpp && <OpportunityDetail opportunity={selectedOpp} onClose={() => setSelectedOpp(null)} />}
       {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} currentBalance={goals.wallet_balance || 0} />}
 

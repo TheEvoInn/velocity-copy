@@ -14,6 +14,7 @@ import SpendingPolicyEditor from '../components/autopilot/SpendingPolicyEditor';
 import AutopilotExecutionHub from '../components/autopilot/AutopilotExecutionHub';
 import UnifiedAutopilotControl from '../components/autopilot/UnifiedAutopilotControl';
 import TaskQueueMonitor from '../components/autopilot/TaskQueueMonitor';
+import SmartRetryPanel from '../components/autopilot/SmartRetryPanel';
 
 export default function AutoPilot() {
   const [isManualRunning, setIsManualRunning] = useState(false);
@@ -196,6 +197,9 @@ export default function AutoPilot() {
 
       {/* Intelligent Task Queue Monitor */}
       <TaskQueueMonitor />
+
+      {/* Smart Retry System */}
+      <SmartRetryPanel />
 
       {/* Task Review Queue */}
       <TaskReviewQueuePanel />

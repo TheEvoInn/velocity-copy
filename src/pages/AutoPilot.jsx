@@ -183,6 +183,9 @@ export default function AutoPilot() {
       {/* Unified Execution Engine */}
       <AutopilotExecutionHub />
 
+      {/* Intelligent Task Queue Monitor */}
+      <TaskQueueMonitor />
+
       {/* Task Review Queue */}
       <TaskReviewQueuePanel />
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Target, Search, Zap, Star, EyeOff, Sparkles } from 'lucide-react';
+import { Target, Search, Zap, Star, EyeOff, Sparkles, Play } from 'lucide-react';
 import ProposalGenerator from '../components/proposals/ProposalGenerator';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +12,7 @@ import OpportunityCard from '../components/dashboard/OpportunityCard';
 import OpportunityDetail from '../components/opportunity/OpportunityDetail';
 import QuickApplyModal from '../components/opportunity/QuickApplyModal';
 import LiveIngestionPanel from '../components/ingestion/LiveIngestionPanel';
+import BatchExecutionModal from '../components/opportunity/BatchExecutionModal';
 
 const categories = [
   { value: 'all', label: 'All Categories' },
@@ -43,6 +44,7 @@ export default function Opportunities() {
   const [showIngestion, setShowIngestion] = useState(true);
   const [lastScanResult, setLastScanResult] = useState(null);
   const [proposalOpp, setProposalOpp] = useState(null);
+  const [showBatchExecution, setShowBatchExecution] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: opportunities = [] } = useQuery({
@@ -58,11 +60,23 @@ export default function Opportunities() {
     return true;
   });
 
+  const newOppsCount = filtered.filter(o => o.status === 'new').length;
+
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {selectedOpp && <OpportunityDetail opportunity={selectedOpp} onClose={() => setSelectedOpp(null)} />}
       {applyOpp && <QuickApplyModal opportunity={applyOpp} onClose={() => setApplyOpp(null)} />}
       {proposalOpp && <ProposalGenerator opportunity={proposalOpp} onClose={() => setProposalOpp(null)} />}
+      {showBatchExecution && (
+        <BatchExecutionModal
+          opportunities={filtered}
+          onClose={() => setShowBatchExecution(false)}
+          onSuccess={() => {
+            setShowBatchExecution(false);
+            queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+          }}
+        />
+      )}
 
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -79,13 +93,25 @@ export default function Opportunities() {
             {filtered.length} opportunities · real-time authenticated feed
           </p>
         </div>
-        <button
-          onClick={() => setShowIngestion(v => !v)}
-          className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1.5 transition-colors"
-        >
-          <Zap className="w-3.5 h-3.5 text-emerald-500" />
-          {showIngestion ? 'Hide ingestion panel' : 'Show ingestion panel'}
-        </button>
+        <div className="flex items-center gap-2">
+          {newOppsCount > 0 && (
+            <Button
+              onClick={() => setShowBatchExecution(true)}
+              size="sm"
+              className="text-xs bg-emerald-600 hover:bg-emerald-700"
+            >
+              <Play className="w-3.5 h-3.5 mr-1" />
+              Auto-Execute ({newOppsCount})
+            </Button>
+          )}
+          <button
+            onClick={() => setShowIngestion(v => !v)}
+            className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1.5 transition-colors"
+          >
+            <Zap className="w-3.5 h-3.5 text-emerald-500" />
+            {showIngestion ? 'Hide' : 'Show'}
+          </button>
+        </div>
       </div>
 
       {showIngestion && (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, TargetIcon } from 'lucide-react';
+import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText } from 'lucide-react';
 
 const navItems = [
   { path: '/Dashboard', icon: LayoutDashboard, label: 'Dashboard' },

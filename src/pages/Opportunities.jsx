@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Target, Search, Zap, Star, EyeOff } from 'lucide-react';
+import { Target, Search, Zap, Star, EyeOff, Sparkles } from 'lucide-react';
+import ProposalGenerator from '../components/proposals/ProposalGenerator';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,7 @@ export default function Opportunities() {
   const [applyOpp, setApplyOpp] = useState(null);
   const [showIngestion, setShowIngestion] = useState(true);
   const [lastScanResult, setLastScanResult] = useState(null);
+  const [proposalOpp, setProposalOpp] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: opportunities = [] } = useQuery({
@@ -60,6 +62,7 @@ export default function Opportunities() {
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {selectedOpp && <OpportunityDetail opportunity={selectedOpp} onClose={() => setSelectedOpp(null)} />}
       {applyOpp && <QuickApplyModal opportunity={applyOpp} onClose={() => setApplyOpp(null)} />}
+      {proposalOpp && <ProposalGenerator opportunity={proposalOpp} onClose={() => setProposalOpp(null)} />}
 
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -151,10 +154,10 @@ export default function Opportunities() {
                 <Zap className="w-3 h-3" /> Quick Apply
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); setApplyOpp(opp); }}
+                onClick={(e) => { e.stopPropagation(); setProposalOpp(opp); }}
                 className="flex-1 py-1.5 rounded-lg bg-violet-600/90 hover:bg-violet-500 text-white text-[11px] font-medium backdrop-blur-sm transition-colors flex items-center justify-center gap-1"
               >
-                🤖 Autopilot
+                <Sparkles className="w-3 h-3" /> AI Proposal
               </button>
             </div>
           </div>

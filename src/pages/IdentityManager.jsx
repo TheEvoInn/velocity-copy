@@ -16,6 +16,8 @@ export default function IdentityManager() {
   const [editingIdentity, setEditingIdentity] = useState(null);
   const [switchingId, setSwitchingId] = useState(null);
   const [selectedForAudit, setSelectedForAudit] = useState(null);
+  const [showAccountLinker, setShowAccountLinker] = useState(false);
+  const [selectedIdentity, setSelectedIdentity] = useState(null);
 
   const { data: identityData, refetch } = useQuery({
     queryKey: ['active_identity'],
@@ -32,6 +34,17 @@ export default function IdentityManager() {
     }),
     enabled: true,
     staleTime: 15000
+  });
+
+  const { data: healthData } = useQuery({
+    queryKey: ['account_health'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('accountHealthMonitor', {
+        action: 'check_all_account_health'
+      });
+      return res.data || {};
+    },
+    refetchInterval: 60000
   });
 
   const data = identityData?.data || {};

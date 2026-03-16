@@ -21,6 +21,7 @@ import PrizeDashboard from './pages/PrizeDashboard';
 import SystemDocumentation from './pages/SystemDocumentation';
 import SecurityDashboard from './pages/SecurityDashboard';
 import SystemAuditDashboard from './pages/SystemAuditDashboard';
+import KYCManagement from './pages/KYCManagement';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -62,6 +63,7 @@ const AuthenticatedApp = () => {
         <Route path="/SystemDocumentation" element={<SystemDocumentation />} />
         <Route path="/SecurityDashboard" element={<SecurityDashboard />} />
         <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
+        <Route path="/KYCManagement" element={<KYCManagement />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

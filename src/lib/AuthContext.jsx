@@ -94,6 +94,14 @@ export const AuthProvider = ({ children }) => {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
+      
+      // Initialize platform with autopilot ON
+      try {
+        await base44.functions.invoke('platformInitializer', {});
+      } catch (initError) {
+        console.error('Platform initialization error:', initError);
+      }
+      
       setIsLoadingAuth(false);
     } catch (error) {
       console.error('User auth check failed:', error);

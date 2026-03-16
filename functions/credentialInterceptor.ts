@@ -463,17 +463,9 @@ function validateUserCredential(secret_value, secret_type) {
     return { valid: false, error: 'Cannot be empty' };
   }
 
-  // Type-specific validation
-  if (secret_type === 'email_password' && secret_value.length < 8) {
-    return { valid: false, error: 'Password must be at least 8 characters' };
-  }
-
-  if (secret_type === 'api_key' && secret_value.length < 20) {
-    return { valid: false, error: 'API key appears to be invalid format' };
-  }
-
-  if (secret_type === 'oauth_token' && !secret_value.startsWith('Bearer')) {
-    return { valid: false, error: 'OAuth token should start with Bearer' };
+  // Minimum length validation
+  if (secret_value.length < 6) {
+    return { valid: false, error: 'Credential must be at least 6 characters' };
   }
 
   return { valid: true };

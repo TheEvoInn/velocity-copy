@@ -9,6 +9,7 @@ import IdentityForm from '../components/identity/IdentityForm';
 import AutoAccountCreator from '../components/identity/AutoAccountCreator';
 import IdentityAuditLog from '../components/identity/IdentityAuditLog';
 import AccountLinker from '../components/identity/AccountLinker';
+import IdentityManagementDashboard from '../components/identity/IdentityManagementDashboard';
 
 export default function IdentityManager() {
   const qc = useQueryClient();
@@ -199,6 +200,9 @@ export default function IdentityManager() {
            </div>
          ))}
        </div>
+
+      {/* Phase 6: New Identity Management Dashboard */}
+      <IdentityManagementDashboard />
 
       {/* Form */}
       {showForm && (

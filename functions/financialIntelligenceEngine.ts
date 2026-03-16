@@ -190,9 +190,13 @@ async function calculateROI(base44, user, payload) {
  * Generate comprehensive financial report
  */
 async function generateFinancialReport(base44, user) {
-  try {
-    const userGoals = await base44.entities.UserGoals.list();
-    const transactions = await base44.entities.Transaction.list('-created_date', 500);
+   try {
+     const userGoals = await base44.entities.UserGoals.filter({
+       created_by: user.email
+     }, null, 1);
+     const transactions = await base44.entities.Transaction.filter({
+       created_by: user.email
+     }, '-created_date', 500);
 
     const goals = userGoals[0] || {};
     const today = new Date();
@@ -310,14 +314,14 @@ async function generateFinancialReport(base44, user) {
  * Estimate tax liability
  */
 async function estimateTaxes(base44, user, payload) {
-  const { period = 'year' } = payload; // 'month', 'quarter', 'year'
+   const { period = 'year' } = payload; // 'month', 'quarter', 'year'
 
-  try {
-    const transactions = await base44.entities.Transaction.filter(
-      { type: 'income' },
-      '-created_date',
-      1000
-    );
+   try {
+     const transactions = await base44.entities.Transaction.filter(
+       { type: 'income', created_by: user.email },
+       '-created_date',
+       1000
+     );
 
     let filteredTxs = transactions;
     const now = new Date();
@@ -371,13 +375,15 @@ async function estimateTaxes(base44, user, payload) {
  * Schedule payout
  */
 async function schedulePayout(base44, user, payload) {
-  const { amount, destination, scheduled_date, reason = 'withdrawal' } = payload;
+   const { amount, destination, scheduled_date, reason = 'withdrawal' } = payload;
 
-  try {
-    const userGoals = await base44.entities.UserGoals.list();
-    if (!userGoals.length) {
-      return Response.json({ error: 'User goals not found' }, { status: 404 });
-    }
+   try {
+     const userGoals = await base44.entities.UserGoals.filter({
+       created_by: user.email
+     }, null, 1);
+     if (!userGoals || userGoals.length === 0) {
+       return Response.json({ error: 'User goals not found' }, { status: 404 });
+     }
 
     const goals = userGoals[0];
     if ((goals.wallet_balance || 0) < amount) {
@@ -477,12 +483,12 @@ async function processPayout(base44, user, payload) {
  * Get real-time revenue metrics
  */
 async function getRevenueMetrics(base44, user) {
-  try {
-    const transactions = await base44.entities.Transaction.filter(
-      { type: 'income' },
-      '-created_date',
-      300
-    );
+   try {
+     const transactions = await base44.entities.Transaction.filter(
+       { type: 'income', created_by: user.email },
+       '-created_date',
+       300
+     );
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -566,14 +572,14 @@ async function getRevenueMetrics(base44, user) {
  * Analyze earnings by stream (AI vs User)
  */
 async function analyzeEarningsStream(base44, user, payload) {
-  const { period = 'month' } = payload;
+   const { period = 'month' } = payload;
 
-  try {
-    const transactions = await base44.entities.Transaction.filter(
-      { type: 'income' },
-      '-created_date',
-      500
-    );
+   try {
+     const transactions = await base44.entities.Transaction.filter(
+       { type: 'income', created_by: user.email },
+       '-created_date',
+       500
+     );
 
     const now = new Date();
     let filteredTxs = transactions;
@@ -625,9 +631,13 @@ async function analyzeEarningsStream(base44, user, payload) {
  * Sync wallet balance from transactions
  */
 async function syncWalletBalance(base44, user) {
-  try {
-    const transactions = await base44.entities.Transaction.list('-created_date', 1000);
-    const userGoals = await base44.entities.UserGoals.list();
+   try {
+     const transactions = await base44.entities.Transaction.filter({
+       created_by: user.email
+     }, '-created_date', 1000);
+     const userGoals = await base44.entities.UserGoals.filter({
+       created_by: user.email
+     }, null, 1);
 
     if (!userGoals.length) {
       return Response.json({ error: 'User goals not found' }, { status: 404 });
@@ -662,12 +672,12 @@ async function syncWalletBalance(base44, user) {
  * Get platform breakdown
  */
 async function getPlatformBreakdown(base44, user) {
-  try {
-    const transactions = await base44.entities.Transaction.filter(
-      { type: 'income' },
-      '-created_date',
-      300
-    );
+   try {
+     const transactions = await base44.entities.Transaction.filter(
+       { type: 'income', created_by: user.email },
+       '-created_date',
+       300
+     );
 
     const breakdown = {};
 

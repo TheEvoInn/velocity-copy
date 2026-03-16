@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText } from 'lucide-react';
+import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, User } from 'lucide-react';
 
 const navItems = [
   { path: '/Dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -10,6 +10,7 @@ const navItems = [
   { path: '/AccountManager', icon: Link2, label: 'Accounts' },
   { path: '/AIWorkLogPage', icon: FileText, label: 'Work Log' },
   { path: '/WithdrawalEngine', icon: Zap, label: 'Money Engine', highlight: true },
+  { path: '/IdentityManager', icon: User, label: 'Identities' },
   { path: '/Strategies', icon: BookOpen, label: 'Strategies' },
   { path: '/WalletPage', icon: Wallet, label: 'Wallet' },
   { path: '/ActivityPage', icon: Activity, label: 'Activity' },

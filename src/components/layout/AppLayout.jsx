@@ -5,26 +5,17 @@ import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Men
 
 const primaryNav = [
   { path: '/Dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/AutoPilot', icon: Bot, label: 'Autopilot', highlight: true },
   { path: '/Opportunities', icon: Target, label: 'Opportunities' },
-  { path: '/PrizeDashboard', icon: Trophy, label: 'Prizes', highlight: true },
-  { path: '/SecurityDashboard', icon: Shield, label: 'Security', highlight: true },
+  { path: '/AutoPilot', icon: Bot, label: 'Autopilot', highlight: true },
+  { path: '/IdentityManagerExpanded', icon: User, label: 'Identities' },
+  { path: '/WalletPage', icon: Wallet, label: 'Wallet & Payouts' },
 ];
 
 const moreNav = [
-  { path: '/SystemAuditDashboard', icon: Wrench, label: 'System Audit', highlight: true },
-  { path: '/AgentWorkerCenter', icon: Cpu, label: 'Agent Worker', highlight: true },
-  { path: '/NegotiationCenter', icon: MessageSquare, label: 'Negotiate' },
-  { path: '/PrizePayoutsTracker', icon: TrendingUp, label: 'Payouts' },
-  { path: '/WithdrawalEngine', icon: Zap, label: 'Money Engine' },
-  { path: '/IdentityManagerExpanded', icon: User, label: 'Identities' },
-  { path: '/GoalCenter', icon: Zap, label: 'Goals' },
-  { path: '/AccountManager', icon: Link2, label: 'Accounts' },
-  { path: '/AIWorkLogPage', icon: FileText, label: 'Work Log' },
-  { path: '/Strategies', icon: BookOpen, label: 'Strategies' },
-  { path: '/WalletPage', icon: Wallet, label: 'Wallet' },
-  { path: '/ActivityPage', icon: Activity, label: 'Activity' },
-  { path: '/Chat', icon: MessageSquare, label: 'AI Chat' },
+  { path: '/PrizeDashboard', icon: Trophy, label: 'Prizes & Grants' },
+  { path: '/SecurityDashboard', icon: Shield, label: 'Security' },
+  { path: '/Chat', icon: MessageSquare, label: 'AI Assistant' },
+  { path: '/SystemAuditDashboard', icon: Wrench, label: 'System Audit' },
 ];
 
 export default function AppLayout() {

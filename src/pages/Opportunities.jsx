@@ -43,7 +43,16 @@ export default function Opportunities() {
   const [showIngestion, setShowIngestion] = useState(true);
   const [lastScanResult, setLastScanResult] = useState(null);
   const [showBatchExecution, setShowBatchExecution] = useState(false);
+  const [executionHubOpp, setExecutionHubOpp] = useState(null);
   const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    const handleOpenExecutionHub = (e) => {
+      setExecutionHubOpp(e.detail);
+    };
+    window.addEventListener('openExecutionHub', handleOpenExecutionHub);
+    return () => window.removeEventListener('openExecutionHub', handleOpenExecutionHub);
+  }, []);
 
   const { data: opportunities = [] } = useQuery({
     queryKey: ['opportunities'],

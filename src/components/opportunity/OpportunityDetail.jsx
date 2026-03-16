@@ -113,48 +113,32 @@ export default function OpportunityDetail({ opportunity, onClose }) {
 
           {/* Actions */}
           <div className="space-y-2">
-            {opportunity.status === 'new' && (
-              <div className="grid grid-cols-3 gap-2">
-                <Button 
-                  onClick={() => {
-                    onClose();
-                    window.dispatchEvent(new CustomEvent('openExecutionHub', { detail: opportunity }));
-                  }} 
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-500 text-white text-xs h-8"
-                >
-                  <FileText className="w-3 h-3" />
-                </Button>
-                <Button 
-                  onClick={() => {
-                    onClose();
-                    window.dispatchEvent(new CustomEvent('openExecutionHub', { detail: opportunity }));
-                  }} 
-                  size="sm"
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8"
-                >
-                  <Clock className="w-3 h-3" />
-                </Button>
-                <Button 
-                  onClick={() => {
-                    onClose();
-                    window.dispatchEvent(new CustomEvent('openExecutionHub', { detail: opportunity }));
-                  }} 
-                  size="sm"
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8"
-                >
-                  <Zap className="w-3 h-3" />
-                </Button>
-              </div>
-            )}
             <Button 
               onClick={() => {
                 onClose();
-                window.dispatchEvent(new CustomEvent('openExecutionHub', { detail: opportunity }));
+                window.dispatchEvent(new CustomEvent('executeWithAutopilot', { detail: opportunity }));
+              }} 
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white h-9 font-semibold"
+            >
+              <Play className="w-4 h-4 mr-2" /> Execute with Autopilot
+            </Button>
+            <Button 
+              onClick={() => {
+                onClose();
+                window.dispatchEvent(new CustomEvent('generateProposal', { detail: opportunity }));
+              }} 
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white h-9"
+            >
+              <FileText className="w-4 h-4 mr-2" /> Generate Proposal
+            </Button>
+            <Button 
+              onClick={() => {
+                updateStatus('queued');
+                onClose();
               }} 
               className="w-full bg-slate-700 hover:bg-slate-600 text-white h-9"
             >
-              <Play className="w-4 h-4 mr-2" /> Execute Hub
+              <Zap className="w-4 h-4 mr-2" /> Send to Autopilot Queue
             </Button>
             <Button onClick={() => updateStatus('dismissed')} variant="outline" className="w-full border-slate-700 text-slate-400 hover:text-white h-9">
               <Archive className="w-4 h-4 mr-2" /> Dismiss

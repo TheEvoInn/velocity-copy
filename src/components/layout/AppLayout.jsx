@@ -16,7 +16,7 @@ const moreNav = [
   { path: '/AccountManager', icon: Link2, label: 'Accounts' },
   { path: '/IdentityManager', icon: User, label: 'Identities' },
   { path: '/AIWorkLogPage', icon: FileText, label: 'Work Log' },
-  { path: '/Strategies', icon: BookBook, label: 'Strategies' },
+  { path: '/Strategies', icon: BookOpen, label: 'Strategies' },
   { path: '/WalletPage', icon: Wallet, label: 'Wallet' },
   { path: '/ActivityPage', icon: Activity, label: 'Activity' },
 ];

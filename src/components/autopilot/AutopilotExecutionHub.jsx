@@ -83,6 +83,26 @@ export default function AutopilotExecutionHub() {
     }
   }, [isRunning]);
 
+  // Resolve setup requirements
+  const resolveSetup = async () => {
+    try {
+      // Run platform audit to fix any issues
+      await base44.functions.invoke('platformAuditAndRepair', {
+        action: 'sync_all_financial_modules'
+      });
+
+      // Assign identity
+      await assignIdentityMutation.mutateAsync();
+
+      // Verify system ready
+      await verifyIdentityMutation.mutateAsync();
+
+      toast.success('Setup requirements resolved - ready to execute');
+    } catch (err) {
+      toast.error(`Setup resolution failed: ${err.message}`);
+    }
+  };
+
   // Auto-run cycles
   useEffect(() => {
     if (!isRunning || !identityReady) return;
@@ -146,6 +166,27 @@ export default function AutopilotExecutionHub() {
           )}
         </Button>
       </div>
+
+      {/* Setup Resolution Action */}
+      {!statusData?.ready_to_execute && (
+        <div className="bg-amber-950/40 border border-amber-800 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <div className="text-xs">
+              <p className="text-amber-300 font-medium">Setup required</p>
+              <p className="text-amber-300/70">Complete initialization to start autonomous execution</p>
+            </div>
+          </div>
+          <Button
+            onClick={resolveSetup}
+            size="sm"
+            className="bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+          >
+            <CheckCircle2 className="w-4 h-4 mr-2" />
+            Resolve
+          </Button>
+        </div>
+      )}
 
       {/* Status Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

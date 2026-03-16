@@ -19,6 +19,8 @@ import AccountManager from './pages/AccountManager';
 import AIWorkLogPage from './pages/AIWorkLogPage';
 import WithdrawalEngine from './pages/WithdrawalEngine';
 import IdentityManager from './pages/IdentityManager';
+import AnalyticsDashboard from './pages/AnalyticsDashboard';
+import NegotiationCenter from './pages/NegotiationCenter';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -59,6 +61,8 @@ const AuthenticatedApp = () => {
         <Route path="/AIWorkLogPage" element={<AIWorkLogPage />} />
         <Route path="/WithdrawalEngine" element={<WithdrawalEngine />} />
         <Route path="/IdentityManager" element={<IdentityManager />} />
+        <Route path="/AnalyticsDashboard" element={<AnalyticsDashboard />} />
+        <Route path="/NegotiationCenter" element={<NegotiationCenter />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

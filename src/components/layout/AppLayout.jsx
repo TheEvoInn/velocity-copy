@@ -1,24 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
-import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, User, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, User, MoreHorizontal, BarChart2, Handshake } from 'lucide-react';
 
 const primaryNav = [
   { path: '/Dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/AutoPilot', icon: Bot, label: 'Autopilot', highlight: true },
   { path: '/Opportunities', icon: Target, label: 'Opportunities' },
-  { path: '/WithdrawalEngine', icon: Zap, label: 'Money Engine', highlight: true },
-  { path: '/Chat', icon: MessageSquare, label: 'AI Chat' },
+  { path: '/AnalyticsDashboard', icon: BarChart2, label: 'Analytics' },
+  { path: '/NegotiationCenter', icon: MessageSquare, label: 'Negotiate' },
 ];
 
 const moreNav = [
+  { path: '/WithdrawalEngine', icon: Zap, label: 'Money Engine' },
+  { path: '/IdentityManager', icon: User, label: 'Identities' },
   { path: '/GoalCenter', icon: Zap, label: 'Goals' },
   { path: '/AccountManager', icon: Link2, label: 'Accounts' },
-  { path: '/IdentityManager', icon: User, label: 'Identities' },
   { path: '/AIWorkLogPage', icon: FileText, label: 'Work Log' },
   { path: '/Strategies', icon: BookOpen, label: 'Strategies' },
   { path: '/WalletPage', icon: Wallet, label: 'Wallet' },
   { path: '/ActivityPage', icon: Activity, label: 'Activity' },
+  { path: '/Chat', icon: MessageSquare, label: 'AI Chat' },
 ];
 
 export default function AppLayout() {

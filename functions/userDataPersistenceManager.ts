@@ -117,7 +117,7 @@ async function handleUpdate(base44, user, store, field, value, forceUpdate) {
     updateData.modification_log = newLog;
 
     // Calculate and update checksum
-    updateData.checksum = calculateChecksum({ ...store, ...updateData });
+    updateData.checksum = await calculateChecksum({ ...store, ...updateData });
 
     // Create or update store
     let savedStore;
@@ -205,7 +205,7 @@ async function handleReset(base44, user, store, field) {
       ],
     };
 
-    updateData.checksum = calculateChecksum({ ...store, ...updateData });
+    updateData.checksum = await calculateChecksum({ ...store, ...updateData });
 
     await base44.entities.UserDataStore.update(store.id, updateData);
 
@@ -275,7 +275,7 @@ async function handleValidateIntegrity(base44, user, store) {
     }
 
     // Verify checksum
-    const calculatedChecksum = calculateChecksum(store);
+    const calculatedChecksum = await calculateChecksum(store);
     const integrityValid = calculatedChecksum === store.checksum;
 
     const audit = {
@@ -309,7 +309,7 @@ async function handleValidateIntegrity(base44, user, store) {
   }
 }
 
-function calculateChecksum(data) {
+async function calculateChecksum(data) {
   const dataStr = JSON.stringify(data, (key, value) => {
     // Exclude volatile fields from checksum
     if (['checksum', 'backup_copies'].includes(key)) return undefined;
@@ -317,7 +317,7 @@ function calculateChecksum(data) {
   });
 
   const encoder = new TextEncoder();
-  const hashBuffer = crypto.subtle.digestSync('SHA-256', encoder.encode(dataStr));
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(dataStr));
   
   // Convert buffer to hex string
   const hashArray = Array.from(new Uint8Array(hashBuffer));

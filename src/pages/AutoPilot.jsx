@@ -33,14 +33,26 @@ export default function AutoPilot() {
 
   const { data: aiTasks = [], refetch: refetchTasks } = useQuery({
     queryKey: ['aiTasks'],
-    queryFn: () => base44.entities.AITask.list('-created_date', 50),
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      if (!user?.email) return [];
+      return base44.entities.AITask.filter({
+        created_by: user.email
+      }, '-created_date', 50);
+    },
     initialData: [],
     refetchInterval: 15000, // refresh every 15s
   });
 
   const { data: transactions = [] } = useQuery({
     queryKey: ['transactions'],
-    queryFn: () => base44.entities.Transaction.list('-created_date', 100),
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      if (!user?.email) return [];
+      return base44.entities.Transaction.filter({
+        created_by: user.email
+      }, '-created_date', 100);
+    },
     initialData: [],
   });
 

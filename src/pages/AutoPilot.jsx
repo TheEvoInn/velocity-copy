@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bot, Zap, Play, RefreshCw, DollarSign, Target, User, TrendingUp, Settings, AlertCircle } from 'lucide-react';
+import { Bot, Zap, Play, RefreshCw, DollarSign, Target, User, TrendingUp, Settings, AlertCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import AutopilotPanel from '../components/autopilot/AutopilotPanel';
 import AITaskFeed from '../components/autopilot/AITaskFeed';

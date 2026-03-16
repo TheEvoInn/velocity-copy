@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
   X, DollarSign, Zap, AlertTriangle, Clock, 
-  CheckCircle2, Circle, Play, Archive 
+  CheckCircle2, Circle, Play, Archive, FileText 
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 

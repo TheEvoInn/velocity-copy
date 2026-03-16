@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
-import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, User, MoreHorizontal, BarChart2, Trophy, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, User, MoreHorizontal, BarChart2, Trophy, TrendingUp, Cpu } from 'lucide-react';
 
 const primaryNav = [
   { path: '/Dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -12,10 +12,11 @@ const primaryNav = [
 ];
 
 const moreNav = [
+  { path: '/AgentWorkerCenter', icon: Cpu, label: 'Agent Worker', highlight: true },
   { path: '/NegotiationCenter', icon: MessageSquare, label: 'Negotiate' },
   { path: '/PrizePayoutsTracker', icon: TrendingUp, label: 'Payouts' },
   { path: '/WithdrawalEngine', icon: Zap, label: 'Money Engine' },
-  { path: '/IdentityManager', icon: User, label: 'Identities' },
+  { path: '/IdentityManagerExpanded', icon: User, label: 'Identities' },
   { path: '/GoalCenter', icon: Zap, label: 'Goals' },
   { path: '/AccountManager', icon: Link2, label: 'Accounts' },
   { path: '/AIWorkLogPage', icon: FileText, label: 'Work Log' },

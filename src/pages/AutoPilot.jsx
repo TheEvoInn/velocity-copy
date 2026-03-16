@@ -60,7 +60,7 @@ export default function AutoPilot() {
   const runManualCycle = async () => {
     setIsManualRunning(true);
     try {
-      await base44.functions.invoke('aiAutoPilot', {});
+      await base44.functions.invoke('unifiedAutopilot', { action: 'autopilot_full_cycle' });
       await refetchTasks();
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });

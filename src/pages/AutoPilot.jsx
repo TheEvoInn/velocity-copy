@@ -60,10 +60,11 @@ export default function AutoPilot() {
   const runManualCycle = async () => {
     setIsManualRunning(true);
     try {
-      await base44.functions.invoke('autopilotCycle', {});
+      await base44.functions.invoke('unifiedOrchestrator', { action: 'full_cycle' });
       await refetchTasks();
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });
+      queryClient.invalidateQueries({ queryKey: ['platformState'] });
     } finally {
       setIsManualRunning(false);
     }
@@ -72,7 +73,7 @@ export default function AutoPilot() {
   const runScan = async () => {
     setIsScanRunning(true);
     try {
-      await base44.functions.invoke('marketScan', {});
+      await base44.functions.invoke('unifiedOrchestrator', { action: 'scan_opportunities' });
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['activityLogs'] });
     } finally {

@@ -21,6 +21,7 @@ import WithdrawalEngine from './pages/WithdrawalEngine';
 import IdentityManager from './pages/IdentityManager';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import NegotiationCenter from './pages/NegotiationCenter';
+import PrizeDashboard from './pages/PrizeDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -63,6 +64,7 @@ const AuthenticatedApp = () => {
         <Route path="/IdentityManager" element={<IdentityManager />} />
         <Route path="/AnalyticsDashboard" element={<AnalyticsDashboard />} />
         <Route path="/NegotiationCenter" element={<NegotiationCenter />} />
+        <Route path="/PrizeDashboard" element={<PrizeDashboard />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

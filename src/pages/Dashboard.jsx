@@ -160,11 +160,17 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Right Column: Goal + Activity */}
-        <div className="space-y-4">
-          <DailyGoalTracker target={goals.daily_target || 1000} earned={todayEarned} />
-          <ActivityFeed logs={logs} />
-        </div>
+        {/* Right Column: Goal + Autopilot Activity */}
+         <div className="space-y-4">
+           <DailyGoalTracker target={goals.daily_target || 1000} earned={todayEarned} />
+           <div>
+             <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+               <Activity className="w-4 h-4 text-slate-400" />
+               Autopilot Activity
+             </h3>
+             <ActivityFeed logs={autopilotLogs} />
+           </div>
+         </div>
       </div>
     </div>
   );

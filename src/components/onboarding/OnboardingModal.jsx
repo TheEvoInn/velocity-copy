@@ -29,7 +29,11 @@ export default function OnboardingModal({ onComplete }) {
 
   const queryClient = useQueryClient();
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.UserGoals.create(data),
+    mutationFn: async (data) => {
+      const result = await base44.entities.UserGoals.create(data);
+      localStorage.setItem('userGoalsId', result.id);
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });
       onComplete();

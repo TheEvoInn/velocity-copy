@@ -116,13 +116,10 @@ Return JSON:
         saved.push(record);
       }
 
-      // All opportunities to show the user (new + existing dupes returned as raw data)
-      const allOpportunities = [...saved, ...skipped.map(o => ({ ...o, _existing: true }))];
-
       // Log the scan
       await base44.asServiceRole.entities.ActivityLog.create({
         action_type: 'scan',
-        message: `🎯 Prize scan complete: ${saved.length} new + ${skipped.length} existing opportunities found. Est. value: $${result?.total_potential_value || 0}`,
+        message: `🎯 Prize scan complete: ${saved.length} new opportunities found. Est. value: $${result?.total_potential_value || 0}`,
         severity: 'success',
         metadata: { saved_count: saved.length, skipped_count: skipped.length, scan_summary: result?.scan_summary }
       });
@@ -130,8 +127,7 @@ Return JSON:
       return Response.json({
         success: true,
         new_opportunities: saved.length,
-        total_found: allOpportunities.length,
-        opportunities: allOpportunities,
+        total_found: saved.length,
         scan_summary: result?.scan_summary,
         total_potential_value: result?.total_potential_value || 0
       });

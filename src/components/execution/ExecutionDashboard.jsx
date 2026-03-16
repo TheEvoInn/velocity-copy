@@ -94,6 +94,21 @@ export default function ExecutionDashboard() {
     }
   });
 
+  // Refresh execution data
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      await refetchTasks();
+      return true;
+    },
+    onSuccess: () => {
+      toast.success('Execution data refreshed');
+      // Broadcast refresh across modules
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['autopilot_status'] });
+    }
+  });
+
   const queuedCount = tasks.filter(t => t.status === 'queued').length;
   const processingCount = tasks.filter(t => t.status === 'processing').length;
   const completedCount = tasks.filter(t => t.status === 'completed').length;
@@ -191,11 +206,12 @@ export default function ExecutionDashboard() {
               )}
             </Button>
             <Button
-              onClick={() => refetchTasks()}
+              onClick={() => refreshMutation.mutate()}
+              disabled={refreshMutation.isPending}
               variant="outline"
               className="text-sm h-9"
             >
-              <RotateCw className="w-3.5 h-3.5" />
+              <RotateCw className={`w-3.5 h-3.5 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </CardContent>

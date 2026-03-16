@@ -76,13 +76,14 @@ export default function PrizeScanPanel({ onScanComplete }) {
 
           {result && (
             <div className={`rounded-xl border px-4 py-3 ${
-              result.new_opportunities > 0 ? 'bg-emerald-950/20 border-emerald-500/20' : 'bg-slate-800 border-slate-700'
+              (result.total_found || result.new_opportunities) > 0 ? 'bg-emerald-950/20 border-emerald-500/20' : 'bg-slate-800 border-slate-700'
             }`}>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 <div>
                   <p className="text-xs font-semibold text-white">
-                    {result.new_opportunities} new opportunit{result.new_opportunities !== 1 ? 'ies' : 'y'} discovered
+                    {result.total_found || result.new_opportunities} opportunit{(result.total_found || result.new_opportunities) !== 1 ? 'ies' : 'y'} found
+                    {result.new_opportunities > 0 && result.new_opportunities < (result.total_found || 0) && ` (${result.new_opportunities} new)`}
                     {result.total_potential_value > 0 && ` · Est. $${result.total_potential_value.toLocaleString()} total value`}
                   </p>
                   {result.scan_summary && <p className="text-[10px] text-slate-500 mt-0.5">{result.scan_summary}</p>}

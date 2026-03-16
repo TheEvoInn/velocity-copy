@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Target, Filter, Search, Zap } from 'lucide-react';
+import { Target, Search, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
 import OpportunityCard from '../components/dashboard/OpportunityCard';
 import OpportunityDetail from '../components/opportunity/OpportunityDetail';
+import FreelanceScraperPanel from '../components/opportunity/FreelanceScraperPanel';
+import QuickApplyModal from '../components/opportunity/QuickApplyModal';
 
 const categories = [
   { value: 'all', label: 'All Categories' },
@@ -35,6 +37,7 @@ export default function Opportunities() {
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState('all');
   const [selectedOpp, setSelectedOpp] = useState(null);
+  const [applyOpp, setApplyOpp] = useState(null);
 
   const { data: opportunities = [] } = useQuery({
     queryKey: ['opportunities'],
@@ -52,6 +55,7 @@ export default function Opportunities() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {selectedOpp && <OpportunityDetail opportunity={selectedOpp} onClose={() => setSelectedOpp(null)} />}
+      {applyOpp && <QuickApplyModal opportunity={applyOpp} onClose={() => setApplyOpp(null)} />}
 
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -67,6 +71,8 @@ export default function Opportunities() {
           </Button>
         </Link>
       </div>
+
+      <FreelanceScraperPanel />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
@@ -102,7 +108,24 @@ export default function Opportunities() {
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map(opp => (
-          <OpportunityCard key={opp.id} opportunity={opp} onClick={() => setSelectedOpp(opp)} />
+          <div key={opp.id} className="relative group">
+            <OpportunityCard opportunity={opp} onClick={() => setSelectedOpp(opp)} />
+            {/* Action buttons overlay */}
+            <div className="absolute bottom-3 left-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={(e) => { e.stopPropagation(); setApplyOpp(opp); }}
+                className="flex-1 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-[11px] font-medium backdrop-blur-sm transition-colors flex items-center justify-center gap-1"
+              >
+                <Zap className="w-3 h-3" /> Quick Apply
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setApplyOpp(opp); }}
+                className="flex-1 py-1.5 rounded-lg bg-violet-600/90 hover:bg-violet-500 text-white text-[11px] font-medium backdrop-blur-sm transition-colors flex items-center justify-center gap-1"
+              >
+                🤖 Autopilot
+              </button>
+            </div>
+          </div>
         ))}
       </div>
 

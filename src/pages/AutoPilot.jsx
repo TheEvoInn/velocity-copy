@@ -107,9 +107,9 @@ export default function AutoPilot() {
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             <Bot className="w-5 h-5 text-emerald-400" />
-            AI Autopilot
+            Unified Autopilot
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">Autonomous profit generation — runs 24/7</p>
+          <p className="text-xs text-slate-500 mt-0.5">Unified automation engine — consolidated execution</p>
         </div>
         <div className="flex gap-2">
           <Button

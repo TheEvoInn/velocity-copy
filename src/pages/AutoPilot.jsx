@@ -11,6 +11,7 @@ import DualStreamCard from '../components/autopilot/DualStreamCard';
 import TaskReviewQueuePanel from '../components/autopilot/TaskReviewQueuePanel';
 import SpendingPolicyEditor from '../components/autopilot/SpendingPolicyEditor';
 import AutopilotExecutionHub from '../components/autopilot/AutopilotExecutionHub';
+import UnifiedAutopilotControl from '../components/autopilot/UnifiedAutopilotControl';
 
 export default function AutoPilot() {
   const [isManualRunning, setIsManualRunning] = useState(false);

@@ -18,6 +18,8 @@ import OnboardingModal from '../components/onboarding/OnboardingModal';
 import DualStreamCard from '../components/autopilot/DualStreamCard';
 import AutopilotPanel from '../components/autopilot/AutopilotPanel';
 import FinancialOverview from '../components/dashboard/FinancialOverview';
+import RealTimeAlertSystem from '../components/scanning/RealTimeAlertSystem';
+import OpportunityAnalysisPanel from '../components/scanning/OpportunityAnalysisPanel';
 import { usePersistentUserData } from '../hooks/usePersistentUserData';
 
 export default function Dashboard() {
@@ -147,6 +149,16 @@ export default function Dashboard() {
       {/* User Data Persistence Monitor */}
       <div className="mb-4">
         <UserDataPersistenceMonitor />
+      </div>
+
+      {/* Real-Time Alert System */}
+      <div className="mb-4">
+        <RealTimeAlertSystem />
+      </div>
+
+      {/* Deep Opportunity Analysis */}
+      <div className="mb-4">
+        <OpportunityAnalysisPanel />
       </div>
 
       {/* Main Grid */}

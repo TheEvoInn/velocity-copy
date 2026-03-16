@@ -8,6 +8,8 @@ import { format } from 'date-fns';
 import AutopilotPanel from '../components/autopilot/AutopilotPanel';
 import AITaskFeed from '../components/autopilot/AITaskFeed';
 import DualStreamCard from '../components/autopilot/DualStreamCard';
+import TaskReviewQueuePanel from '../components/autopilot/TaskReviewQueuePanel';
+import SpendingPolicyEditor from '../components/autopilot/SpendingPolicyEditor';
 
 export default function AutoPilot() {
   const [isManualRunning, setIsManualRunning] = useState(false);
@@ -171,6 +173,9 @@ export default function AutoPilot() {
         userTarget={goals.user_daily_target || 500}
       />
 
+      {/* Task Review Queue */}
+      <TaskReviewQueuePanel />
+
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* AI Task Feed */}
@@ -202,6 +207,8 @@ export default function AutoPilot() {
               Save Context
             </Button>
           </div>
+
+          <SpendingPolicyEditor />
 
           {/* How It Works */}
           <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">

@@ -9,6 +9,7 @@ const navItems = [
   { path: '/GoalCenter', icon: Zap, label: 'Goals' },
   { path: '/AccountManager', icon: Link2, label: 'Accounts' },
   { path: '/AIWorkLogPage', icon: FileText, label: 'Work Log' },
+  { path: '/WithdrawalEngine', icon: Zap, label: 'Money Engine', highlight: true },
   { path: '/Strategies', icon: BookOpen, label: 'Strategies' },
   { path: '/WalletPage', icon: Wallet, label: 'Wallet' },
   { path: '/ActivityPage', icon: Activity, label: 'Activity' },

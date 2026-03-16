@@ -17,6 +17,7 @@ import AutoPilot from './pages/AutoPilot';
 import GoalCenter from './pages/GoalCenter';
 import AccountManager from './pages/AccountManager';
 import AIWorkLogPage from './pages/AIWorkLogPage';
+import WithdrawalEngine from './pages/WithdrawalEngine';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -55,6 +56,7 @@ const AuthenticatedApp = () => {
         <Route path="/GoalCenter" element={<GoalCenter />} />
         <Route path="/AccountManager" element={<AccountManager />} />
         <Route path="/AIWorkLogPage" element={<AIWorkLogPage />} />
+        <Route path="/WithdrawalEngine" element={<WithdrawalEngine />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

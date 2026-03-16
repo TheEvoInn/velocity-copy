@@ -135,6 +135,11 @@ export default function Dashboard() {
         <FinancialOverview goals={goals} transactions={transactions} />
       </div>
 
+      {/* User Data Persistence Monitor */}
+      <div className="mb-4">
+        <UserDataPersistenceMonitor />
+      </div>
+
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left Column: Chart + Opportunities */}

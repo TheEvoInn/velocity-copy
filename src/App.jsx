@@ -22,6 +22,7 @@ import SystemDocumentation from './pages/SystemDocumentation';
 import SecurityDashboard from './pages/SecurityDashboard';
 import SystemAuditDashboard from './pages/SystemAuditDashboard';
 import KYCManagement from './pages/KYCManagement';
+import DataPersistenceAudit from './pages/DataPersistenceAudit';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -64,6 +65,7 @@ const AuthenticatedApp = () => {
         <Route path="/SecurityDashboard" element={<SecurityDashboard />} />
         <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
         <Route path="/KYCManagement" element={<KYCManagement />} />
+        <Route path="/DataPersistenceAudit" element={<DataPersistenceAudit />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

@@ -25,6 +25,7 @@ import PrizeDashboard from './pages/PrizeDashboard';
 import PrizePayoutsTracker from './pages/PrizePayoutsTracker';
 import IdentityManagerExpanded from './pages/IdentityManagerExpanded';
 import AgentWorkerCenter from './pages/AgentWorkerCenter';
+import SystemDocumentation from './pages/SystemDocumentation';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
         <Route path="/PrizePayoutsTracker" element={<PrizePayoutsTracker />} />
         <Route path="/IdentityManagerExpanded" element={<IdentityManagerExpanded />} />
         <Route path="/AgentWorkerCenter" element={<AgentWorkerCenter />} />
+        <Route path="/SystemDocumentation" element={<SystemDocumentation />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

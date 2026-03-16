@@ -52,21 +52,46 @@ Deno.serve(async (req) => {
     const opportunities = await base44.asServiceRole.entities.Opportunity.list('-overall_score', 20);
     const openOpps = opportunities.filter(o => o.status === 'new' || o.status === 'executing');
 
+    // Get linked accounts for context
+    const linkedAccounts = await base44.asServiceRole.entities.LinkedAccount.list('-performance_score', 20);
+    const availableAccounts = linkedAccounts.filter(a =>
+      a.ai_can_use && a.health_status !== 'suspended' &&
+      !(a.health_status === 'cooldown' && a.cooldown_until && new Date(a.cooldown_until) > new Date()) &&
+      (a.applications_today || 0) < (a.daily_application_limit || 10)
+    );
+
+    // Get recent work log context to avoid repeating actions
+    const recentLogs = await base44.asServiceRole.entities.AIWorkLog.list('-created_date', 10);
+    const recentActions = recentLogs.map(l => l.subject || l.ai_decision_context).filter(Boolean).slice(0, 5);
+
+    // Get active earning goals for alignment
+    const earningGoals = await base44.asServiceRole.entities.EarningGoal.list();
+    const activeGoals = earningGoals.filter(g => g.status === 'active');
+
     // Build context for LLM
     const userContext = `
 USER PROFILE:
 - Daily AI Target: $${aiDailyTarget}
 - Already Earned Today (AI): $${todayAIEarnings.toFixed(2)}
 - Remaining to Hit Target: $${remaining.toFixed(2)}
-- Capital Available: $${goals.available_capital || 0}
+- Wallet Balance: $${goals.wallet_balance || 0}
 - Risk Tolerance: ${goals.risk_tolerance || 'moderate'}
 - Skills: ${(goals.skills || []).join(', ') || 'General'}
 - AI Preferred Categories: ${(goals.ai_preferred_categories || []).join(', ') || 'any'}
 - Custom AI Instructions: ${goals.ai_instructions || 'Maximize speed and profit. Prefer zero-capital opportunities.'}
 - Platform Accounts: ${goals.platform_accounts?.notes || 'Not specified'}
 
+LINKED PLATFORM ACCOUNTS (${availableAccounts.length} available):
+${availableAccounts.length > 0 ? availableAccounts.map(a => `- ${a.platform} @${a.username} | ${a.label || ''} | Rating: ${a.rating || 'N/A'} | Jobs: ${a.jobs_completed || 0} | Score: ${a.performance_score || 50} | Specialization: ${a.specialization || 'general'}`).join('\n') : 'No linked accounts - using general AI execution'}
+
+ACTIVE EARNING GOALS:
+${activeGoals.length > 0 ? activeGoals.map(g => `- ${g.period} goal: $${g.target_amount} (AI handles ${g.ai_allocation_pct || 60}%)`).join('\n') : 'No specific goals set'}
+
 AVAILABLE OPPORTUNITIES (top scored):
-${openOpps.slice(0, 5).map(o => `- ${o.title} (score: ${o.overall_score}, est: $${o.profit_estimate_low}-$${o.profit_estimate_high}, capital: $${o.capital_required || 0})`).join('\n')}
+${openOpps.slice(0, 5).map(o => `- [ID:${o.id}] ${o.title} (score: ${o.overall_score}, est: $${o.profit_estimate_low}-$${o.profit_estimate_high}, capital: $${o.capital_required || 0}, category: ${o.category})`).join('\n')}
+
+RECENT AI ACTIONS (avoid duplicating):
+${recentActions.join('\n') || 'None'}
 `;
 
     // Ask LLM to decide what task to execute and simulate execution
@@ -172,6 +197,19 @@ Respond with a JSON object:
       return Response.json({ message: 'Task submitted to review queue for manual approval', queue_id: reviewData.record?.id });
     }
 
+    // ── Select best account via rotation engine ──────────────────────────────
+    let selectedAccount = null;
+    if (availableAccounts.length > 0) {
+      const rotationRes = await base44.asServiceRole.functions.invoke('accountRotationEngine', {
+        action: 'select',
+        job_category: task.category,
+        required_skills: goals.skills || [],
+        risk_level: goals.risk_tolerance || 'medium',
+        task_id: 'autopilot-' + Date.now()
+      });
+      selectedAccount = rotationRes?.data?.selected || rotationRes?.selected || null;
+    }
+
     // Cap revenue so it doesn't exceed remaining target
     const cappedRevenue = Math.min(task.revenue_generated || 10, remaining);
 
@@ -188,6 +226,33 @@ Respond with a JSON object:
       stream: 'ai_autonomous',
       deposited: false
     });
+
+    // ── Log to AIWorkLog ──────────────────────────────────────────────────────
+    await base44.asServiceRole.entities.AIWorkLog.create({
+      log_type: 'task_decision',
+      task_id: createdTask.id,
+      opportunity_id: task.opportunity_id || null,
+      linked_account_id: selectedAccount?.id || null,
+      platform: selectedAccount?.platform || null,
+      subject: `Autopilot executed: ${task.title}`,
+      content_preview: task.execution_log?.map(l => `${l.action}: ${l.result}`).join('\n').slice(0, 500) || '',
+      full_content: JSON.stringify(task.execution_log || []),
+      status: 'sent',
+      outcome: `Revenue: $${cappedRevenue.toFixed(2)}`,
+      ai_decision_context: task.ai_reasoning,
+      revenue_associated: cappedRevenue
+    });
+
+    // ── Notify opportunity lifecycle if linked ────────────────────────────────
+    if (task.opportunity_id) {
+      await base44.asServiceRole.functions.invoke('opportunityLifecycle', {
+        action: 'process_completion',
+        opportunity_id: task.opportunity_id,
+        completion_type: 'repeatable',
+        revenue_earned: cappedRevenue,
+        task_id: createdTask.id
+      }).catch(() => {});
+    }
 
     // Create income transaction
     const currentBalance = goals.wallet_balance || 0;

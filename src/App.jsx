@@ -24,14 +24,9 @@ import NegotiationCenter from './pages/NegotiationCenter';
 import PrizeDashboard from './pages/PrizeDashboard';
 import PrizePayoutsTracker from './pages/PrizePayoutsTracker';
 import IdentityManagerExpanded from './pages/IdentityManagerExpanded';
-import AgentWorkerCenter from './pages/AgentWorkerCenter';
 import SystemDocumentation from './pages/SystemDocumentation';
-import IntegrationGuide from './pages/IntegrationGuide';
 import SecurityDashboard from './pages/SecurityDashboard';
-import CredentialSystemGuide from './pages/CredentialSystemGuide';
 import SystemAuditDashboard from './pages/SystemAuditDashboard';
-import AuditSummaryReport from './pages/AuditSummaryReport';
-import OpportunitiesAuditReport from './pages/OpportunitiesAuditReport';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

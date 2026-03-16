@@ -68,50 +68,54 @@ Deno.serve(async (req) => {
  * Record earnings from opportunity completion
  */
 async function recordEarnings(base44, user, payload) {
-  const {
-    opportunity_id,
-    amount,
-    platform,
-    category,
-    source_type = 'opportunity', // 'opportunity', 'bonus', 'referral', 'affiliate'
-    platform_fee_pct = 0,
-    tax_rate_pct = 0
-  } = payload;
+   const {
+     opportunity_id,
+     amount,
+     platform,
+     category,
+     source_type = 'opportunity', // 'opportunity', 'bonus', 'referral', 'affiliate'
+     platform_fee_pct = 0,
+     tax_rate_pct = 0
+   } = payload;
 
-  try {
-    const platformFee = Math.round(amount * (platform_fee_pct / 100));
-    const netAmount = amount - platformFee;
-    const taxWithheld = Math.round(netAmount * (tax_rate_pct / 100));
-    const finalAmount = netAmount - taxWithheld;
+   try {
+     const platformFee = Math.round(amount * (platform_fee_pct / 100));
+     const netAmount = amount - platformFee;
+     const taxWithheld = Math.round(netAmount * (tax_rate_pct / 100));
+     const finalAmount = netAmount - taxWithheld;
 
-    // Create transaction record
-    const transaction = await base44.entities.Transaction.create({
-      type: 'income',
-      amount: amount,
-      net_amount: netAmount,
-      platform_fee: platformFee,
-      platform_fee_pct: platform_fee_pct,
-      tax_withheld: taxWithheld,
-      tax_rate_pct: tax_rate_pct,
-      platform: platform,
-      category: category,
-      payout_status: 'available',
-      opportunity_id: opportunity_id,
-      description: `Income from ${source_type} (${platform})`
-    });
+     // Create transaction record with USER ISOLATION
+     const transaction = await base44.entities.Transaction.create({
+       type: 'income',
+       amount: amount,
+       net_amount: netAmount,
+       platform_fee: platformFee,
+       platform_fee_pct: platform_fee_pct,
+       tax_withheld: taxWithheld,
+       tax_rate_pct: tax_rate_pct,
+       platform: platform,
+       category: category,
+       payout_status: 'available',
+       opportunity_id: opportunity_id,
+       description: `Income from ${source_type} (${platform})`,
+       created_by: user.email  // ENFORCE USER ISOLATION
+     });
 
-    // Update user goals with earnings
-    const userGoals = await base44.entities.UserGoals.list();
-    if (userGoals.length > 0) {
-      const goals = userGoals[0];
-      const newTotal = (goals.total_earned || 0) + amount;
-      const newWallet = (goals.wallet_balance || 0) + finalAmount;
+     // Update user goals with earnings - ONLY FOR CURRENT USER
+     const userGoals = await base44.entities.UserGoals.filter({
+       created_by: user.email
+     }, null, 1);
 
-      await base44.entities.UserGoals.update(goals.id, {
-        total_earned: newTotal,
-        wallet_balance: newWallet
-      });
-    }
+     if (userGoals && userGoals.length > 0) {
+       const goals = userGoals[0];
+       const newTotal = (goals.total_earned || 0) + amount;
+       const newWallet = (goals.wallet_balance || 0) + finalAmount;
+
+       await base44.entities.UserGoals.update(goals.id, {
+         total_earned: newTotal,
+         wallet_balance: newWallet
+       });
+     }
 
     // Log activity
     await base44.entities.ActivityLog.create({

@@ -276,43 +276,56 @@ async function withdrawFromWallet(base44, user, payload) {
  * Record earning from any source
  */
 async function recordEarning(base44, user, payload) {
-  const {
-    amount,
-    source,
-    category,
-    description,
-    identity_id,
-    opportunity_id
-  } = payload;
+   const {
+     amount,
+     source,
+     category,
+     description,
+     identity_id,
+     opportunity_id
+   } = payload;
 
-  if (!amount || amount <= 0) {
-    return Response.json({ error: 'Invalid amount' }, { status: 400 });
-  }
+   if (!amount || amount <= 0) {
+     return Response.json({ error: 'Invalid amount' }, { status: 400 });
+   }
 
-  try {
-    // Deposit to wallet
-    const depositResult = await depositToWallet(base44, user, {
-      amount,
-      source_platform: source,
-      category,
-      description,
-      identity_id,
-      opportunity_id
-    });
+   try {
+     // Enforce user-specific isolation
+     const depositResult = await depositToWallet(base44, user, {
+       amount,
+       source_platform: source,
+       category,
+       description,
+       identity_id,
+       opportunity_id,
+       created_by: user.email  // Force user-specific isolation
+     });
 
-    if (!depositResult.ok) {
-      return depositResult;
-    }
+     const depositJson = await depositResult.json();
+     if (!depositResult.ok) {
+       return depositResult;
+     }
 
-    return Response.json({
-      success: true,
-      message: `Earning recorded: $${amount} from ${source}`,
-      ...depositResult.data
-    });
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-}
+     // Sync across modules in real-time
+     await base44.functions.invoke('realTimeSyncOrchestrator', {
+       action: 'update_wallet_realtime',
+       payload: {
+         amount,
+         source,
+         description,
+         category
+       }
+     });
+
+     return Response.json({
+       success: true,
+       message: `Earning recorded: $${amount} from ${source}`,
+       ...depositJson
+     });
+   } catch (error) {
+     return Response.json({ error: error.message }, { status: 500 });
+   }
+ }
 
 /**
  * Reconcile platform payouts

@@ -72,7 +72,7 @@ export default function AutoPilot() {
   const runScan = async () => {
     setIsScanRunning(true);
     try {
-      await base44.functions.invoke('scanOpportunities', {});
+      await base44.functions.invoke('marketScan', {});
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['activityLogs'] });
     } finally {

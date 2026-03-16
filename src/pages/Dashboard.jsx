@@ -40,9 +40,11 @@ export default function Dashboard() {
     initialData: [],
   });
 
-  const { data: logs = [] } = useQuery({
-    queryKey: ['activityLogs'],
-    queryFn: () => base44.entities.ActivityLog.list('-created_date', 20),
+  const { data: autopilotLogs = [] } = useQuery({
+    queryKey: ['autopilotLogs'],
+    queryFn: () => base44.entities.ActivityLog.filter({
+      action_type: { $in: ['scan', 'opportunity_found', 'alert'] }
+    }, '-created_date', 20),
     initialData: [],
   });
 

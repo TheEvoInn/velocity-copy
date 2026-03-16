@@ -23,6 +23,7 @@ import OpportunityAnalysisPanel from '../components/scanning/OpportunityAnalysis
 import FinancialDashboard from '../components/financial/FinancialDashboard';
 import RiskComplianceDashboard from '../components/risk/RiskComplianceDashboard';
 import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard';
+import InsightsDashboard from '../components/insights/InsightsDashboard';
 import { usePersistentUserData } from '../hooks/usePersistentUserData';
 
 export default function Dashboard() {
@@ -177,6 +178,11 @@ export default function Dashboard() {
       {/* Phase 9: Advanced Analytics & Intelligence */}
       <div className="mb-4">
         <AnalyticsDashboard />
+      </div>
+
+      {/* Phase 10: Intelligent Insights & Recommendations */}
+      <div className="mb-4">
+        <InsightsDashboard />
       </div>
 
       {/* Main Grid */}

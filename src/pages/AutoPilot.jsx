@@ -17,6 +17,7 @@ import TaskQueueMonitor from '../components/autopilot/TaskQueueMonitor';
 import SmartRetryPanel from '../components/autopilot/SmartRetryPanel';
 import AdvancedResearchPanel from '../components/research/AdvancedResearchPanel';
 import ExecutionDashboard from '../components/execution/ExecutionDashboard';
+import OpportunityAutoQueuePanel from '../components/autopilot/OpportunityAutoQueuePanel';
 
 export default function AutoPilot() {
   const [isManualRunning, setIsManualRunning] = useState(false);
@@ -196,6 +197,9 @@ export default function AutoPilot() {
 
       {/* Advanced Research Engine */}
       <AdvancedResearchPanel />
+
+      {/* Opportunity Auto-Queue */}
+      <OpportunityAutoQueuePanel />
 
       {/* Unified Execution Engine */}
       <AutopilotExecutionHub />

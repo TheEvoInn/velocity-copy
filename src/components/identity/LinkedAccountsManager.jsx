@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Database, Plus, Edit2, Trash2, ExternalLink, User, Star } from 'lucide-react';
 import { toast } from 'sonner';
+import AutoAccountCreationPanel from './AutoAccountCreationPanel';
 
 const PLATFORMS = [
   { value: 'upwork', label: 'Upwork' },
@@ -106,6 +107,9 @@ export default function LinkedAccountsManager({ identity }) {
 
   return (
     <div className="space-y-6">
+      {/* Auto-Account Creation */}
+      <AutoAccountCreationPanel identity={identity} />
+
       <Card className="bg-slate-900 border-slate-800 p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">

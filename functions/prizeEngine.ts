@@ -32,10 +32,12 @@ Deno.serve(async (req) => {
       const existing = await base44.asServiceRole.entities.PrizeOpportunity.list('-created_date', 50);
       const existingTitles = existing.map(e => e.title?.toLowerCase()).filter(Boolean);
 
-      const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
-        model: 'gemini_3_flash',
-        add_context_from_internet: true,
-        prompt: `You are an aggressive profit-maximization AI scanning the internet for FREE MONEY and FREE VALUE opportunities.
+      let result;
+      try {
+        result = await base44.asServiceRole.integrations.Core.InvokeLLM({
+          model: 'gemini_3_flash',
+          add_context_from_internet: true,
+          prompt: `You are an aggressive profit-maximization AI scanning the internet for FREE MONEY and FREE VALUE opportunities.
 
 Search for and identify REAL, currently active opportunities across these categories: ${categories.join(', ')}.
 
@@ -89,15 +91,19 @@ Return JSON:
   "scan_summary": string,
   "total_potential_value": number
 }`,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            opportunities: { type: 'array', items: { type: 'object' } },
-            scan_summary: { type: 'string' },
-            total_potential_value: { type: 'number' }
+          response_json_schema: {
+            type: 'object',
+            properties: {
+              opportunities: { type: 'array', items: { type: 'object' } },
+              scan_summary: { type: 'string' },
+              total_potential_value: { type: 'number' }
+            }
           }
-        }
-      });
+        });
+      } catch (llmErr) {
+        console.error('InvokeLLM error:', llmErr.message);
+        return Response.json({ error: `Prize scan failed: ${llmErr.message}` }, { status: 500 });
+      }
 
       // Save all discovered opportunities (skip only exact-title dupes)
       const saved = [];

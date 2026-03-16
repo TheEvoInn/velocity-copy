@@ -103,18 +103,26 @@ async function handleUpdate(base44, user, store, field, value, forceUpdate) {
       last_modified_by: user.email,
     };
 
-    // Add to modification log
-    const newLog = [
-      ...(store?.modification_log || []),
-      {
-        timestamp: new Date().toISOString(),
-        field,
-        old_value: oldValue,
-        new_value: value,
-        modified_by: user.email,
-      },
-    ];
-    updateData.modification_log = newLog;
+    // Add to modification log (only if oldValue and value are objects)
+    const canLogModification = (typeof oldValue === 'object' || oldValue === null || oldValue === undefined) && 
+                               (typeof value === 'object' || value === null || value === undefined);
+    
+    if (canLogModification) {
+      const newLog = [
+        ...(store?.modification_log || []),
+        {
+          timestamp: new Date().toISOString(),
+          field,
+          old_value: oldValue || {},
+          new_value: value || {},
+          modified_by: user.email,
+        },
+      ];
+      updateData.modification_log = newLog;
+    } else if (store?.modification_log) {
+      // Keep existing log if we can't add to it
+      updateData.modification_log = store.modification_log;
+    }
 
     // Calculate and update checksum
     updateData.checksum = await calculateChecksum({ ...store, ...updateData });

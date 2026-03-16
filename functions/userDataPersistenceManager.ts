@@ -103,14 +103,14 @@ async function handleUpdate(base44, user, store, field, value, forceUpdate) {
       last_modified_by: user.email,
     };
 
-    // Add to modification log
+    // Add to modification log (serialize values to ensure schema compliance)
     const newLog = [
       ...(store?.modification_log || []),
       {
         timestamp: new Date().toISOString(),
         field,
-        old_value: oldValue,
-        new_value: value,
+        old_value: oldValue ? (typeof oldValue === 'object' ? oldValue : { value: oldValue }) : null,
+        new_value: value && typeof value === 'object' ? value : { value },
         modified_by: user.email,
       },
     ];
@@ -188,21 +188,21 @@ async function handleReset(base44, user, store, field) {
 
     const resetValue = defaults[field] || null;
 
-    // Update with reset
+    // Update with reset (serialize values to ensure schema compliance)
     const updateData = {
-      [field]: resetValue,
-      last_modified_at: new Date().toISOString(),
-      last_modified_by: user.email,
-      modification_log: [
-        ...(store.modification_log || []),
-        {
-          timestamp: new Date().toISOString(),
-          field,
-          old_value: oldValue,
-          new_value: resetValue,
-          modified_by: user.email,
-        },
-      ],
+    [field]: resetValue,
+    last_modified_at: new Date().toISOString(),
+    last_modified_by: user.email,
+    modification_log: [
+      ...(store.modification_log || []),
+      {
+        timestamp: new Date().toISOString(),
+        field,
+        old_value: oldValue ? (typeof oldValue === 'object' ? oldValue : { value: oldValue }) : null,
+        new_value: resetValue ? (typeof resetValue === 'object' ? resetValue : { value: resetValue }) : null,
+        modified_by: user.email,
+      },
+    ],
     };
 
     updateData.checksum = await calculateChecksum({ ...store, ...updateData });

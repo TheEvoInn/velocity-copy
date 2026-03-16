@@ -68,18 +68,11 @@ const AuthenticatedApp = () => {
         <Route path="/WithdrawalEngine" element={<WithdrawalEngine />} />
         <Route path="/IdentityManager" element={<IdentityManager />} />
         <Route path="/AnalyticsDashboard" element={<AnalyticsDashboard />} />
-        <Route path="/NegotiationCenter" element={<NegotiationCenter />} />
         <Route path="/PrizeDashboard" element={<PrizeDashboard />} />
-        <Route path="/PrizePayoutsTracker" element={<PrizePayoutsTracker />} />
         <Route path="/IdentityManagerExpanded" element={<IdentityManagerExpanded />} />
-        <Route path="/AgentWorkerCenter" element={<AgentWorkerCenter />} />
         <Route path="/SystemDocumentation" element={<SystemDocumentation />} />
-        <Route path="/IntegrationGuide" element={<IntegrationGuide />} />
         <Route path="/SecurityDashboard" element={<SecurityDashboard />} />
-        <Route path="/CredentialSystemGuide" element={<CredentialSystemGuide />} />
         <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
-        <Route path="/AuditSummaryReport" element={<AuditSummaryReport />} />
-        <Route path="/OpportunitiesAuditReport" element={<OpportunitiesAuditReport />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

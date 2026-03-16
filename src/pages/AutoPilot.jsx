@@ -80,9 +80,13 @@ export default function AutoPilot() {
   const runScan = async () => {
     setIsScanRunning(true);
     try {
-      await base44.functions.invoke('unifiedOrchestrator', { action: 'scan_opportunities' });
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-      queryClient.invalidateQueries({ queryKey: ['activityLogs'] });
+      const res = await base44.functions.invoke('unifiedOrchestrator', { action: 'scan_opportunities' });
+      if (res.data?.success) {
+        queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+        queryClient.invalidateQueries({ queryKey: ['activityLogs'] });
+      }
+    } catch (err) {
+      console.error('Scan error:', err);
     } finally {
       setIsScanRunning(false);
     }

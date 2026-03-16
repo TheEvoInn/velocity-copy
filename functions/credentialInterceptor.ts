@@ -444,14 +444,14 @@ async function onUserCredentialProvided(base44, user, payload) {
  */
 async function storeCredential(base44, user, credentialPayload) {
   try {
-    const result = await base44.functions.invoke('secretManager', {
+    const result = await base44.asServiceRole.functions.invoke('secretManager', {
       action: 'capture_and_store',
       payload: credentialPayload
     });
     return result.data;
   } catch (error) {
-    console.error('Failed to store credential:', error);
-    throw error;
+    console.error('Failed to store credential:', error.message, error.response?.status);
+    throw new Error(`Credential storage failed: ${error.message}`);
   }
 }
 

@@ -13,6 +13,7 @@ const primaryNav = [
 
 const moreNav = [
   { path: '/Chat', icon: MessageSquare, label: 'AI Assistant' },
+  { path: '/AIIdentityStudio', icon: User, label: 'Identity Studio' },
   { path: '/PrizeDashboard', icon: Trophy, label: 'Prizes' },
   { path: '/KYCManagement', icon: Lock, label: 'Legal Identity' },
   { path: '/AutopilotLogs', icon: Activity, label: 'Execution Logs' },

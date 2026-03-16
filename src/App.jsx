@@ -18,6 +18,7 @@ import AutopilotLogs from './pages/AutopilotLogs';
 import AccountManager from './pages/AccountManager';
 import PrizeDashboard from './pages/PrizeDashboard';
 import IdentityManager from './pages/IdentityManager';
+import AIIdentityStudio from './pages/AIIdentityStudio';
 
 import SystemDocumentation from './pages/SystemDocumentation';
 import SecurityDashboard from './pages/SecurityDashboard';
@@ -61,6 +62,7 @@ const AuthenticatedApp = () => {
         <Route path="/AutoPilot" element={<AutoPilot />} />
         <Route path="/AutopilotLogs" element={<AutopilotLogs />} />
         <Route path="/IdentityManager" element={<IdentityManager />} />
+        <Route path="/AIIdentityStudio" element={<AIIdentityStudio />} />
         <Route path="/PrizeDashboard" element={<PrizeDashboard />} />
 
         <Route path="/SystemDocumentation" element={<SystemDocumentation />} />

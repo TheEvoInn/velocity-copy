@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Target, Search, Zap, Star, EyeOff, Sparkles, Play, Filter, BarChart3 } from 'lucide-react';
@@ -50,7 +50,7 @@ export default function Opportunities() {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const queryClient = useQueryClient();
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleOpenExecutionHub = (e) => {
       setExecutionHubOpp(e.detail);
     };

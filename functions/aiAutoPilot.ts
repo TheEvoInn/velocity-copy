@@ -77,17 +77,21 @@ ${userContext}
 
 Your job:
 1. Choose the BEST task to execute RIGHT NOW based on user's profile, skills, and available capital
-2. Simulate executing that task step-by-step (realistic actions an AI agent would take)
-3. Calculate realistic revenue earned from this single execution cycle (be conservative and realistic — do NOT inflate numbers wildly, base it on real market rates)
-4. Revenue should typically be between $5-$150 per cycle depending on the task type
+2. Decide if this task requires upfront spending (entry fees, purchases, bids, tools, upgrades, etc.)
+3. If spending is required, provide the exact amount and expected ROI
+4. If no spending needed, simulate executing the task step-by-step
+5. Calculate realistic revenue earned (conservative, $5-$150 per cycle based on real market rates)
 
 Respond with a JSON object:
 {
   "title": "specific task title",
-  "category": one of: arbitrage, service, lead_gen, digital_flip, freelance, resale, content, market_scan, trend_analysis,
+  "category": one of: arbitrage, service, lead_gen, digital_flip, freelance, resale, content, market_scan, trend_analysis, auction,
   "ai_reasoning": "why you chose this task",
   "target_revenue": number (realistic earnings for this cycle),
   "revenue_generated": number (actual simulated earnings, slightly random around target),
+  "requires_spending": boolean,
+  "required_spend": number or 0,
+  "spend_justification": "why this spend is needed and what the ROI will be",
   "execution_log": [
     {"timestamp": "ISO string", "action": "specific action taken", "result": "outcome"},
     ... (4-8 steps)
@@ -114,12 +118,59 @@ Respond with a JSON object:
               }
             }
           },
+          requires_spending: { type: "boolean" },
+          required_spend: { type: "number" },
+          spend_justification: { type: "string" },
           opportunity_id: { type: "string" }
         }
       }
     });
 
     const task = taskDecision;
+
+    // ── If task requires spending, route through Task Review Engine ──────────
+    if (task.requires_spending && task.required_spend > 0) {
+      const reviewRes = await base44.asServiceRole.functions.invoke('taskReviewEngine', {
+        action: 'submit',
+        task_name: task.title,
+        category: task.category || 'other',
+        required_spend: task.required_spend,
+        expected_return: task.target_revenue || task.required_spend * 1.5,
+        ai_justification: task.spend_justification || task.ai_reasoning,
+        opportunity_id: task.opportunity_id || null,
+        chain_depth: 0
+      });
+
+      const reviewData = reviewRes?.data || reviewRes;
+
+      if (reviewData?.status === 'rejected') {
+        // Log rejection and continue with a free task next cycle
+        await base44.asServiceRole.entities.ActivityLog.create({
+          action_type: 'system',
+          message: `AI Autopilot: spending task "${task.title}" rejected by policy — ${reviewData.reasons?.[0] || 'limit exceeded'}`,
+          severity: 'warning'
+        });
+        return Response.json({ message: 'Task required spending but was rejected by policy', reasons: reviewData.reasons });
+      }
+
+      if (reviewData?.status === 'auto_approved' || reviewData?.execute_immediately) {
+        // Execute immediately
+        const execRes = await base44.asServiceRole.functions.invoke('taskReviewEngine', {
+          action: 'execute',
+          queue_id: reviewData.record?.id
+        });
+        return Response.json({ success: true, mode: 'reinvest', result: execRes?.data || execRes });
+      }
+
+      // Pending manual approval — notify and exit
+      await base44.asServiceRole.entities.ActivityLog.create({
+        action_type: 'alert',
+        message: `AI Autopilot: "${task.title}" requires $${task.required_spend} spend — added to Task Review Queue for your approval`,
+        severity: 'info',
+        metadata: { queue_id: reviewData.record?.id }
+      });
+      return Response.json({ message: 'Task submitted to review queue for manual approval', queue_id: reviewData.record?.id });
+    }
 
     // Cap revenue so it doesn't exceed remaining target
     const cappedRevenue = Math.min(task.revenue_generated || 10, remaining);

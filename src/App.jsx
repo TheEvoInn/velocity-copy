@@ -17,6 +17,7 @@ import AutoPilot from './pages/AutoPilot';
 import AutopilotLogs from './pages/AutopilotLogs';
 import AccountManager from './pages/AccountManager';
 import PrizeDashboard from './pages/PrizeDashboard';
+import IdentityManager from './pages/IdentityManager';
 
 import SystemDocumentation from './pages/SystemDocumentation';
 import SecurityDashboard from './pages/SecurityDashboard';

@@ -22,6 +22,7 @@ import RealTimeAlertSystem from '../components/scanning/RealTimeAlertSystem';
 import OpportunityAnalysisPanel from '../components/scanning/OpportunityAnalysisPanel';
 import FinancialDashboard from '../components/financial/FinancialDashboard';
 import RiskComplianceDashboard from '../components/risk/RiskComplianceDashboard';
+import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard';
 import { usePersistentUserData } from '../hooks/usePersistentUserData';
 
 export default function Dashboard() {
@@ -171,6 +172,11 @@ export default function Dashboard() {
       {/* Phase 7: Risk & Compliance Dashboard */}
       <div className="mb-4">
         <RiskComplianceDashboard />
+      </div>
+
+      {/* Phase 9: Advanced Analytics & Intelligence */}
+      <div className="mb-4">
+        <AnalyticsDashboard />
       </div>
 
       {/* Main Grid */}

@@ -11,6 +11,7 @@ import WithdrawalModal from '../components/wallet/WithdrawalModal';
 import PlatformBreakdown from '../components/wallet/PlatformBreakdown';
 import TaxEstimatePanel from '../components/wallet/TaxEstimatePanel';
 import PayoutStatusPanel from '../components/wallet/PayoutStatusPanel';
+import PayoutDashboard from '../components/payout/PayoutDashboard';
 
 const categoryColors = {
   arbitrage: 'text-emerald-400', service: 'text-blue-400', lead_gen: 'text-violet-400',
@@ -138,6 +139,11 @@ export default function WalletPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Phase 8: Payout Management Dashboard */}
+      <div className="mb-4">
+        <PayoutDashboard />
       </div>
 
       {/* Payout Status + Tax side by side */}

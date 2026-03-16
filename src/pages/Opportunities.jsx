@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Target, Search, Zap, Star, EyeOff, Sparkles, Play } from 'lucide-react';
-import ProposalGenerator from '../components/proposals/ProposalGenerator';
+import { Target, Search, Zap, Star, EyeOff, Sparkles, Play, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Link } from 'react-router-dom';
 import OpportunityCard from '../components/dashboard/OpportunityCard';
-import OpportunityDetail from '../components/opportunity/OpportunityDetail';
-import QuickApplyModal from '../components/opportunity/QuickApplyModal';
+import OpportunityExecutionHub from '../components/opportunity/OpportunityExecutionHub';
 import LiveIngestionPanel from '../components/ingestion/LiveIngestionPanel';
 import BatchExecutionModal from '../components/opportunity/BatchExecutionModal';
 
@@ -30,8 +27,11 @@ const categories = [
 const statuses = [
   { value: 'all', label: 'All Status' },
   { value: 'new', label: 'New' },
+  { value: 'queued', label: 'Queued' },
   { value: 'executing', label: 'Executing' },
+  { value: 'submitted', label: 'Submitted' },
   { value: 'completed', label: 'Completed' },
+  { value: 'failed', label: 'Failed' },
   { value: 'dismissed', label: 'Dismissed' },
 ];
 
@@ -40,10 +40,8 @@ export default function Opportunities() {
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState('all');
   const [selectedOpp, setSelectedOpp] = useState(null);
-  const [applyOpp, setApplyOpp] = useState(null);
   const [showIngestion, setShowIngestion] = useState(true);
   const [lastScanResult, setLastScanResult] = useState(null);
-  const [proposalOpp, setProposalOpp] = useState(null);
   const [showBatchExecution, setShowBatchExecution] = useState(false);
   const queryClient = useQueryClient();
 
@@ -64,9 +62,7 @@ export default function Opportunities() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {selectedOpp && <OpportunityDetail opportunity={selectedOpp} onClose={() => setSelectedOpp(null)} />}
-      {applyOpp && <QuickApplyModal opportunity={applyOpp} onClose={() => setApplyOpp(null)} />}
-      {proposalOpp && <ProposalGenerator opportunity={proposalOpp} onClose={() => setProposalOpp(null)} />}
+      {selectedOpp && <OpportunityExecutionHub opportunity={selectedOpp} onClose={() => setSelectedOpp(null)} />}
       {showBatchExecution && (
         <BatchExecutionModal
           opportunities={filtered}
@@ -154,7 +150,7 @@ export default function Opportunities() {
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map(opp => (
-          <div key={opp.id} className="relative group">
+          <div key={opp.id} className="relative group cursor-pointer" onClick={() => setSelectedOpp(opp)}>
             {/* Hidden / Premium badges */}
             {(opp.tags?.includes('hidden') || opp.tags?.includes('premium')) && (
               <div className="absolute top-2 right-2 z-10 flex gap-1">
@@ -170,22 +166,20 @@ export default function Opportunities() {
                 )}
               </div>
             )}
-            <OpportunityCard opportunity={opp} onClick={() => setSelectedOpp(opp)} />
-            {/* Action buttons overlay */}
-            <div className="absolute bottom-3 left-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={(e) => { e.stopPropagation(); setApplyOpp(opp); }}
-                className="flex-1 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-[11px] font-medium backdrop-blur-sm transition-colors flex items-center justify-center gap-1"
-              >
-                <Zap className="w-3 h-3" /> Quick Apply
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setProposalOpp(opp); }}
-                className="flex-1 py-1.5 rounded-lg bg-violet-600/90 hover:bg-violet-500 text-white text-[11px] font-medium backdrop-blur-sm transition-colors flex items-center justify-center gap-1"
-              >
-                <Sparkles className="w-3 h-3" /> AI Proposal
-              </button>
-            </div>
+            {/* Status indicator */}
+            {opp.status && (
+              <div className="absolute top-2 left-2 z-10">
+                <Badge variant="outline" className={`text-[10px] ${
+                  opp.status === 'completed' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
+                  opp.status === 'executing' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
+                  opp.status === 'queued' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' :
+                  'bg-slate-500/10 border-slate-500/30 text-slate-400'
+                }`}>
+                  {opp.status}
+                </Badge>
+              </div>
+            )}
+            <OpportunityCard opportunity={opp} />
           </div>
         ))}
       </div>

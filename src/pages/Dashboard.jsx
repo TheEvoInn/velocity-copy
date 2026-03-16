@@ -47,15 +47,26 @@ export default function Dashboard() {
 
   const { data: transactions = [] } = useQuery({
     queryKey: ['transactions'],
-    queryFn: () => base44.entities.Transaction.list('-created_date', 50),
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      if (!user?.email) return [];
+      return base44.entities.Transaction.filter({
+        created_by: user.email
+      }, '-created_date', 50);
+    },
     initialData: [],
   });
 
   const { data: autopilotLogs = [] } = useQuery({
     queryKey: ['autopilotLogs'],
-    queryFn: () => base44.entities.ActivityLog.filter({
-      action_type: { $in: ['scan', 'opportunity_found', 'alert'] }
-    }, '-created_date', 20),
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      if (!user?.email) return [];
+      return base44.entities.ActivityLog.filter({
+        created_by: user.email,
+        action_type: { $in: ['scan', 'opportunity_found', 'alert'] }
+      }, '-created_date', 20);
+    },
     initialData: [],
   });
 

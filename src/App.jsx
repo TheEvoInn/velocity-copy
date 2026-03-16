@@ -27,6 +27,7 @@ import IdentityManagerExpanded from './pages/IdentityManagerExpanded';
 import AgentWorkerCenter from './pages/AgentWorkerCenter';
 import SystemDocumentation from './pages/SystemDocumentation';
 import IntegrationGuide from './pages/IntegrationGuide';
+import SecurityDashboard from './pages/SecurityDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -75,6 +76,7 @@ const AuthenticatedApp = () => {
         <Route path="/AgentWorkerCenter" element={<AgentWorkerCenter />} />
         <Route path="/SystemDocumentation" element={<SystemDocumentation />} />
         <Route path="/IntegrationGuide" element={<IntegrationGuide />} />
+        <Route path="/SecurityDashboard" element={<SecurityDashboard />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

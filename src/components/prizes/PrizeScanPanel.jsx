@@ -25,6 +25,7 @@ export default function PrizeScanPanel({ onScanComplete }) {
   const qc = useQueryClient();
 
   const toggle = (v) => setSelected(s => s.includes(v) ? s.filter(x => x !== v) : [...s, v]);
+  const toggleAll = () => setSelected(selected.length === CATEGORY_OPTIONS.length ? [] : CATEGORY_OPTIONS.map(c => c.value));
 
   const scan = async () => {
     setScanning(true);
@@ -51,7 +52,13 @@ export default function PrizeScanPanel({ onScanComplete }) {
       {expanded && (
         <div className="border-t border-slate-800 p-5 space-y-4">
           <div>
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Scan Categories</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Scan Categories</p>
+              <button onClick={toggleAll}
+                className="text-[10px] text-violet-400 hover:text-violet-300 font-medium">
+                {selected.length === CATEGORY_OPTIONS.length ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2">
               {CATEGORY_OPTIONS.map(c => (
                 <button key={c.value} onClick={() => toggle(c.value)}

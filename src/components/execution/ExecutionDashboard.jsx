@@ -28,6 +28,15 @@ export default function ExecutionDashboard() {
   // Execute single task
   const executeMutation = useMutation({
     mutationFn: async (taskId) => {
+      // Update to processing
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        await base44.entities.TaskExecutionQueue.update(taskId, {
+          status: 'processing',
+          start_timestamp: new Date().toISOString()
+        });
+      }
+      
       const res = await base44.functions.invoke('intelligentExecutionEngine', {
         action: 'execute_task',
         payload: { task_id: taskId }
@@ -36,7 +45,15 @@ export default function ExecutionDashboard() {
     },
     onSuccess: (data) => {
       toast.success(`✓ Task ${data.status === 'submitted' ? 'completed' : 'processed'}`);
+      
+      // Broadcast updates across all modules
       queryClient.invalidateQueries({ queryKey: ['executionTasks'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['autopilot_status'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['ai_tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activity_log'] });
     },
     onError: (error) => {
       toast.error(`Execution failed: ${error.message}`);
@@ -58,7 +75,19 @@ export default function ExecutionDashboard() {
     },
     onSuccess: (data) => {
       toast.success(`✓ Batch: ${data.executed.length}/${data.total} executed`);
-      queryClient.invalidateQueries({ queryKey: ['executionTasks'] });
+      
+      // Broadcast updates across entire platform
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['executionTasks'] });
+        queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+        queryClient.invalidateQueries({ queryKey: ['autopilot_status'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        queryClient.invalidateQueries({ queryKey: ['wallet'] });
+        queryClient.invalidateQueries({ queryKey: ['ai_tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['activity_log'] });
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['user_goals'] });
+      }, 500);
     },
     onError: (error) => {
       toast.error(`Batch execution failed: ${error.message}`);
@@ -69,12 +98,35 @@ export default function ExecutionDashboard() {
   const processingCount = tasks.filter(t => t.status === 'processing').length;
   const completedCount = tasks.filter(t => t.status === 'completed').length;
 
-  const handleExecuteAll = () => {
+  const handleExecuteAll = async () => {
     if (queuedCount === 0) {
       toast.info('No queued tasks');
       return;
     }
-    batchExecuteMutation.mutate(tasks.filter(t => t.status === 'queued'));
+    
+    const queuedTasks = tasks.filter(t => t.status === 'queued');
+    
+    // Update task statuses to processing optimistically
+    for (const task of queuedTasks) {
+      await base44.entities.TaskExecutionQueue.update(task.id, {
+        status: 'processing',
+        start_timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Trigger batch execution
+    batchExecuteMutation.mutate(queuedTasks);
+    
+    // Invalidate all related queries for real-time updates
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['executionTasks'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['autopilot_status'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['ai_tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activity_log'] });
+    }, 1000);
   };
 
   const statusColors = {

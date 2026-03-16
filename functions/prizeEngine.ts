@@ -99,14 +99,13 @@ Return JSON:
         }
       });
 
-      // Save all legitimate opportunities, skip only exact-title dupes
+      // Save all discovered opportunities (skip only exact-title dupes)
       const saved = [];
-      const skipped = [];
       for (const opp of (result?.opportunities || [])) {
-        if ((opp.legitimacy_score || 0) < 40 || (opp.risk_score || 0) > 80) continue;
+        // Only skip if it's a true duplicate (same title already exists)
         const titleKey = opp.title?.toLowerCase()?.trim();
         const isDupe = existingTitles.some(t => t === titleKey);
-        if (isDupe) { skipped.push(opp); continue; }
+        if (isDupe) continue;
 
         const record = await base44.asServiceRole.entities.PrizeOpportunity.create({
           ...opp,
@@ -119,9 +118,9 @@ Return JSON:
       // Log the scan
       await base44.asServiceRole.entities.ActivityLog.create({
         action_type: 'scan',
-        message: `🎯 Prize scan complete: ${saved.length} new opportunities found. Est. value: $${result?.total_potential_value || 0}`,
+        message: `🎯 Prize scan complete: ${saved.length} new opportunities discovered. Est. value: $${result?.total_potential_value || 0}`,
         severity: 'success',
-        metadata: { saved_count: saved.length, skipped_count: skipped.length, scan_summary: result?.scan_summary }
+        metadata: { saved_count: saved.length, scan_summary: result?.scan_summary }
       });
 
       return Response.json({

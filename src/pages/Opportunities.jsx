@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Target, Search, Zap, Star, EyeOff, Sparkles, Play, Filter } from 'lucide-react';
+import { Target, Search, Zap, Star, EyeOff, Sparkles, Play, Filter, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import OpportunityDetail from '../components/opportunity/OpportunityDetail';
 import OpportunityExecutionHub from '../components/opportunity/OpportunityExecutionHub';
 import LiveIngestionPanel from '../components/ingestion/LiveIngestionPanel';
 import BatchExecutionModal from '../components/opportunity/BatchExecutionModal';
+import AdvancedAnalyticsOverlay from '../components/opportunity/AdvancedAnalyticsOverlay';
 
 const categories = [
   { value: 'all', label: 'All Categories' },
@@ -45,6 +46,7 @@ export default function Opportunities() {
   const [lastScanResult, setLastScanResult] = useState(null);
   const [showBatchExecution, setShowBatchExecution] = useState(false);
   const [executionHubOpp, setExecutionHubOpp] = useState(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const queryClient = useQueryClient();
 
   React.useEffect(() => {

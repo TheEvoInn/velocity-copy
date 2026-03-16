@@ -221,19 +221,38 @@ export default function IdentityManager() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {allIdentities.map(identity => (
-            <IdentityCard
-              key={identity.id}
-              identity={identity}
-              onEdit={handleEdit}
-              onSwitch={handleSwitch}
-              onDelete={handleDelete}
-              isSwitching={switchingId === identity.id}
-            />
-          ))}
-        </div>
-      )}
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+           {allIdentities.map(identity => (
+             <IdentityCard
+               key={identity.id}
+               identity={identity}
+               onEdit={handleEdit}
+               onSwitch={handleSwitch}
+               onDelete={handleDelete}
+               onManageAccounts={() => {
+                 setSelectedIdentity(identity);
+                 setShowAccountLinker(true);
+               }}
+               isSwitching={switchingId === identity.id}
+             />
+           ))}
+         </div>
+       )}
+
+       {/* Account Linker Modal */}
+       {showAccountLinker && selectedIdentity && (
+         <AccountLinker
+           identity={selectedIdentity}
+           onClose={() => {
+             setShowAccountLinker(false);
+             setSelectedIdentity(null);
+           }}
+           onSuccess={() => {
+             refetch();
+             setShowAccountLinker(false);
+           }}
+         />
+       )}
 
       {/* Autonomous account creator + audit log */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { User, Plus, RefreshCw, Zap, Shield, Radio, Users, TrendingUp } from 'lucide-react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { User, Plus, RefreshCw, Zap, Shield, Radio, Users, TrendingUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import IdentityCard from '../components/identity/IdentityCard';
 import IdentityForm from '../components/identity/IdentityForm';
 import AutoAccountCreator from '../components/identity/AutoAccountCreator';
 import IdentityAuditLog from '../components/identity/IdentityAuditLog';
+import AccountLinker from '../components/identity/AccountLinker';
 
 export default function IdentityManager() {
   const qc = useQueryClient();

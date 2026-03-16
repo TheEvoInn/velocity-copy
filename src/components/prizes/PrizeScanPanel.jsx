@@ -32,7 +32,8 @@ export default function PrizeScanPanel({ onScanComplete }) {
     setResult(null);
     const res = await base44.functions.invoke('prizeEngine', { action: 'scan', categories: selected });
     setResult(res?.data);
-    qc.invalidateQueries({ queryKey: ['prizeOpportunities'] });
+    await qc.invalidateQueries({ queryKey: ['prizeOpportunities'] });
+    await qc.refetchQueries({ queryKey: ['prizeOpportunities'] });
     onScanComplete?.(res?.data);
     setScanning(false);
   };

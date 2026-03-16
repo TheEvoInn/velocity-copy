@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Target, Zap, TrendingUp, BarChart3, Plus, Search, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [showTxForm, setShowTxForm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { userData } = usePersistentUserData();
+  const queryClient = useQueryClient();
 
   const { data: userGoals = [], isLoading: goalsLoading } = useQuery({
     queryKey: ['userGoals'],

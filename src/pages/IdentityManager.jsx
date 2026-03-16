@@ -4,6 +4,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { User, Plus, RefreshCw, Zap, Shield, Radio, Users, TrendingUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useAuth } from '@/lib/AuthContext';
 import IdentityCard from '../components/identity/IdentityCard';
 import IdentityForm from '../components/identity/IdentityForm';
 import AutoAccountCreator from '../components/identity/AutoAccountCreator';
@@ -13,6 +14,7 @@ import IdentityManagementDashboard from '../components/identity/IdentityManageme
 
 export default function IdentityManager() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(null);
   const [switchingId, setSwitchingId] = useState(null);
@@ -20,10 +22,19 @@ export default function IdentityManager() {
   const [showAccountLinker, setShowAccountLinker] = useState(false);
   const [selectedIdentity, setSelectedIdentity] = useState(null);
 
+  // Fetch user-specific identities
+  const { data: userIdentities = [] } = useQuery({
+    queryKey: ['aiIdentities', user?.email],
+    queryFn: () => base44.entities.AIIdentity.filter({ created_by: user?.email }, '-created_date', 50),
+    enabled: !!user?.email,
+    refetchInterval: 30000
+  });
+
   const { data: identityData, refetch } = useQuery({
-    queryKey: ['active_identity'],
+    queryKey: ['active_identity', user?.email],
     queryFn: () => base44.functions.invoke('identityEngine', { action: 'get_active' }),
-    staleTime: 10000
+    staleTime: 10000,
+    enabled: !!user?.email
   });
 
   const { data: auditData } = useQuery({
@@ -50,16 +61,14 @@ export default function IdentityManager() {
 
   const data = identityData?.data || {};
   const activeIdentity = data.identity;
-  const allIdentities = data.all_identities || [];
+  // Use user-specific identities instead of all identities
+  const allIdentities = userIdentities || [];
   const logs = auditData?.data?.logs || [];
 
   const handleSave = async (form) => {
-    if (editingIdentity) {
-      await base44.entities.AIIdentity.update(editingIdentity.id, form);
-    } else {
-      await base44.entities.AIIdentity.create({ ...form, is_active: allIdentities.length === 0, tasks_executed: 0, total_earned: 0 });
-    }
-    qc.invalidateQueries({ queryKey: ['active_identity'] });
+    // handleSave is now in IdentityForm component with proper user context
+    qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
+    qc.invalidateQueries({ queryKey: ['active_identity', user?.email] });
     setShowForm(false);
     setEditingIdentity(null);
     refetch();
@@ -82,7 +91,8 @@ export default function IdentityManager() {
 
   const handleDelete = async (id) => {
     await base44.entities.AIIdentity.delete(id);
-    qc.invalidateQueries({ queryKey: ['active_identity'] });
+    qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
+    qc.invalidateQueries({ queryKey: ['active_identity', user?.email] });
     refetch();
   };
 

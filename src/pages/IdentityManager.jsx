@@ -160,23 +160,45 @@ export default function IdentityManager() {
         </div>
       )}
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Identities', value: allIdentities.length, color: 'text-white', icon: Users },
-          { label: 'Total Tasks Run', value: totalTasksAll, color: 'text-violet-400', icon: Zap },
-          { label: 'Total Earned', value: `$${totalEarnedAll.toFixed(2)}`, color: 'text-emerald-400', icon: TrendingUp },
-          { label: 'Vault Credentials', value: allIdentities.reduce((s, i) => s + (i.linked_account_ids?.length || 0), 0), color: 'text-amber-400', icon: Shield },
-        ].map((s, i) => (
-          <div key={i} className="rounded-xl bg-slate-900/60 border border-slate-800 p-4">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <s.icon className={`w-3.5 h-3.5 ${s.color}`} />
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider">{s.label}</span>
-            </div>
-            <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
-          </div>
-        ))}
-      </div>
+      {/* Health Check Cards */}
+       {healthData?.health_check && (
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+           <Card className="bg-emerald-950/20 border-emerald-900/30 p-4">
+             <p className="text-xs text-slate-400 font-medium">Healthy</p>
+             <p className="text-2xl font-bold text-emerald-400 mt-2">{healthData.health_check.healthy}</p>
+           </Card>
+           <Card className="bg-amber-950/20 border-amber-900/30 p-4">
+             <p className="text-xs text-slate-400 font-medium">Warning</p>
+             <p className="text-2xl font-bold text-amber-400 mt-2">{healthData.health_check.warning}</p>
+           </Card>
+           <Card className="bg-red-950/20 border-red-900/30 p-4">
+             <p className="text-xs text-slate-400 font-medium">Critical</p>
+             <p className="text-2xl font-bold text-red-400 mt-2">{healthData.health_check.critical}</p>
+           </Card>
+           <Card className="bg-slate-900/50 border-slate-800 p-4">
+             <p className="text-xs text-slate-400 font-medium">Total Accounts</p>
+             <p className="text-2xl font-bold text-slate-300 mt-2">{healthData.accounts_checked || 0}</p>
+           </Card>
+         </div>
+       )}
+
+       {/* Stats row */}
+       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+         {[
+           { label: 'Total Identities', value: allIdentities.length, color: 'text-white', icon: Users },
+           { label: 'Total Tasks Run', value: totalTasksAll, color: 'text-violet-400', icon: Zap },
+           { label: 'Total Earned', value: `$${totalEarnedAll.toFixed(2)}`, color: 'text-emerald-400', icon: TrendingUp },
+           { label: 'Vault Credentials', value: allIdentities.reduce((s, i) => s + (i.linked_account_ids?.length || 0), 0), color: 'text-amber-400', icon: Shield },
+         ].map((s, i) => (
+           <div key={i} className="rounded-xl bg-slate-900/60 border border-slate-800 p-4">
+             <div className="flex items-center gap-1.5 mb-1.5">
+               <s.icon className={`w-3.5 h-3.5 ${s.color}`} />
+               <span className="text-[10px] text-slate-500 uppercase tracking-wider">{s.label}</span>
+             </div>
+             <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
+           </div>
+         ))}
+       </div>
 
       {/* Form */}
       {showForm && (

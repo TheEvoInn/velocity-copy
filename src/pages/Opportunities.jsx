@@ -71,7 +71,8 @@ export default function Opportunities() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {selectedOpp && <OpportunityExecutionHub opportunity={selectedOpp} onClose={() => setSelectedOpp(null)} />}
+      {selectedOpp && <OpportunityDetail opportunity={selectedOpp} onClose={() => setSelectedOpp(null)} />}
+      {executionHubOpp && <OpportunityExecutionHub opportunity={executionHubOpp} onClose={() => setExecutionHubOpp(null)} />}
       {showBatchExecution && (
         <BatchExecutionModal
           opportunities={filtered}

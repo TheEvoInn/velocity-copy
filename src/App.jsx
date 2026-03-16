@@ -28,6 +28,7 @@ import AgentWorkerCenter from './pages/AgentWorkerCenter';
 import SystemDocumentation from './pages/SystemDocumentation';
 import IntegrationGuide from './pages/IntegrationGuide';
 import SecurityDashboard from './pages/SecurityDashboard';
+import CredentialSystemGuide from './pages/CredentialSystemGuide';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -77,6 +78,7 @@ const AuthenticatedApp = () => {
         <Route path="/SystemDocumentation" element={<SystemDocumentation />} />
         <Route path="/IntegrationGuide" element={<IntegrationGuide />} />
         <Route path="/SecurityDashboard" element={<SecurityDashboard />} />
+        <Route path="/CredentialSystemGuide" element={<CredentialSystemGuide />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

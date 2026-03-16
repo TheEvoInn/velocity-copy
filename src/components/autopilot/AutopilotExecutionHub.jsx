@@ -83,9 +83,9 @@ export default function AutopilotExecutionHub() {
     }
   }, [isRunning]);
 
-  // Resolve setup requirements
-  const resolveSetup = async () => {
-    try {
+  // Resolve setup requirements mutation
+  const resolveSetupMutation = useMutation({
+    mutationFn: async () => {
       // Run platform audit to fix any issues
       await base44.functions.invoke('platformAuditAndRepair', {
         action: 'sync_all_financial_modules'
@@ -97,10 +97,19 @@ export default function AutopilotExecutionHub() {
       // Verify system ready
       await verifyIdentityMutation.mutateAsync();
 
+      return true;
+    },
+    onSuccess: () => {
       toast.success('Setup requirements resolved - ready to execute');
-    } catch (err) {
+      refetchStatus();
+    },
+    onError: (err) => {
       toast.error(`Setup resolution failed: ${err.message}`);
     }
+  });
+
+  const resolveSetup = () => {
+    resolveSetupMutation.mutate();
   };
 
   // Auto-run cycles
@@ -179,11 +188,21 @@ export default function AutopilotExecutionHub() {
           </div>
           <Button
             onClick={resolveSetup}
+            disabled={resolveSetupMutation.isPending}
             size="sm"
             className="bg-amber-600 hover:bg-amber-700 text-white shrink-0"
           >
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            Resolve
+            {resolveSetupMutation.isPending ? (
+              <>
+                <Zap className="w-4 h-4 mr-2 animate-spin" />
+                Resolving...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Resolve
+              </>
+            )}
           </Button>
         </div>
       )}

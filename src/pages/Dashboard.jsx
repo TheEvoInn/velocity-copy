@@ -20,6 +20,7 @@ import AutopilotPanel from '../components/autopilot/AutopilotPanel';
 import FinancialOverview from '../components/dashboard/FinancialOverview';
 import RealTimeAlertSystem from '../components/scanning/RealTimeAlertSystem';
 import OpportunityAnalysisPanel from '../components/scanning/OpportunityAnalysisPanel';
+import FinancialDashboard from '../components/financial/FinancialDashboard';
 import { usePersistentUserData } from '../hooks/usePersistentUserData';
 
 export default function Dashboard() {
@@ -159,6 +160,11 @@ export default function Dashboard() {
       {/* Deep Opportunity Analysis */}
       <div className="mb-4">
         <OpportunityAnalysisPanel />
+      </div>
+
+      {/* Financial Intelligence Dashboard */}
+      <div className="mb-4">
+        <FinancialDashboard />
       </div>
 
       {/* Main Grid */}

@@ -9,6 +9,7 @@ import WalletCard from '../components/dashboard/WalletCard';
 import MetricCard from '../components/dashboard/MetricCard';
 import OpportunityCard from '../components/dashboard/OpportunityCard';
 import ActivityFeed from '../components/dashboard/ActivityFeed';
+import UserDataPersistenceMonitor from '../components/persistence/UserDataPersistenceMonitor';
 import DailyGoalTracker from '../components/dashboard/DailyGoalTracker';
 import ProfitChart from '../components/dashboard/ProfitChart';
 import OpportunityDetail from '../components/opportunity/OpportunityDetail';

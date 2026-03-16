@@ -105,6 +105,23 @@ export default function Dashboard() {
         <MetricCard icon={BarChart3} label="Total Scanned" value={opportunities.length} sublabel="all time" color="blue" />
       </div>
 
+      {/* Dual Stream Progress */}
+      <div className="mb-4">
+        <DualStreamCard
+          aiEarned={aiEarnedToday}
+          userEarned={userEarnedToday}
+          aiTarget={goals.ai_daily_target || 500}
+          userTarget={goals.user_daily_target || 500}
+        />
+      </div>
+
+      {/* Autopilot Panel */}
+      {goals.id && (
+        <div className="mb-4">
+          <AutopilotPanel goals={goals} />
+        </div>
+      )}
+
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left Column: Chart + Opportunities */}

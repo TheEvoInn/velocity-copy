@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
 import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, User } from 'lucide-react';
 
 const navItems = [

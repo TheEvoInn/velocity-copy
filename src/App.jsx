@@ -22,6 +22,7 @@ import IdentityManager from './pages/IdentityManager';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import NegotiationCenter from './pages/NegotiationCenter';
 import PrizeDashboard from './pages/PrizeDashboard';
+import PrizePayoutsTracker from './pages/PrizePayoutsTracker';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -65,6 +66,7 @@ const AuthenticatedApp = () => {
         <Route path="/AnalyticsDashboard" element={<AnalyticsDashboard />} />
         <Route path="/NegotiationCenter" element={<NegotiationCenter />} />
         <Route path="/PrizeDashboard" element={<PrizeDashboard />} />
+        <Route path="/PrizePayoutsTracker" element={<PrizePayoutsTracker />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

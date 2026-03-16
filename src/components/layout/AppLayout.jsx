@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
-import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, User, MoreHorizontal, BarChart2, Trophy } from 'lucide-react';
+import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, User, MoreHorizontal, BarChart2, Trophy, TrendingUp } from 'lucide-react';
 
 const primaryNav = [
   { path: '/Dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -13,6 +13,7 @@ const primaryNav = [
 
 const moreNav = [
   { path: '/NegotiationCenter', icon: MessageSquare, label: 'Negotiate' },
+  { path: '/PrizePayoutsTracker', icon: TrendingUp, label: 'Payouts' },
   { path: '/WithdrawalEngine', icon: Zap, label: 'Money Engine' },
   { path: '/IdentityManager', icon: User, label: 'Identities' },
   { path: '/GoalCenter', icon: Zap, label: 'Goals' },

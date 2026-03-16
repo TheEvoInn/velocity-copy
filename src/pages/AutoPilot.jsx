@@ -133,6 +133,9 @@ export default function AutoPilot() {
         </div>
       </div>
 
+      {/* Unified Orchestrator Control */}
+      <UnifiedAutopilotControl />
+
       {/* Autopilot Toggle Panel */}
       <AutopilotPanel goals={goals} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['userGoals'] })} />
 

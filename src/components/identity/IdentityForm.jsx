@@ -3,7 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Save, X, Upload, User, Palette } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/lib/AuthContext';
+import { toast } from 'sonner';
 
 const TONES = ['professional', 'friendly', 'authoritative', 'casual', 'technical', 'persuasive', 'empathetic'];
 const PLATFORMS = ['upwork', 'fiverr', 'freelancer', 'toptal', 'guru', 'peopleperhour', '99designs', 'amazon', 'ebay', 'etsy', 'other'];
@@ -63,6 +65,9 @@ function MultiSelect({ options, value = [], onChange }) {
 
 export default function IdentityForm({ identity, onSave, onCancel }) {
   const [uploading, setUploading] = useState(false);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
   const [form, setForm] = useState({
     name: identity?.name || '',
     role_label: identity?.role_label || 'Freelancer',
@@ -85,6 +90,35 @@ export default function IdentityForm({ identity, onSave, onCancel }) {
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
+  // Mutation to save identity to database
+  const saveMutation = useMutation({
+    mutationFn: async (formData) => {
+      const identityData = {
+        ...formData,
+        skills: formData.skills.split(',').map(s => s.trim()).filter(Boolean),
+        spending_limit_per_task: parseFloat(formData.spending_limit_per_task) || 100,
+        created_by: user?.email,
+        is_user_specific: true
+      };
+
+      if (identity?.id) {
+        // Update existing
+        return await base44.entities.AIIdentity.update(identity.id, identityData);
+      } else {
+        // Create new
+        return await base44.entities.AIIdentity.create(identityData);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['aiIdentities'] });
+      toast.success(identity ? 'Identity updated' : 'Identity created');
+      onSave(form);
+    },
+    onError: (error) => {
+      toast.error(`Failed to save identity: ${error.message}`);
+    }
+  });
+
   const handleToneChange = (tone) => {
     set('communication_tone', tone);
     if (!form.email_signature || DEFAULT_SIGNATURES[form.communication_tone] === form.email_signature) {
@@ -102,11 +136,11 @@ export default function IdentityForm({ identity, onSave, onCancel }) {
   };
 
   const handleSubmit = () => {
-    onSave({
-      ...form,
-      skills: form.skills.split(',').map(s => s.trim()).filter(Boolean),
-      spending_limit_per_task: parseFloat(form.spending_limit_per_task) || 100,
-    });
+    if (!form.name?.trim()) {
+      toast.error('Identity name is required');
+      return;
+    }
+    saveMutation.mutate(form);
   };
 
   const TASK_TYPES = ['freelance', 'content', 'service', 'arbitrage', 'lead_gen', 'market_scan', 'digital_flip'];
@@ -233,8 +267,13 @@ export default function IdentityForm({ identity, onSave, onCancel }) {
 
       {/* Actions */}
       <div className="flex gap-2 pt-2">
-        <Button onClick={handleSubmit} size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 gap-1.5">
-          <Save className="w-3.5 h-3.5" /> {identity ? 'Update Identity' : 'Create Identity'}
+        <Button 
+          onClick={handleSubmit} 
+          disabled={saveMutation.isPending}
+          size="sm" 
+          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 gap-1.5"
+        >
+          <Save className="w-3.5 h-3.5" /> {saveMutation.isPending ? 'Saving...' : identity ? 'Update Identity' : 'Create Identity'}
         </Button>
         <Button onClick={onCancel} variant="outline" size="sm" className="border-slate-700 text-slate-400 text-xs h-9">Cancel</Button>
       </div>

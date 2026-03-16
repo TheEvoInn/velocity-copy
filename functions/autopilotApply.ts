@@ -18,6 +18,17 @@ Deno.serve(async (req) => {
     const goals = await base44.entities.UserGoals.list();
     const profile = goals[0] || {};
 
+    // Select best account for this job
+    let selectedAccount = null;
+    const rotationRes = await base44.asServiceRole.functions.invoke('accountRotationEngine', {
+      action: 'select',
+      job_category: opportunity.category || 'freelance',
+      required_skills: profile.skills || [],
+      platform_preference: opportunity.source,
+      risk_level: profile.risk_tolerance || 'medium'
+    });
+    selectedAccount = rotationRes?.data?.selected || null;
+
     // Build execution plan via LLM
     const executionResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: `You are an autonomous AI agent completing a freelance task on behalf of a user.
@@ -32,8 +43,9 @@ Estimated earnings: $${opportunity.profit_estimate_low} - $${opportunity.profit_
 USER PROFILE:
 - Skills: ${(profile.skills || []).join(', ')}
 - Risk tolerance: ${profile.risk_tolerance}
-- Platform accounts: ${JSON.stringify(profile.platform_accounts || {})}
 - Custom AI instructions: ${profile.ai_instructions || 'Complete efficiently, maximize earnings'}
+
+SELECTED ACCOUNT: ${selectedAccount ? `${selectedAccount.platform} @${selectedAccount.username} (Rating: ${selectedAccount.rating}, Specialization: ${selectedAccount.specialization})` : 'No linked account — using general execution'}
 
 MODE: ${mode === 'autopilot' ? 'FULL AUTOPILOT - User passed on this. AI will autonomously handle everything: account creation if needed, application, task completion, and payment collection.' : 'QUICK APPLY - Generate a polished application/proposal for the user to submit.'}
 
@@ -80,6 +92,21 @@ Return JSON:
     });
 
     const revenue = Math.min(executionResult.revenue_generated || 0, opportunity.profit_estimate_high || 200);
+
+    // Log the proposal/application to AIWorkLog
+    await base44.asServiceRole.entities.AIWorkLog.create({
+      log_type: mode === 'autopilot' ? 'job_completed' : 'proposal_submitted',
+      opportunity_id: opportunityId,
+      linked_account_id: selectedAccount?.id || null,
+      platform: selectedAccount?.platform || opportunity.source || null,
+      subject: `${mode === 'autopilot' ? '[Autopilot] ' : '[Quick Apply] '}${opportunity.title}`,
+      content_preview: executionResult.application_text?.slice(0, 500) || '',
+      full_content: executionResult.application_text || '',
+      status: 'sent',
+      outcome: executionResult.deliverable_summary || '',
+      ai_decision_context: executionResult.ai_reasoning || '',
+      revenue_associated: revenue
+    });
 
     // Create AITask record
     const aiTask = await base44.asServiceRole.entities.AITask.create({

@@ -10,6 +10,7 @@ import AITaskFeed from '../components/autopilot/AITaskFeed';
 import DualStreamCard from '../components/autopilot/DualStreamCard';
 import TaskReviewQueuePanel from '../components/autopilot/TaskReviewQueuePanel';
 import SpendingPolicyEditor from '../components/autopilot/SpendingPolicyEditor';
+import AutopilotExecutionHub from '../components/autopilot/AutopilotExecutionHub';
 
 export default function AutoPilot() {
   const [isManualRunning, setIsManualRunning] = useState(false);
@@ -172,6 +173,9 @@ export default function AutoPilot() {
         aiTarget={goals.ai_daily_target || 500}
         userTarget={goals.user_daily_target || 500}
       />
+
+      {/* Unified Execution Engine */}
+      <AutopilotExecutionHub />
 
       {/* Task Review Queue */}
       <TaskReviewQueuePanel />

@@ -73,6 +73,8 @@ export default function Dashboard() {
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
+    // Invalidate query to refresh dashboard with new user data
+    queryClient.invalidateQueries({ queryKey: ['userGoals'] });
   };
 
   return (

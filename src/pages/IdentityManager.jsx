@@ -90,10 +90,18 @@ export default function IdentityManager() {
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.AIIdentity.delete(id);
-    qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
-    qc.invalidateQueries({ queryKey: ['active_identity', user?.email] });
-    refetch();
+    if (!id || typeof id !== 'string') {
+      console.error('Invalid identity ID:', id);
+      return;
+    }
+    try {
+      await base44.entities.AIIdentity.delete(id);
+      qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
+      qc.invalidateQueries({ queryKey: ['active_identity', user?.email] });
+      refetch();
+    } catch (err) {
+      console.error('Delete failed:', err.message);
+    }
   };
 
   const totalTasksAll = allIdentities.reduce((s, i) => s + (i.tasks_executed || 0), 0);

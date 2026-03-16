@@ -62,7 +62,7 @@ export default function IdentityCard({
           <Button
             size="sm"
             variant="ghost"
-            onClick={onDelete}
+            onClick={() => onDelete(identity.id)}
             disabled={isLoading || isActive}
             className="text-red-400 hover:text-red-300 hover:bg-red-950/20"
           >

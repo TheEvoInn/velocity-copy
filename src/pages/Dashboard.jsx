@@ -14,6 +14,8 @@ import ProfitChart from '../components/dashboard/ProfitChart';
 import OpportunityDetail from '../components/opportunity/OpportunityDetail';
 import TransactionForm from '../components/wallet/TransactionForm';
 import OnboardingModal from '../components/onboarding/OnboardingModal';
+import DualStreamCard from '../components/autopilot/DualStreamCard';
+import AutopilotPanel from '../components/autopilot/AutopilotPanel';
 
 export default function Dashboard() {
   const [selectedOpp, setSelectedOpp] = useState(null);
@@ -47,11 +49,12 @@ export default function Dashboard() {
   const goals = userGoals[0] || {};
   const needsOnboarding = !goalsLoading && userGoals.length === 0;
 
-  // Calculate today's earnings
+  // Calculate today's earnings split by stream
   const today = new Date().toDateString();
-  const todayEarned = transactions
-    .filter(t => t.type === 'income' && new Date(t.created_date).toDateString() === today)
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+  const todayTxs = transactions.filter(t => t.type === 'income' && new Date(t.created_date).toDateString() === today);
+  const todayEarned = todayTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const aiEarnedToday = todayTxs.filter(t => t.description?.startsWith('[AI Autopilot]')).reduce((sum, t) => sum + (t.amount || 0), 0);
+  const userEarnedToday = todayTxs.filter(t => !t.description?.startsWith('[AI Autopilot]')).reduce((sum, t) => sum + (t.amount || 0), 0);
 
   const activeOpps = opportunities.filter(o => o.status === 'new' || o.status === 'executing');
   const completedToday = opportunities.filter(o => o.status === 'completed' && new Date(o.updated_date).toDateString() === today).length;

@@ -61,6 +61,12 @@ export default function Opportunities() {
     initialData: [],
   });
 
+  const { data: transactions = [] } = useQuery({
+    queryKey: ['transactions'],
+    queryFn: () => base44.entities.Transaction.list('-created_date', 100),
+    initialData: [],
+  });
+
   const filtered = opportunities.filter(o => {
     if (category !== 'all' && o.category !== category) return false;
     if (status !== 'all' && o.status !== status) return false;
@@ -82,6 +88,13 @@ export default function Opportunities() {
             setShowBatchExecution(false);
             queryClient.invalidateQueries({ queryKey: ['opportunities'] });
           }}
+        />
+      )}
+      {showAnalytics && (
+        <AdvancedAnalyticsOverlay
+          opportunities={opportunities}
+          transactions={transactions}
+          onClose={() => setShowAnalytics(false)}
         />
       )}
 
@@ -111,6 +124,15 @@ export default function Opportunities() {
               Auto-Execute ({newOppsCount})
             </Button>
           )}
+          <Button
+            onClick={() => setShowAnalytics(true)}
+            size="sm"
+            variant="outline"
+            className="text-xs border-slate-700 text-slate-400 hover:text-white"
+          >
+            <BarChart3 className="w-3.5 h-3.5 mr-1" />
+            Analytics
+          </Button>
           <button
             onClick={() => setShowIngestion(v => !v)}
             className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1.5 transition-colors"

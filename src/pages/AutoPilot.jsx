@@ -15,6 +15,7 @@ import AutopilotExecutionHub from '../components/autopilot/AutopilotExecutionHub
 import UnifiedAutopilotControl from '../components/autopilot/UnifiedAutopilotControl';
 import TaskQueueMonitor from '../components/autopilot/TaskQueueMonitor';
 import SmartRetryPanel from '../components/autopilot/SmartRetryPanel';
+import AdvancedResearchPanel from '../components/research/AdvancedResearchPanel';
 
 export default function AutoPilot() {
   const [isManualRunning, setIsManualRunning] = useState(false);
@@ -191,6 +192,9 @@ export default function AutoPilot() {
         aiTarget={goals.ai_daily_target || 500}
         userTarget={goals.user_daily_target || 500}
       />
+
+      {/* Advanced Research Engine */}
+      <AdvancedResearchPanel />
 
       {/* Unified Execution Engine */}
       <AutopilotExecutionHub />

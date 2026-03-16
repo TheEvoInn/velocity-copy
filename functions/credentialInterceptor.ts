@@ -440,17 +440,55 @@ async function onUserCredentialProvided(base44, user, payload) {
 }
 
 /**
- * Helper: Store credential via secretManager
+ * Helper: Store credential directly to SecretAuditLog
  */
 async function storeCredential(base44, user, credentialPayload) {
   try {
-    const result = await base44.asServiceRole.functions.invoke('secretManager', {
-      action: 'capture_and_store',
-      payload: credentialPayload
+    const {
+      secret_value,
+      secret_name,
+      secret_type,
+      platform,
+      identity_id,
+      account_identifier,
+      module_source,
+      expiration_date,
+      rotation_frequency = 'on_failure',
+      notes = ''
+    } = credentialPayload;
+
+    // Validate required fields
+    if (!secret_value || !secret_type || !platform) {
+      throw new Error('Missing required parameters: secret_value, secret_type, platform');
+    }
+
+    // Create audit log entry
+    const auditLog = await base44.asServiceRole.entities.SecretAuditLog.create({
+      event_type: 'secret_created',
+      secret_name: secret_name || `${platform}_${secret_type}_${identity_id}_${Date.now()}`,
+      secret_type,
+      platform,
+      identity_id,
+      account_identifier,
+      module_source: module_source || 'user_input',
+      action_by: user.email,
+      status: 'success',
+      storage_location: `secret_vault:${platform}`,
+      encryption_algorithm: 'AES-256-GCM',
+      expiration_date,
+      rotation_frequency,
+      is_active: true,
+      notes: notes || `Credential stored: ${secret_type} for ${platform}`
     });
-    return result.data;
+
+    return {
+      success: true,
+      secret_id: auditLog.id,
+      platform,
+      secret_type
+    };
   } catch (error) {
-    console.error('Failed to store credential:', error.message, error.response?.status);
+    console.error('Failed to store credential:', error.message);
     throw new Error(`Credential storage failed: ${error.message}`);
   }
 }

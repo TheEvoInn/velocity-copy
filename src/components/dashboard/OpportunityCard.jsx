@@ -75,7 +75,7 @@ export default function OpportunityCard({ opportunity, onClick }) {
           <div className="flex items-center gap-1">
             <DollarSign className="w-3 h-3 text-emerald-400" />
             <span className="text-xs font-medium text-emerald-400">
-              ${profit_estimate_low?.toLocaleString()}-${profit_estimate_high?.toLocaleString()}
+              ${(profit_estimate_low || 0).toLocaleString()}-${(profit_estimate_high || 0).toLocaleString()}
             </span>
           </div>
           {capital_required > 0 && (

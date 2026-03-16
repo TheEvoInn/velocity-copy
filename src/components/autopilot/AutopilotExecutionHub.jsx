@@ -4,10 +4,12 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Play, Pause, CheckCircle2, AlertCircle, Zap, Clock, Users, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 export default function AutopilotExecutionHub() {
   const [isRunning, setIsRunning] = useState(false);
   const [lastCycleTime, setLastCycleTime] = useState(null);
+  const [identityReady, setIdentityReady] = useState(false);
 
   // Get autopilot status
   const { data: statusData, refetch: refetchStatus } = useQuery({
@@ -21,9 +23,43 @@ export default function AutopilotExecutionHub() {
     refetchInterval: 10000
   });
 
+  // Auto-assign identity mutation
+  const assignIdentityMutation = useMutation({
+    mutationFn: async () => {
+      const res = await base44.functions.invoke('autoIdentityAssignment', {
+        action: 'ensure_default_identity'
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setIdentityReady(true);
+      toast.success('Default identity assigned for autonomous execution');
+      refetchStatus();
+    },
+    onError: (err) => toast.error(`Identity assignment failed: ${err.message}`)
+  });
+
+  // Verify identity is ready
+  const verifyIdentityMutation = useMutation({
+    mutationFn: async () => {
+      const res = await base44.functions.invoke('autoIdentityAssignment', {
+        action: 'verify_identity_ready'
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setIdentityReady(data.ready);
+    }
+  });
+
   // Run cycle mutation
   const runCycleMutation = useMutation({
     mutationFn: async () => {
+      // Ensure identity is ready before running cycle
+      if (!identityReady) {
+        await assignIdentityMutation.mutateAsync();
+      }
+
       const res = await base44.functions.invoke('autopilotScheduler', {
         action: 'run_continuous_cycle'
       });
@@ -35,39 +71,69 @@ export default function AutopilotExecutionHub() {
     }
   });
 
+  // Verify identity on mount
+  useEffect(() => {
+    verifyIdentityMutation.mutate();
+  }, []);
+
+  // Auto-assign identity when autopilot starts
+  useEffect(() => {
+    if (isRunning && !identityReady) {
+      assignIdentityMutation.mutate();
+    }
+  }, [isRunning]);
+
   // Auto-run cycles
   useEffect(() => {
-    if (!isRunning) return;
+    if (!isRunning || !identityReady) return;
 
     const interval = setInterval(() => {
       runCycleMutation.mutate();
     }, 30000); // Run every 30 seconds
 
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, [isRunning, identityReady]);
 
   const statusColor = statusData?.ready_to_execute ? 'text-emerald-400' : 'text-amber-400';
+  const canExecute = identityReady && statusData?.ready_to_execute;
 
   return (
     <div className="space-y-4">
+      {/* Identity Status Alert */}
+      {!identityReady && (
+        <div className="bg-amber-950/30 border border-amber-900/50 rounded-lg p-3 flex items-start gap-3">
+          <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+          <div className="flex-1 text-xs">
+            <p className="text-amber-300 font-medium">Identity not ready</p>
+            <p className="text-amber-300/70 mt-1">Start autopilot to auto-assign a default identity for execution.</p>
+          </div>
+        </div>
+      )}
+
       {/* Control Bar */}
       <div className="flex items-center justify-between bg-slate-900/50 border border-slate-800 rounded-lg p-4">
         <div className="space-y-1">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <div className={`w-2.5 h-2.5 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
+            <div className={`w-2.5 h-2.5 rounded-full ${isRunning && identityReady ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
             Autonomous Execution Engine
           </h3>
           <p className="text-xs text-slate-400">
-            {isRunning ? 'Running continuous cycles' : 'Ready to execute'}
+            {isRunning && identityReady ? 'Running continuous cycles' : isRunning ? 'Assigning identity...' : 'Ready to execute'}
             {lastCycleTime && ` · Last cycle: ${new Date(lastCycleTime).toLocaleTimeString()}`}
           </p>
         </div>
 
         <Button
           onClick={() => setIsRunning(!isRunning)}
+          disabled={assignIdentityMutation.isPending}
           className={isRunning ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}
         >
-          {isRunning ? (
+          {assignIdentityMutation.isPending ? (
+            <>
+              <Zap className="w-4 h-4 mr-2 animate-spin" />
+              Setting up...
+            </>
+          ) : isRunning ? (
             <>
               <Pause className="w-4 h-4 mr-2" />
               Stop Cycles
@@ -90,12 +156,12 @@ export default function AutopilotExecutionHub() {
           </p>
         </Card>
 
-        <Card className="bg-slate-900/50 border-slate-800 p-3">
+        <Card className={`${identityReady ? 'bg-emerald-950/20 border-emerald-900/30' : 'bg-slate-900/50 border-slate-800'} p-3`}>
           <p className="text-xs text-slate-500 flex items-center gap-1">
             <Users className="w-3 h-3" /> Active Identity
           </p>
-          <p className="text-sm font-semibold text-white mt-1 truncate">
-            {statusData?.current_identity?.name || 'None'}
+          <p className={`text-sm font-semibold mt-1 truncate ${identityReady ? 'text-emerald-400' : 'text-white'}`}>
+            {statusData?.current_identity?.name || (identityReady ? '✓ Assigned' : 'Pending')}
           </p>
         </Card>
 
@@ -154,7 +220,7 @@ export default function AutopilotExecutionHub() {
       {/* Manual Cycle Button */}
       <Button
         onClick={() => runCycleMutation.mutate()}
-        disabled={runCycleMutation.isPending}
+        disabled={runCycleMutation.isPending || !identityReady}
         variant="outline"
         className="w-full"
       >
@@ -162,6 +228,11 @@ export default function AutopilotExecutionHub() {
           <>
             <Zap className="w-4 h-4 mr-2 animate-spin" />
             Running Cycle...
+          </>
+        ) : !identityReady ? (
+          <>
+            <AlertCircle className="w-4 h-4 mr-2" />
+            Start Autopilot First
           </>
         ) : (
           <>

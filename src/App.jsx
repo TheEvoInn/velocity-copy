@@ -30,6 +30,7 @@ import IntegrationGuide from './pages/IntegrationGuide';
 import SecurityDashboard from './pages/SecurityDashboard';
 import CredentialSystemGuide from './pages/CredentialSystemGuide';
 import SystemAuditDashboard from './pages/SystemAuditDashboard';
+import AuditSummaryReport from './pages/AuditSummaryReport';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -81,6 +82,7 @@ const AuthenticatedApp = () => {
         <Route path="/SecurityDashboard" element={<SecurityDashboard />} />
         <Route path="/CredentialSystemGuide" element={<CredentialSystemGuide />} />
         <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
+        <Route path="/AuditSummaryReport" element={<AuditSummaryReport />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

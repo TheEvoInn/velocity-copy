@@ -60,6 +60,11 @@ export default function AppLayout() {
             })}
           </nav>
 
+          {/* Active identity indicator */}
+          <div className="hidden md:block">
+            <ActiveIdentityBanner />
+          </div>
+
           {/* Mobile menu toggle */}
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

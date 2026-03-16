@@ -112,6 +112,16 @@ export default function AutoPilot() {
           <p className="text-xs text-slate-500 mt-0.5">Unified automation engine — consolidated execution</p>
         </div>
         <div className="flex gap-2">
+          <Link to="/AutopilotLogs">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-slate-700 text-slate-400 hover:text-white text-xs h-8"
+            >
+              <FileText className="w-3.5 h-3.5 mr-1.5" />
+              Logs
+            </Button>
+          </Link>
           <Button
             size="sm"
             variant="outline"

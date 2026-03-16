@@ -121,14 +121,16 @@ export default function Dashboard() {
       </div>
 
       {/* Dual Stream Progress */}
-      <div className="mb-4">
-        <DualStreamCard
-          aiEarned={aiEarnedToday}
-          userEarned={userEarnedToday}
-          aiTarget={goals.ai_daily_target || 500}
-          userTarget={goals.user_daily_target || 500}
-        />
-      </div>
+      {(aiEarnedToday > 0 || userEarnedToday > 0) && (
+        <div className="mb-4">
+          <DualStreamCard
+            aiEarned={aiEarnedToday}
+            userEarned={userEarnedToday}
+            aiTarget={goals.ai_daily_target || 500}
+            userTarget={goals.user_daily_target || 500}
+          />
+        </div>
+      )}
 
       {/* Autopilot Panel */}
       {goals.id && (

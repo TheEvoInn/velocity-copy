@@ -24,6 +24,17 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
+
+    // ── Entity automation trigger: auto-execute when status → auto_approved ──
+    if (body?.event?.type === 'update' && body?.data?.status === 'auto_approved' && body?.data?.id) {
+      const queueId = body.data.id;
+      const execRes = await base44.asServiceRole.functions.invoke('taskReviewEngine', {
+        action: 'execute',
+        queue_id: queueId
+      });
+      return Response.json({ triggered: 'auto_execute', queue_id: queueId, result: execRes?.data });
+    }
+
     const { action } = body;
 
     // ─── ACTION: submit ───────────────────────────────────────────────────────

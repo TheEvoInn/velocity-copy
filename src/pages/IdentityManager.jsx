@@ -280,20 +280,33 @@ export default function IdentityManager() {
         </div>
       </div>
 
+      {/* Critical Alerts */}
+       {healthData?.needs_repair && healthData.needs_repair.length > 0 && (
+         <div className="bg-red-950/20 border border-red-900/30 rounded-xl p-4">
+           <div className="flex items-start gap-3">
+             <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
+             <div>
+               <p className="text-sm font-semibold text-red-400">{healthData.needs_repair.length} Account(s) Need Repair</p>
+               <p className="text-xs text-red-300/70 mt-1">Autopilot can automatically repair or failover to backup accounts.</p>
+             </div>
+           </div>
+         </div>
+       )}
+
       {/* Security note */}
-      <div className="rounded-xl bg-slate-900/40 border border-slate-800/50 p-4">
-        <div className="flex items-start gap-3">
-          <Shield className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-xs font-semibold text-white mb-1">Identity Security & Propagation</p>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              All credentials tied to identities are encrypted with AES-256-GCM in CredentialVault. Switching identities instantly updates
-              AI instructions, LinkedAccount permissions, and all active workflows. The AI injects the active identity into every proposal,
-              email, and task — no cached or outdated data is ever used. Every identity switch and credential access is immutably logged.
-            </p>
-          </div>
-        </div>
+       <div className="rounded-xl bg-slate-900/40 border border-slate-800/50 p-4">
+         <div className="flex items-start gap-3">
+           <Shield className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+           <div>
+             <p className="text-xs font-semibold text-white mb-1">Identity Security & Propagation</p>
+             <p className="text-[11px] text-slate-400 leading-relaxed">
+               All credentials tied to identities are encrypted with AES-256-GCM in CredentialVault. Switching identities instantly updates
+               AI instructions, LinkedAccount permissions, and all active workflows. The AI injects the active identity into every proposal,
+               email, and task — no cached or outdated data is ever used. Every identity switch and credential access is immutably logged.
+             </p>
+           </div>
+         </div>
+       </div>
       </div>
-    </div>
-  );
-}
+      );
+      }

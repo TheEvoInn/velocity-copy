@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Zap, ArrowRight, Target, DollarSign, Clock, Shield } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePersistentUserData } from '@/hooks/usePersistentUserData';
 
 const SKILLS = [
   "Writing", "Design", "Coding", "Marketing", "Sales", "Social Media",
@@ -28,10 +29,13 @@ export default function OnboardingModal({ onComplete }) {
   });
 
   const queryClient = useQueryClient();
+  const { updateField } = usePersistentUserData();
+
   const createMutation = useMutation({
     mutationFn: async (data) => {
       const result = await base44.entities.UserGoals.create(data);
-      localStorage.setItem('userGoalsId', result.id);
+      // Save onboarding completion permanently
+      await updateField('onboarding_completed', true);
       return result;
     },
     onSuccess: () => {

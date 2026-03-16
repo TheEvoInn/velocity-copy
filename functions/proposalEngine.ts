@@ -52,9 +52,12 @@ Deno.serve(async (req) => {
         upwork: 'Start with the client\'s specific problem. Keep under 500 words. Reference the job post keywords. Include a direct, measurable timeline. End with a clear CTA.',
         fiverr: 'Be concise and high energy. Under 300 words. Bullet deliverables. Mention turnaround time. Use keywords from the gig category.',
         freelancer: 'Address the brief directly in the first line. Show relevant experience early. Include a milestone breakdown. Keep under 400 words.',
+        'grant.gov': 'Formal, compliance-focused. Emphasize impact and sustainability. Include measurable outcomes. Reference eligibility requirements. Professional academic tone.',
+        toptal: 'High-quality, portfolio-driven. Emphasize past client work. Show technical depth. Include relevant certifications.',
+        guru: 'Results-oriented, brief. Highlight specific deliverables. Mention relevant skills and turnaround.',
         default: 'Be direct and client-focused. Address their exact need. Show relevant experience. Include timeline and next steps.'
       };
-      const rules = platformRules[opp.source?.toLowerCase()] || platformRules.default;
+      const rules = platformRules[opp.platform?.toLowerCase()] || platformRules[opp.source?.toLowerCase()] || platformRules.default;
 
       // 5. Generate with LLM
       const result = await base44.asServiceRole.integrations.Core.InvokeLLM({

@@ -60,6 +60,7 @@ const AuthenticatedApp = () => {
         <Route path="/Chat" element={<Chat />} />
         <Route path="/AutoPilot" element={<AutoPilot />} />
         <Route path="/AutopilotLogs" element={<AutopilotLogs />} />
+        <Route path="/IdentityManager" element={<IdentityManager />} />
         <Route path="/PrizeDashboard" element={<PrizeDashboard />} />
 
         <Route path="/SystemDocumentation" element={<SystemDocumentation />} />

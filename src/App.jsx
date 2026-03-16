@@ -14,6 +14,9 @@ import WalletPage from './pages/WalletPage';
 import ActivityPage from './pages/ActivityPage';
 import Chat from './pages/Chat';
 import AutoPilot from './pages/AutoPilot';
+import GoalCenter from './pages/GoalCenter';
+import AccountManager from './pages/AccountManager';
+import AIWorkLogPage from './pages/AIWorkLogPage';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -49,6 +52,9 @@ const AuthenticatedApp = () => {
         <Route path="/ActivityPage" element={<ActivityPage />} />
         <Route path="/Chat" element={<Chat />} />
         <Route path="/AutoPilot" element={<AutoPilot />} />
+        <Route path="/GoalCenter" element={<GoalCenter />} />
+        <Route path="/AccountManager" element={<AccountManager />} />
+        <Route path="/AIWorkLogPage" element={<AIWorkLogPage />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

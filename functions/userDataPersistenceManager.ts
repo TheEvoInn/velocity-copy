@@ -103,14 +103,14 @@ async function handleUpdate(base44, user, store, field, value, forceUpdate) {
       last_modified_by: user.email,
     };
 
-    // Add to modification log (serialize values to ensure schema compliance)
+    // Add to modification log
     const newLog = [
       ...(store?.modification_log || []),
       {
         timestamp: new Date().toISOString(),
         field,
-        old_value: oldValue ? (typeof oldValue === 'object' ? oldValue : { value: oldValue }) : null,
-        new_value: value && typeof value === 'object' ? value : { value },
+        old_value: oldValue,
+        new_value: value,
         modified_by: user.email,
       },
     ];
@@ -188,7 +188,7 @@ async function handleReset(base44, user, store, field) {
 
     const resetValue = defaults[field] || null;
 
-    // Update with reset (serialize values to ensure schema compliance)
+    // Update with reset
     const updateData = {
     [field]: resetValue,
     last_modified_at: new Date().toISOString(),
@@ -198,8 +198,8 @@ async function handleReset(base44, user, store, field) {
       {
         timestamp: new Date().toISOString(),
         field,
-        old_value: oldValue ? (typeof oldValue === 'object' ? oldValue : { value: oldValue }) : null,
-        new_value: resetValue ? (typeof resetValue === 'object' ? resetValue : { value: resetValue }) : null,
+        old_value: oldValue,
+        new_value: resetValue,
         modified_by: user.email,
       },
     ],

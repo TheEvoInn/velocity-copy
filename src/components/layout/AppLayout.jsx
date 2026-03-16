@@ -7,7 +7,7 @@ const primaryNav = [
   { path: '/Dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/Opportunities', icon: Target, label: 'Opportunities' },
   { path: '/AutoPilot', icon: Bot, label: 'Autopilot', highlight: true },
-  { path: '/IdentityManagerExpanded', icon: User, label: 'Identities' },
+  { path: '/IdentityManager', icon: User, label: 'Identities' },
   { path: '/WalletPage', icon: Wallet, label: 'Wallet & Payouts' },
 ];
 

@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
-import crypto from 'npm:crypto@1.0.1';
 
 /**
  * Core user data persistence manager
@@ -317,8 +316,10 @@ function calculateChecksum(data) {
     return value;
   });
 
-  return crypto
-    .createHash('sha256')
-    .update(dataStr)
-    .digest('hex');
+  const encoder = new TextEncoder();
+  const hashBuffer = crypto.subtle.digestSync('SHA-256', encoder.encode(dataStr));
+  
+  // Convert buffer to hex string
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }

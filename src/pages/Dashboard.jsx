@@ -65,6 +65,10 @@ export default function Dashboard() {
     if (needsOnboarding) setShowOnboarding(true);
   }, [needsOnboarding]);
 
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {showOnboarding && <OnboardingModal onComplete={() => setShowOnboarding(false)} />}

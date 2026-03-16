@@ -9,45 +9,59 @@ import { toast } from 'sonner';
 export default function AutoAccountCreationPanel({ identity }) {
   const queryClient = useQueryClient();
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
-  const [isCreating, setIsCreating] = useState(false);
 
   // Get platform list
-  const { data: platformList = [] } = useQuery({
+  const { data: platformList = [], isLoading: platformsLoading } = useQuery({
     queryKey: ['availablePlatforms'],
     queryFn: async () => {
-      const res = await base44.functions.invoke('automatedAccountCreation', {
-        action: 'get_platform_list'
-      });
-      return res.data?.platforms || [];
+      try {
+        const res = await base44.functions.invoke('automatedAccountCreation', {
+          action: 'get_platform_list'
+        });
+        return res.data?.platforms || [];
+      } catch (err) {
+        console.error('Failed to fetch platforms:', err);
+        toast.error('Failed to load platforms');
+        return [];
+      }
     }
   });
 
   // Create accounts mutation
   const createAccountsMutation = useMutation({
     mutationFn: async (platformsToCreate) => {
-      setIsCreating(true);
+      if (!identity?.id) {
+        throw new Error('Identity ID is required');
+      }
+      if (!platformsToCreate || platformsToCreate.length === 0) {
+        throw new Error('At least one platform must be selected');
+      }
+
       const res = await base44.functions.invoke('automatedAccountCreation', {
         action: 'create_accounts',
         identity_id: identity.id,
         platforms_to_create: platformsToCreate
       });
+
+      if (!res.data.success) {
+        throw new Error(res.data.error || 'Account creation failed');
+      }
+
       return res.data;
     },
     onSuccess: (data) => {
       if (data.created_count > 0) {
         toast.success(`Created ${data.created_count} account(s) successfully`);
-        queryClient.invalidateQueries({ queryKey: ['linkedAccounts'] });
-        queryClient.invalidateQueries({ queryKey: ['createdAccounts'] });
+        queryClient.invalidateQueries({ queryKey: ['linkedAccounts', identity?.id] });
         setSelectedPlatforms([]);
       }
       if (data.skipped_count > 0) {
         toast.info(`${data.skipped_count} account(s) skipped (already exist)`);
       }
-      setIsCreating(false);
     },
     onError: (err) => {
-      toast.error(`Creation failed: ${err.message}`);
-      setIsCreating(false);
+      console.error('Account creation error:', err);
+      toast.error(`Failed: ${err.message}`);
     }
   });
 
@@ -61,7 +75,11 @@ export default function AutoAccountCreationPanel({ identity }) {
     });
   };
 
-  const handleCreateAccounts = () => {
+  const handleCreateAccounts = async () => {
+    if (!identity?.id) {
+      toast.error('Identity not loaded. Please try again.');
+      return;
+    }
     if (selectedPlatforms.length === 0) {
       toast.error('Select at least one platform');
       return;
@@ -116,13 +134,18 @@ export default function AutoAccountCreationPanel({ identity }) {
       <div className="flex gap-3">
         <Button
           onClick={handleCreateAccounts}
-          disabled={selectedPlatforms.length === 0 || isCreating || createAccountsMutation.isPending}
+          disabled={!identity?.id || selectedPlatforms.length === 0 || createAccountsMutation.isPending || platformsLoading}
           className="flex-1 bg-amber-600 hover:bg-amber-500 text-white gap-2"
         >
           {createAccountsMutation.isPending ? (
             <>
               <Zap className="w-4 h-4 animate-spin" />
               Creating Accounts...
+            </>
+          ) : platformsLoading ? (
+            <>
+              <Zap className="w-4 h-4 animate-spin" />
+              Loading Platforms...
             </>
           ) : (
             <>

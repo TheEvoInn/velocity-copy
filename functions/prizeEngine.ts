@@ -187,8 +187,10 @@ Return JSON: { "selected_index": number, "reasoning": string }`,
       identity = identity || identities[0];
 
       // Generate application content
-      const applicationResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-        prompt: `You are applying for a prize/grant/giveaway opportunity on behalf of "${identity.name}".
+      let applicationResult = { form_fields: {}, submission_steps: [], auto_submittable: false };
+      try {
+        applicationResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
+          prompt: `You are applying for a prize/grant/giveaway opportunity on behalf of "${identity.name}".
 
 === OPPORTUNITY ===
 Title: ${opp.title}
@@ -219,19 +221,22 @@ Return JSON:
   "auto_submittable": boolean,
   "confirmation_tracking": string
 }`,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            application_text: { type: 'string' },
-            form_fields: { type: 'object' },
-            submission_steps: { type: 'array', items: { type: 'string' } },
-            estimated_success_probability: { type: 'number' },
-            notes: { type: 'string' },
-            auto_submittable: { type: 'boolean' },
-            confirmation_tracking: { type: 'string' }
+          response_json_schema: {
+            type: 'object',
+            properties: {
+              application_text: { type: 'string' },
+              form_fields: { type: 'object' },
+              submission_steps: { type: 'array', items: { type: 'string' } },
+              estimated_success_probability: { type: 'number' },
+              notes: { type: 'string' },
+              auto_submittable: { type: 'boolean' },
+              confirmation_tracking: { type: 'string' }
+            }
           }
-        }
-      });
+        });
+      } catch (appErr) {
+        console.error('Application generation error:', appErr.message);
+      }
 
       // Update opportunity record
       await base44.asServiceRole.entities.PrizeOpportunity.update(opportunity_id, {

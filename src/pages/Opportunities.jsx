@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import OpportunityCard from '../components/dashboard/OpportunityCard';
+import OpportunityDetail from '../components/opportunity/OpportunityDetail';
 import OpportunityExecutionHub from '../components/opportunity/OpportunityExecutionHub';
 import LiveIngestionPanel from '../components/ingestion/LiveIngestionPanel';
 import BatchExecutionModal from '../components/opportunity/BatchExecutionModal';

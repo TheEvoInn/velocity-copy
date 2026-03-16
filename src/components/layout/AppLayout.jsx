@@ -8,15 +8,15 @@ const primaryNav = [
   { path: '/Opportunities', icon: Target, label: 'Opportunities' },
   { path: '/AutoPilot', icon: Bot, label: 'Autopilot', highlight: true },
   { path: '/IdentityManager', icon: User, label: 'Identities' },
-  { path: '/WalletPage', icon: Wallet, label: 'Wallet & Payouts' },
+  { path: '/WalletPage', icon: Wallet, label: 'Wallet' },
 ];
 
 const moreNav = [
-  { path: '/PrizeDashboard', icon: Trophy, label: 'Prizes & Grants' },
-  { path: '/KYCManagement', icon: Lock, label: 'Legal Identity (KYC)' },
-  { path: '/SecurityDashboard', icon: Shield, label: 'Security' },
   { path: '/Chat', icon: MessageSquare, label: 'AI Assistant' },
-  { path: '/SystemAuditDashboard', icon: Wrench, label: 'System Audit' },
+  { path: '/PrizeDashboard', icon: Trophy, label: 'Prizes' },
+  { path: '/KYCManagement', icon: Lock, label: 'Legal Identity' },
+  { path: '/AutopilotLogs', icon: Activity, label: 'Execution Logs' },
+  { path: '/SecurityDashboard', icon: Shield, label: 'Security' },
 ];
 
 export default function AppLayout() {

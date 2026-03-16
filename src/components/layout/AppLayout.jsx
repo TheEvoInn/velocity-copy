@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap } from 'lucide-react';
+import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot } from 'lucide-react';
 
 const navItems = [
   { path: '/Dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/AutoPilot', icon: Bot, label: 'Autopilot', highlight: true },
   { path: '/Opportunities', icon: Target, label: 'Opportunities' },
   { path: '/Strategies', icon: BookOpen, label: 'Strategies' },
   { path: '/WalletPage', icon: Wallet, label: 'Wallet' },
@@ -38,11 +39,16 @@ export default function AppLayout() {
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     isActive
                       ? 'bg-slate-800 text-emerald-400'
-                      : 'text-slate-500 hover:text-white hover:bg-slate-900'
+                      : item.highlight
+                        ? 'text-emerald-500 hover:text-emerald-300 hover:bg-emerald-950/30'
+                        : 'text-slate-500 hover:text-white hover:bg-slate-900'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {label}
+                  {item.highlight && !isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  )}
                 </Link>
               );
             })}

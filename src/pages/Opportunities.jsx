@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
-import { Target, Search, Zap } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Target, Search, Zap, Star, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import OpportunityCard from '../components/dashboard/OpportunityCard';
 import OpportunityDetail from '../components/opportunity/OpportunityDetail';
-import FreelanceScraperPanel from '../components/opportunity/FreelanceScraperPanel';
 import QuickApplyModal from '../components/opportunity/QuickApplyModal';
+import LiveIngestionPanel from '../components/ingestion/LiveIngestionPanel';
 
 const categories = [
   { value: 'all', label: 'All Categories' },
@@ -38,6 +39,9 @@ export default function Opportunities() {
   const [status, setStatus] = useState('all');
   const [selectedOpp, setSelectedOpp] = useState(null);
   const [applyOpp, setApplyOpp] = useState(null);
+  const [showIngestion, setShowIngestion] = useState(true);
+  const [lastScanResult, setLastScanResult] = useState(null);
+  const queryClient = useQueryClient();
 
   const { data: opportunities = [] } = useQuery({
     queryKey: ['opportunities'],
@@ -57,22 +61,35 @@ export default function Opportunities() {
       {selectedOpp && <OpportunityDetail opportunity={selectedOpp} onClose={() => setSelectedOpp(null)} />}
       {applyOpp && <QuickApplyModal opportunity={applyOpp} onClose={() => setApplyOpp(null)} />}
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             <Target className="w-5 h-5 text-amber-400" />
-            Opportunities
+            Live Opportunities
+            {lastScanResult?.new_opportunities > 0 && (
+              <Badge className="text-[10px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                +{lastScanResult.new_opportunities} new
+              </Badge>
+            )}
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">{filtered.length} opportunities found</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {filtered.length} opportunities · real-time authenticated feed
+          </p>
         </div>
-        <Link to="/Chat">
-          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8">
-            <Zap className="w-3.5 h-3.5 mr-1" /> Scan Now
-          </Button>
-        </Link>
+        <button
+          onClick={() => setShowIngestion(v => !v)}
+          className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1.5 transition-colors"
+        >
+          <Zap className="w-3.5 h-3.5 text-emerald-500" />
+          {showIngestion ? 'Hide ingestion panel' : 'Show ingestion panel'}
+        </button>
       </div>
 
-      <FreelanceScraperPanel />
+      {showIngestion && (
+        <div className="mb-5">
+          <LiveIngestionPanel onScanComplete={setLastScanResult} />
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
@@ -109,6 +126,21 @@ export default function Opportunities() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map(opp => (
           <div key={opp.id} className="relative group">
+            {/* Hidden / Premium badges */}
+            {(opp.tags?.includes('hidden') || opp.tags?.includes('premium')) && (
+              <div className="absolute top-2 right-2 z-10 flex gap-1">
+                {opp.tags?.includes('hidden') && (
+                  <span className="flex items-center gap-0.5 text-[9px] bg-violet-500/20 text-violet-400 border border-violet-500/30 px-1.5 py-0.5 rounded-full">
+                    <EyeOff className="w-2.5 h-2.5" /> hidden
+                  </span>
+                )}
+                {opp.tags?.includes('premium') && (
+                  <span className="flex items-center gap-0.5 text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full">
+                    <Star className="w-2.5 h-2.5" /> premium
+                  </span>
+                )}
+              </div>
+            )}
             <OpportunityCard opportunity={opp} onClick={() => setSelectedOpp(opp)} />
             {/* Action buttons overlay */}
             <div className="absolute bottom-3 left-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -130,14 +162,10 @@ export default function Opportunities() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-16">
+        <div className="text-center py-12">
           <Search className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">No opportunities match your filters.</p>
-          <Link to="/Chat">
-            <Button size="sm" className="mt-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
-              <Zap className="w-3.5 h-3.5 mr-1" /> Ask AI to find some
-            </Button>
-          </Link>
+          <p className="text-sm text-slate-500 mb-1">No opportunities match your filters.</p>
+          <p className="text-xs text-slate-600 mb-4">Run a live scan above to ingest fresh jobs from authenticated platform feeds.</p>
         </div>
       )}
     </div>

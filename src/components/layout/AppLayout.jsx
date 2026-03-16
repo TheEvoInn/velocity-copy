@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot } from 'lucide-react';
+import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, TargetIcon } from 'lucide-react';
 
 const navItems = [
   { path: '/Dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/AutoPilot', icon: Bot, label: 'Autopilot', highlight: true },
   { path: '/Opportunities', icon: Target, label: 'Opportunities' },
+  { path: '/GoalCenter', icon: Zap, label: 'Goals' },
+  { path: '/AccountManager', icon: Link2, label: 'Accounts' },
+  { path: '/AIWorkLogPage', icon: FileText, label: 'Work Log' },
   { path: '/Strategies', icon: BookOpen, label: 'Strategies' },
   { path: '/WalletPage', icon: Wallet, label: 'Wallet' },
   { path: '/ActivityPage', icon: Activity, label: 'Activity' },

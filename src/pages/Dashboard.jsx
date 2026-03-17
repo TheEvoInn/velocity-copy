@@ -137,7 +137,7 @@ export default function Dashboard() {
       </div>
 
       {/* Top Row: Live Real-Time Metrics */}
-      <LiveMetricsBar goals={goals} />
+      <LiveMetricsBar goals={goals} transactions={transactions} opportunities={opportunities} tasks={tasks} />
 
       {/* Dual Stream Progress */}
       {(aiEarnedToday > 0 || userEarnedToday > 0) && (

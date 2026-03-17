@@ -76,7 +76,7 @@ async function captureAndStoreSecret(base44, user, payload) {
   }
 
   // Encrypt the secret value
-  const encryptedSecret = await encryptSecret(secret_value);
+  const encryptedSecret = await encryptSecret(secret_value, user.id);
 
   // Create secret name for Apps Secrets tab
   const appsSecretName = `${platform}_${secret_type}_${identity_id || 'system'}_${Date.now()}`;
@@ -228,7 +228,7 @@ async function rotateSecret(base44, user, payload) {
   const secret = oldSecret[0];
 
   // Encrypt new secret
-  const encryptedSecret = await encryptSecret(new_secret_value);
+  const encryptedSecret = await encryptSecret(new_secret_value, user.id);
 
   // Create audit log for rotation
   const rotationLog = await base44.entities.SecretAuditLog.create({

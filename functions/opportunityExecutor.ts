@@ -142,6 +142,66 @@ async function handleAutomationTrigger(base44, body) {
 }
 
 /**
+ * Handle scheduled retry — find failed tasks and re-queue with exponential backoff
+ */
+async function handleScheduledRetry(base44) {
+  const now = new Date();
+  console.log(`[ScheduledRetry] Running at ${now.toISOString()}`);
+
+  // Find failed tasks eligible for retry (retry_count < max_retries)
+  const failedTasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+    { status: 'failed' },
+    '-updated_date',
+    50
+  );
+
+  const eligible = failedTasks.filter(t => (t.retry_count || 0) < (t.max_retries ?? 2));
+
+  if (eligible.length === 0) {
+    console.log('[ScheduledRetry] No eligible failed tasks to retry');
+    return Response.json({ success: true, retried: 0, message: 'No eligible tasks to retry' });
+  }
+
+  let retried = 0;
+  const results = [];
+
+  for (const task of eligible) {
+    const retryCount = task.retry_count || 0;
+    // Exponential backoff: 1h * 2^retryCount — check if enough time has passed
+    const backoffMs = Math.pow(2, retryCount) * 60 * 60 * 1000;
+    const lastAttempt = task.last_retry_at ? new Date(task.last_retry_at) : new Date(task.updated_date);
+    const nextRetryAt = new Date(lastAttempt.getTime() + backoffMs);
+
+    if (now < nextRetryAt) {
+      results.push({ task_id: task.id, skipped: true, reason: `Backoff: next retry at ${nextRetryAt.toISOString()}` });
+      continue;
+    }
+
+    // Re-queue the task
+    await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
+      status: 'queued',
+      retry_count: retryCount + 1,
+      last_retry_at: now.toISOString(),
+      error_message: null,
+    });
+
+    retried++;
+    results.push({ task_id: task.id, retried: true, retry_count: retryCount + 1 });
+    console.log(`[ScheduledRetry] Re-queued task ${task.id} (attempt ${retryCount + 1})`);
+  }
+
+  // Log summary
+  await base44.asServiceRole.entities.ActivityLog.create({
+    action_type: 'system',
+    message: `Scheduled retry: re-queued ${retried} failed task(s) (${eligible.length} eligible, ${failedTasks.length} total failed)`,
+    metadata: { retried, eligible: eligible.length, total_failed: failedTasks.length },
+    severity: retried > 0 ? 'info' : 'success',
+  });
+
+  return Response.json({ success: true, retried, total_failed: failedTasks.length, results });
+}
+
+/**
  * Execute opportunity directly
  */
 async function executeOpportunity(base44, user, payload) {

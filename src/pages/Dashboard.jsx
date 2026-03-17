@@ -270,6 +270,7 @@ export default function Dashboard() {
             </h3>
             <ActivityFeed logs={activityLogs} />
           </div>
+          <N8nMcpPanel />
         </div>
       </div>
     </div>

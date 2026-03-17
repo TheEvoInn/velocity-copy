@@ -5,8 +5,6 @@ import { Target, Zap, Plus, Search, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
-import WalletCard from '../components/dashboard/WalletCard';
-import MetricCard from '../components/dashboard/MetricCard';
 import OpportunityCard from '../components/dashboard/OpportunityCard';
 import ActivityFeed from '../components/dashboard/ActivityFeed';
 import UserDataPersistenceMonitor from '../components/persistence/UserDataPersistenceMonitor';

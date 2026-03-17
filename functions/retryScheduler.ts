@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
     const pendingRetries = await base44.asServiceRole.entities.RetryHistory.filter(
       { status: 'pending' },
       '-scheduled_retry_at',
-      50
+      10  // Hard cap to avoid TIME_LIMIT (502) on 5-min schedule
     );
 
     if (!pendingRetries || pendingRetries.length === 0) {

@@ -410,16 +410,31 @@ async function getAuditLog(base44, user, payload) {
 }
 
 /**
- * Encrypt secret value (in real implementation, use stronger encryption)
+ * Derive a per-user AES-256-GCM key from the app ID and user ID.
  */
-async function encryptSecret(secretValue) {
-  // This is a placeholder - in production use proper AES-256-GCM encryption
-  const encoder = new TextEncoder();
-  const data = encoder.encode(secretValue);
-  
+const APP_ID = Deno.env.get('BASE44_APP_ID') || 'profit_engine';
+
+async function getEncryptionKey(userId) {
+  const raw = new TextEncoder().encode(`${APP_ID}-secret-manager-${userId}`);
+  const hash = await crypto.subtle.digest('SHA-256', raw);
+  return crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+function toBase64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+
+/**
+ * Encrypt a secret value using AES-256-GCM with a unique random IV per call.
+ */
+async function encryptSecret(secretValue, userId) {
+  const key = await getEncryptionKey(userId);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(secretValue);
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
   return {
-    ciphertext: btoa(String.fromCharCode(...data)), // base64 encode for demo
-    iv: btoa(crypto.getRandomValues(new Uint8Array(16)).toString())
+    ciphertext: toBase64(encrypted),
+    iv: toBase64(iv)
   };
 }
 

@@ -16,6 +16,7 @@ import OpportunityDetail from '../components/opportunity/OpportunityDetail';
 import TransactionForm from '../components/wallet/TransactionForm';
 import OnboardingModal from '../components/onboarding/OnboardingModal';
 import DualStreamCard from '../components/autopilot/DualStreamCard';
+import LiveMetricsBar from '../components/dashboard/LiveMetricsBar';
 import AutopilotPanel from '../components/autopilot/AutopilotPanel';
 import FinancialOverview from '../components/dashboard/FinancialOverview';
 import RealTimeAlertSystem from '../components/scanning/RealTimeAlertSystem';

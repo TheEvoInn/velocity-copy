@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
 
     // ── generate_proposal_for_opportunity ──────────────────────────────────────
     if (action === 'generate_proposal_for_opportunity') {
-      const { opportunity_id, identity_id } = await req.json();
+      const { opportunity_id, identity_id } = body;
 
       // Fetch opportunity
       const opps = await base44.asServiceRole.entities.Opportunity.filter({ id: opportunity_id });

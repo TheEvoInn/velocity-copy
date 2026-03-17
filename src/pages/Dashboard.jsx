@@ -158,7 +158,7 @@ export default function Dashboard() {
 
       {/* Financial Overview */}
       <div className="mb-4">
-        <FinancialOverview goals={goals} transactions={transactions} />
+        <FinancialOverview goals={goals} />
       </div>
 
       {/* User Data Persistence Monitor */}

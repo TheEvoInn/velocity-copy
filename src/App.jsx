@@ -7,19 +7,28 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import AppLayout from './components/layout/AppLayout';
+
+// Core pages
 import Dashboard from './pages/Dashboard';
+import Chat from './pages/Chat';
+
+// Four departments
+import Discovery from './pages/Discovery';
+import Execution from './pages/Execution';
+import Finance from './pages/Finance';
+import Control from './pages/Control';
+
+// Supporting pages (accessible via department links)
 import Opportunities from './pages/Opportunities';
 import Strategies from './pages/Strategies';
 import WalletPage from './pages/WalletPage';
 import ActivityPage from './pages/ActivityPage';
-import Chat from './pages/Chat';
 import AutoPilot from './pages/AutoPilot';
 import AutopilotLogs from './pages/AutopilotLogs';
 import AccountManager from './pages/AccountManager';
 import PrizeDashboard from './pages/PrizeDashboard';
 import IdentityManager from './pages/IdentityManager';
 import AIIdentityStudio from './pages/AIIdentityStudio';
-
 import SystemDocumentation from './pages/SystemDocumentation';
 import SecurityDashboard from './pages/SecurityDashboard';
 import SystemAuditDashboard from './pages/SystemAuditDashboard';
@@ -42,30 +51,35 @@ const AuthenticatedApp = () => {
   }
 
   if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      navigateToLogin();
-      return null;
-    }
+    if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
+    if (authError.type === 'auth_required') { navigateToLogin(); return null; }
   }
 
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/Dashboard" replace />} />
       <Route element={<AppLayout />}>
+        {/* Command Center */}
         <Route path="/Dashboard" element={<Dashboard />} />
+        <Route path="/Chat" element={<Chat />} />
+
+        {/* Four Departments */}
+        <Route path="/Discovery" element={<Discovery />} />
+        <Route path="/Execution" element={<Execution />} />
+        <Route path="/Finance" element={<Finance />} />
+        <Route path="/Control" element={<Control />} />
+
+        {/* Supporting Pages */}
         <Route path="/Opportunities" element={<Opportunities />} />
         <Route path="/Strategies" element={<Strategies />} />
         <Route path="/WalletPage" element={<WalletPage />} />
         <Route path="/ActivityPage" element={<ActivityPage />} />
-        <Route path="/Chat" element={<Chat />} />
         <Route path="/AutoPilot" element={<AutoPilot />} />
         <Route path="/AutopilotLogs" element={<AutopilotLogs />} />
         <Route path="/IdentityManager" element={<IdentityManager />} />
         <Route path="/AIIdentityStudio" element={<AIIdentityStudio />} />
+        <Route path="/AccountManager" element={<AccountManager />} />
         <Route path="/PrizeDashboard" element={<PrizeDashboard />} />
-
         <Route path="/SystemDocumentation" element={<SystemDocumentation />} />
         <Route path="/SecurityDashboard" element={<SecurityDashboard />} />
         <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
@@ -88,7 +102,7 @@ function App() {
         <Toaster />
       </QueryClientProvider>
     </AuthProvider>
-  )
+  );
 }
 
-export default App
+export default App;

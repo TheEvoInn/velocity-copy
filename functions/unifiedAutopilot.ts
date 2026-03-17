@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
 
     // ── opportunity_to_agent_task ──────────────────────────────────────────────
     if (action === 'opportunity_to_agent_task') {
-      const { opportunity_id, force_identity_id } = await req.json();
+      const { opportunity_id, force_identity_id } = body;
 
       // Fetch opportunity
       const opps = await base44.asServiceRole.entities.Opportunity.filter({ id: opportunity_id });

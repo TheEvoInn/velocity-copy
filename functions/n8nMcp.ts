@@ -28,7 +28,25 @@ Deno.serve(async (req) => {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    const contentType = response.headers.get('content-type') || '';
+
+    // Handle SSE (text/event-stream) response — extract the last JSON data line
+    if (contentType.includes('text/event-stream')) {
+      const lines = text.split('\n');
+      let lastData = null;
+      for (const line of lines) {
+        if (line.startsWith('data:')) {
+          const raw = line.slice(5).trim();
+          try { lastData = JSON.parse(raw); } catch { /* skip */ }
+        }
+      }
+      if (lastData) return Response.json(lastData, { status: response.status });
+      return Response.json({ error: 'Empty SSE response', raw: text }, { status: 502 });
+    }
+
+    // Regular JSON response
+    const data = JSON.parse(text);
     return Response.json(data, { status: response.status });
 
   } catch (error) {

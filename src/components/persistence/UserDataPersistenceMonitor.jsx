@@ -12,9 +12,9 @@ export default function UserDataPersistenceMonitor() {
   const { data: userStore } = useQuery({
     queryKey: ['userDataStore'],
     queryFn: () => base44.functions.invoke('userDataPersistenceManager', {
-      action: 'list_all',
-    }).then(r => r.data?.data),
-    refetchInterval: 60000, // Refresh every minute
+      action: 'list_all'
+    }).then((r) => r.data?.data),
+    refetchInterval: 60000 // Refresh every minute
   });
 
   const { data: auditLog } = useQuery({
@@ -25,14 +25,14 @@ export default function UserDataPersistenceMonitor() {
       10
     ),
     initialData: [],
-    refetchInterval: 30000,
+    refetchInterval: 30000
   });
 
   const handleValidateIntegrity = async () => {
     setValidationInProgress(true);
     try {
       await base44.functions.invoke('userDataIntegrityValidator', {
-        validate_all: false,
+        validate_all: false
       });
     } catch (error) {
       console.error('Validation error:', error);
@@ -48,9 +48,9 @@ export default function UserDataPersistenceMonitor() {
   };
 
   const status = getDataStatus();
-  const lastModified = userStore?.last_modified_at
-    ? new Date(userStore.last_modified_at).toLocaleString()
-    : 'Never';
+  const lastModified = userStore?.last_modified_at ?
+  new Date(userStore.last_modified_at).toLocaleString() :
+  'Never';
 
   return (
     <Card className="bg-slate-900/80 border-slate-800">
@@ -59,7 +59,7 @@ export default function UserDataPersistenceMonitor() {
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-emerald-400" />
             <div>
-              <CardTitle className="text-sm">User Data Persistence</CardTitle>
+              <CardTitle className="text-slate-100 text-sm font-semibold tracking-tight">User Data Persistence</CardTitle>
               <CardDescription className="text-xs mt-1">
                 All preferences are saved indefinitely and survive system changes
               </CardDescription>
@@ -67,16 +67,16 @@ export default function UserDataPersistenceMonitor() {
           </div>
           <Badge
             className={`text-xs ${
-              status.status === 'success'
-                ? 'bg-emerald-500/20 text-emerald-400'
-                : 'bg-amber-500/20 text-amber-400'
-            }`}
-          >
-            {status.status === 'success' ? (
-              <CheckCircle2 className="w-3 h-3 mr-1" />
-            ) : (
-              <AlertCircle className="w-3 h-3 mr-1" />
-            )}
+            status.status === 'success' ?
+            'bg-emerald-500/20 text-emerald-400' :
+            'bg-amber-500/20 text-amber-400'}`
+            }>
+
+            {status.status === 'success' ?
+            <CheckCircle2 className="w-3 h-3 mr-1" /> :
+
+            <AlertCircle className="w-3 h-3 mr-1" />
+            }
             {status.label}
           </Badge>
         </div>
@@ -103,40 +103,40 @@ export default function UserDataPersistenceMonitor() {
         </div>
 
         {/* Data Fields Status */}
-        {userStore && (
-          <div className="border-t border-slate-700 pt-3">
+        {userStore &&
+        <div className="border-t border-slate-700 pt-3">
             <p className="text-[9px] text-slate-400 mb-2">Data Fields</p>
             <div className="grid grid-cols-2 gap-1.5 text-[8px]">
               {[
-                'ui_preferences',
-                'autopilot_preferences',
-                'identity_preferences',
-                'security_preferences',
-                'wallet_preferences',
-                'execution_rules',
-              ].map(field => (
-                <div
-                  key={field}
-                  className="flex items-center gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700"
-                >
+            'ui_preferences',
+            'autopilot_preferences',
+            'identity_preferences',
+            'security_preferences',
+            'wallet_preferences',
+            'execution_rules'].
+            map((field) =>
+            <div
+              key={field}
+              className="flex items-center gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700">
+
                   <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0" />
                   <span className="text-slate-300 truncate">{field.replace(/_/g, ' ')}</span>
                 </div>
-              ))}
+            )}
             </div>
           </div>
-        )}
+        }
 
         {/* Recent Audit Log */}
-        {auditLog && auditLog.length > 0 && (
-          <div className="border-t border-slate-700 pt-3">
+        {auditLog && auditLog.length > 0 &&
+        <div className="border-t border-slate-700 pt-3">
             <p className="text-[9px] text-slate-400 mb-2">Recent Activity</p>
             <div className="space-y-1">
-              {auditLog.slice(0, 3).map(entry => (
-                <div
-                  key={entry.id}
-                  className="text-[8px] p-1.5 bg-slate-800/50 rounded border border-slate-700"
-                >
+              {auditLog.slice(0, 3).map((entry) =>
+            <div
+              key={entry.id}
+              className="text-[8px] p-1.5 bg-slate-800/50 rounded border border-slate-700">
+
                   <p className="text-slate-300">
                     {entry.change_description || entry.event_type}
                   </p>
@@ -144,10 +144,10 @@ export default function UserDataPersistenceMonitor() {
                     {new Date(entry.created_date).toLocaleString()}
                   </p>
                 </div>
-              ))}
+            )}
             </div>
           </div>
-        )}
+        }
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
@@ -155,13 +155,13 @@ export default function UserDataPersistenceMonitor() {
             size="sm"
             onClick={handleValidateIntegrity}
             disabled={validationInProgress}
-            className="flex-1 h-6 text-xs bg-blue-600 hover:bg-blue-500"
-          >
+            className="flex-1 h-6 text-xs bg-blue-600 hover:bg-blue-500">
+
             <RefreshCw className={`w-3 h-3 mr-1 ${validationInProgress ? 'animate-spin' : ''}`} />
             {validationInProgress ? 'Validating...' : 'Validate'}
           </Button>
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>);
+
 }

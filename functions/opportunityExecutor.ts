@@ -8,22 +8,28 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const body = await req.json();
 
+    // --- Entity automation trigger (from "Auto-Execute on New Opportunity" automation) ---
+    // Payload shape: { event: { type, entity_name, entity_id }, data: {...}, old_data: {...} }
+    if (body.event && body.event.entity_name === 'Opportunity') {
+      return await handleAutomationTrigger(base44, body);
+    }
+
+    // --- Direct invocation (from frontend / other functions) ---
+    const user = await base44.auth.me();
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { action, payload } = await req.json();
+    const { action, payload } = body;
 
     if (action === 'execute_opportunity') {
       return await executeOpportunity(base44, user, payload);
     }
-
     if (action === 'queue_for_autopilot') {
       return await queueForAutopilot(base44, user, payload);
     }
-
     if (action === 'update_execution_status') {
       return await updateExecutionStatus(base44, user, payload);
     }
@@ -34,6 +40,100 @@ Deno.serve(async (req) => {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+
+/**
+ * Handle entity automation trigger — auto-execute high-scoring opportunities
+ */
+async function handleAutomationTrigger(base44, body) {
+  const { event, data } = body;
+
+  // Only act on create events (new opportunities)
+  if (event.type !== 'create') {
+    return Response.json({ skipped: true, reason: 'Not a create event' });
+  }
+
+  let opp = data;
+
+  // If payload was too large and data is null, fetch the opportunity
+  if (!opp) {
+    const results = await base44.asServiceRole.entities.Opportunity.filter({ id: event.entity_id }, null, 1);
+    opp = results?.[0];
+  }
+
+  if (!opp) {
+    return Response.json({ skipped: true, reason: 'Opportunity not found' });
+  }
+
+  // Only auto-execute if score > 75 and auto_execute is true
+  if (!opp.auto_execute || (opp.overall_score ?? 0) <= 75) {
+    return Response.json({
+      skipped: true,
+      reason: `Skipped: auto_execute=${opp.auto_execute}, score=${opp.overall_score}`
+    });
+  }
+
+  // Already in progress — don't double-queue
+  if (['queued', 'executing', 'submitted', 'completed'].includes(opp.status)) {
+    return Response.json({ skipped: true, reason: `Already in status: ${opp.status}` });
+  }
+
+  console.log(`Auto-executing opportunity: ${opp.title} (score: ${opp.overall_score})`);
+
+  // Determine identity to use
+  let identityId = opp.identity_id;
+  if (!identityId) {
+    const identities = await base44.asServiceRole.entities.AIIdentity.filter({ is_active: true }, null, 1);
+    identityId = identities?.[0]?.id;
+  }
+
+  if (!identityId) {
+    console.warn('No identity available for auto-execution');
+    await base44.asServiceRole.entities.ActivityLog.create({
+      action_type: 'alert',
+      message: `Auto-execute skipped for "${opp.title}" — no active identity found`,
+      severity: 'warning',
+    });
+    return Response.json({ skipped: true, reason: 'No active identity found' });
+  }
+
+  // Queue the opportunity for autopilot execution
+  const task = await base44.asServiceRole.entities.TaskExecutionQueue.create({
+    opportunity_id: opp.id,
+    url: opp.url,
+    opportunity_type: opp.opportunity_type || 'other',
+    platform: opp.platform,
+    identity_id: identityId,
+    identity_name: opp.identity_name,
+    status: 'queued',
+    priority: Math.min(99, Math.round(opp.overall_score || 80)),
+    estimated_value: opp.profit_estimate_high,
+    deadline: opp.deadline,
+    queue_timestamp: new Date().toISOString(),
+  });
+
+  // Update opportunity status to queued
+  await base44.asServiceRole.entities.Opportunity.update(opp.id, {
+    status: 'queued',
+    task_execution_id: task.id,
+  });
+
+  // Log the auto-execution
+  await base44.asServiceRole.entities.ActivityLog.create({
+    action_type: 'opportunity_found',
+    message: `Auto-queued high-score opportunity: "${opp.title}" (score: ${opp.overall_score})`,
+    metadata: { opportunity_id: opp.id, task_id: task.id, score: opp.overall_score },
+    severity: 'success',
+  });
+
+  console.log(`Successfully queued task ${task.id} for opportunity ${opp.id}`);
+
+  return Response.json({
+    success: true,
+    task_id: task.id,
+    opportunity_id: opp.id,
+    message: `Auto-queued: "${opp.title}" (score: ${opp.overall_score})`
+  });
+}
 
 /**
  * Execute opportunity directly

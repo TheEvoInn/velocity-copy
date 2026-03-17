@@ -17,30 +17,26 @@ Deno.serve(async (req) => {
     }
 
     // --- Scheduled automation trigger (from "Complete Failed Tasks Retry" automation) ---
-    // Payload shape: { automation: { id, name, type }, args: {...} }
+    // Payload shape varies — could be { automation: {...} } or empty {}
     if (body.automation) {
       return await handleScheduledRetry(base44);
     }
 
     // --- Direct invocation (from frontend / other functions) ---
-    const user = await base44.auth.me();
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { action, payload } = body;
 
-    if (action === 'execute_opportunity') {
-      return await executeOpportunity(base44, user, payload);
-    }
-    if (action === 'queue_for_autopilot') {
-      return await queueForAutopilot(base44, user, payload);
-    }
-    if (action === 'update_execution_status') {
-      return await updateExecutionStatus(base44, user, payload);
+    if (action === 'execute_opportunity' || action === 'queue_for_autopilot' || action === 'update_execution_status') {
+      const user = await base44.auth.me();
+      if (!user) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      if (action === 'execute_opportunity') return await executeOpportunity(base44, user, payload);
+      if (action === 'queue_for_autopilot') return await queueForAutopilot(base44, user, payload);
+      if (action === 'update_execution_status') return await updateExecutionStatus(base44, user, payload);
     }
 
-    return Response.json({ error: 'Unknown action' }, { status: 400 });
+    // --- Fallback: treat any unrecognized call as a scheduled retry (e.g. automation with empty body) ---
+    return await handleScheduledRetry(base44);
   } catch (error) {
     console.error('Opportunity Executor Error:', error);
     return Response.json({ error: error.message }, { status: 500 });

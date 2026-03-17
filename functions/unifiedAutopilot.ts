@@ -4,10 +4,17 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const body = await req.json();
+    const { action } = body;
+
+    // --- Scheduled automation trigger: "Auto-Execute Batch - High Priority Queue" ---
+    // Runs every 15 min; body may be empty {} or { automation: {...} }
+    if (!action || body.automation) {
+      return await batchExecuteHighPriority(base44);
+    }
+
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { action } = await req.json();
 
     // ── opportunity_to_agent_task ──────────────────────────────────────────────
     if (action === 'opportunity_to_agent_task') {

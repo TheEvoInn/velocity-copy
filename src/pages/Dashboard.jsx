@@ -137,6 +137,8 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <NotificationPermissionBanner />
+
       {/* Top Row: Live Real-Time Metrics */}
       <LiveMetricsBar goals={goals} transactions={transactions} opportunities={opportunities} tasks={tasks} />
 

@@ -139,17 +139,17 @@ export default function Dashboard() {
       {/* Top Row: Live Real-Time Metrics */}
       <LiveMetricsBar goals={goals} transactions={transactions} opportunities={opportunities} tasks={tasks} />
 
-      {/* Dual Stream Progress */}
-      {(aiEarnedToday > 0 || userEarnedToday > 0) && (
-        <div className="mb-4">
-          <DualStreamCard
-            aiEarned={aiEarnedToday}
-            userEarned={userEarnedToday}
-            aiTarget={goals.ai_daily_target || 500}
-            userTarget={goals.user_daily_target || 500}
-          />
-        </div>
-      )}
+      {/* Dual Stream Progress — always show with real data */}
+      <div className="mb-4">
+        <DualStreamCard
+          aiEarned={aiEarnedToday}
+          userEarned={userEarnedToday}
+          aiTarget={goals.ai_daily_target || 500}
+          userTarget={goals.user_daily_target || 500}
+          aiTotalEarned={aiTotalEarned}
+          userTotalEarned={userTotalEarned}
+        />
+      </div>
 
       {/* Autopilot Panel */}
       {goals.id && (

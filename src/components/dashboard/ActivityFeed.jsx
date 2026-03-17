@@ -1,4 +1,6 @@
 import React from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Zap, Search, Target, Bell, User, Settings, Wallet } from 'lucide-react';
 
@@ -9,24 +11,34 @@ const actionIcons = {
   alert: Bell,
   user_action: User,
   system: Settings,
-  wallet_update: Wallet
+  wallet_update: Wallet,
 };
 
 const severityColors = {
-  info: "text-slate-400",
-  success: "text-emerald-400",
-  warning: "text-amber-400",
-  critical: "text-red-400"
+  info: 'text-slate-400',
+  success: 'text-emerald-400',
+  warning: 'text-amber-400',
+  critical: 'text-red-400',
 };
 
 const severityBg = {
-  info: "bg-slate-500/10 border-slate-500/20",
-  success: "bg-emerald-500/10 border-emerald-500/20",
-  warning: "bg-amber-500/10 border-amber-500/20",
-  critical: "bg-red-500/10 border-red-500/20"
+  info: 'bg-slate-500/10 border-slate-500/20',
+  success: 'bg-emerald-500/10 border-emerald-500/20',
+  warning: 'bg-amber-500/10 border-amber-500/20',
+  critical: 'bg-red-500/10 border-red-500/20',
 };
 
-export default function ActivityFeed({ logs = [] }) {
+export default function ActivityFeed({ logs: propLogs }) {
+  // Self-fetch live activity if no logs passed as props
+  const { data: fetchedLogs = [] } = useQuery({
+    queryKey: ['activityFeed_live'],
+    queryFn: () => base44.entities.ActivityLog.list('-created_date', 30),
+    refetchInterval: 12000,
+    enabled: !propLogs, // only fetch if not provided by parent
+  });
+
+  const logs = propLogs ?? fetchedLogs;
+
   if (logs.length === 0) {
     return (
       <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-6">
@@ -49,13 +61,13 @@ export default function ActivityFeed({ logs = [] }) {
       <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
         <Zap className="w-4 h-4 text-amber-400" />
         Activity Feed
+        <span className="ml-auto text-[10px] text-slate-600">{logs.length} entries</span>
       </h3>
       <div className="space-y-3 max-h-80 overflow-y-auto">
-        {logs.slice(0, 20).map((log) => {
+        {logs.slice(0, 30).map((log) => {
           const Icon = actionIcons[log.action_type] || Settings;
           const sColor = severityColors[log.severity] || severityColors.info;
           const sBg = severityBg[log.severity] || severityBg.info;
-          
           return (
             <div key={log.id} className="flex items-start gap-3">
               <div className={`p-1.5 rounded-lg ${sBg} border mt-0.5 shrink-0`}>

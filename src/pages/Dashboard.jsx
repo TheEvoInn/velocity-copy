@@ -236,7 +236,7 @@ export default function Dashboard() {
 
         {/* Right Column: Goal + Autopilot Activity */}
          <div className="space-y-4">
-           <DailyGoalTracker target={goals.daily_target || 1000} earned={todayEarned} />
+           <DailyGoalTracker target={goals.daily_target || 1000} earned={todayEarned} totalEarned={totalEarned} walletBalance={walletBalance} />
            <div>
              <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
                <Activity className="w-4 h-4 text-slate-400" />

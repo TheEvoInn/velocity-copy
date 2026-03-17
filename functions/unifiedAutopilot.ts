@@ -324,6 +324,95 @@ Deno.serve(async (req) => {
   }
 });
 
+/**
+ * Scheduled automation handler — execute top 10 highest-priority queued opportunities
+ */
+async function batchExecuteHighPriority(base44) {
+  const now = new Date();
+  console.log(`[BatchExecute] Running at ${now.toISOString()}`);
+
+  const queued = await base44.asServiceRole.entities.Opportunity.filter(
+    { status: 'queued', auto_execute: true },
+    '-overall_score',
+    10
+  );
+
+  if (queued.length === 0) {
+    // Also check 'new' opportunities that should be queued
+    const newOpps = await base44.asServiceRole.entities.Opportunity.filter(
+      { status: 'new', auto_execute: true },
+      '-overall_score',
+      10
+    );
+
+    if (newOpps.length === 0) {
+      console.log('[BatchExecute] No eligible opportunities found');
+      return Response.json({ success: true, processed: 0, message: 'No eligible opportunities' });
+    }
+
+    const results = [];
+    for (const opp of newOpps) {
+      try {
+        let identityId = opp.identity_id;
+        if (!identityId) {
+          const ids = await base44.asServiceRole.entities.AIIdentity.filter({ is_active: true }, null, 1);
+          identityId = ids?.[0]?.id;
+        }
+        if (!identityId || !opp.url) {
+          results.push({ opportunity_id: opp.id, skipped: true, reason: !opp.url ? 'No URL' : 'No identity' });
+          continue;
+        }
+        const task = await base44.asServiceRole.entities.TaskExecutionQueue.create({
+          opportunity_id: opp.id,
+          url: opp.url,
+          opportunity_type: opp.opportunity_type || 'other',
+          platform: opp.platform,
+          identity_id: identityId,
+          status: 'queued',
+          priority: calculatePriority(opp),
+          estimated_value: opp.profit_estimate_high,
+          deadline: opp.deadline,
+          queue_timestamp: now.toISOString(),
+        });
+        await base44.asServiceRole.entities.Opportunity.update(opp.id, { status: 'queued', task_execution_id: task.id });
+        results.push({ opportunity_id: opp.id, task_id: task.id, queued: true });
+      } catch (e) {
+        results.push({ opportunity_id: opp.id, error: e.message });
+      }
+    }
+
+    const queued_count = results.filter(r => r.queued).length;
+    await base44.asServiceRole.entities.ActivityLog.create({
+      action_type: 'system',
+      message: `[Auto-Batch] Queued ${queued_count}/${newOpps.length} high-priority opportunities`,
+      severity: 'info',
+      metadata: { queued_count, total: newOpps.length },
+    });
+
+    return Response.json({ success: true, processed: queued_count, results });
+  }
+
+  // Trigger agent execution for already-queued tasks
+  let executed = 0;
+  for (let i = 0; i < Math.min(queued.length, 10); i++) {
+    try {
+      await base44.asServiceRole.functions.invoke('agentWorker', { action: 'execute_next_task' });
+      executed++;
+    } catch (e) {
+      console.error('[BatchExecute] agentWorker error:', e.message);
+    }
+  }
+
+  await base44.asServiceRole.entities.ActivityLog.create({
+    action_type: 'system',
+    message: `[Auto-Batch] Triggered execution for ${executed} queued tasks`,
+    severity: 'info',
+    metadata: { executed, total_queued: queued.length },
+  });
+
+  return Response.json({ success: true, processed: executed, total_queued: queued.length });
+}
+
 function calculatePriority(opportunity) {
   let score = 50;
 

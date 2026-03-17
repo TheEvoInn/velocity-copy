@@ -37,6 +37,12 @@ Deno.serve(async (req) => {
 
     const { action } = body;
 
+    // Require auth for submit and execute actions
+    if (action === 'submit' || action === 'execute') {
+      const user = await base44.auth.me();
+      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // ─── ACTION: submit ───────────────────────────────────────────────────────
     if (action === 'submit') {
       const { task_name, category, required_spend, expected_return, ai_justification, opportunity_id, chain_depth = 0, deadline } = body;

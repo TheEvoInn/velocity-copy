@@ -1,129 +1,140 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { 
+  Zap, LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal,
+  Menu, X, ChevronRight, MessageSquare
+} from 'lucide-react';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
-import { LayoutDashboard, Target, Wallet, BookOpen, MessageSquare, Activity, Menu, X, Zap, Bot, Link2, FileText, User, MoreHorizontal, BarChart2, Trophy, TrendingUp, Cpu, Shield, Wrench, Lock } from 'lucide-react';
 
-const primaryNav = [
-  { path: '/Dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/Opportunities', icon: Target, label: 'Opportunities' },
-  { path: '/AutoPilot', icon: Bot, label: 'Autopilot', highlight: true },
-  { path: '/IdentityManager', icon: User, label: 'Identities' },
-  { path: '/WalletPage', icon: Wallet, label: 'Wallet' },
+const DEPARTMENTS = [
+  {
+    path: '/Dashboard',
+    icon: LayoutDashboard,
+    label: 'Command Center',
+    color: 'text-slate-300',
+    activeColor: 'text-white',
+    activeBg: 'bg-slate-800',
+    desc: 'Overview & control',
+  },
+  {
+    path: '/Discovery',
+    icon: Telescope,
+    label: 'Discovery',
+    color: 'text-amber-400/70',
+    activeColor: 'text-amber-400',
+    activeBg: 'bg-amber-950/40',
+    badge: 'bg-amber-500',
+    desc: 'Intelligence & scanning',
+  },
+  {
+    path: '/Execution',
+    icon: Cpu,
+    label: 'Execution',
+    color: 'text-blue-400/70',
+    activeColor: 'text-blue-400',
+    activeBg: 'bg-blue-950/40',
+    badge: 'bg-blue-500',
+    desc: 'Automation & tasks',
+  },
+  {
+    path: '/Finance',
+    icon: Landmark,
+    label: 'Finance',
+    color: 'text-emerald-400/70',
+    activeColor: 'text-emerald-400',
+    activeBg: 'bg-emerald-950/40',
+    badge: 'bg-emerald-500',
+    desc: 'Wallet & compliance',
+  },
+  {
+    path: '/Control',
+    icon: SlidersHorizontal,
+    label: 'Control',
+    color: 'text-purple-400/70',
+    activeColor: 'text-purple-400',
+    activeBg: 'bg-purple-950/40',
+    badge: 'bg-purple-500',
+    desc: 'Settings & identities',
+  },
 ];
 
-const moreNav = [
+const QUICK_LINKS = [
   { path: '/Chat', icon: MessageSquare, label: 'AI Assistant' },
-  { path: '/AIIdentityStudio', icon: User, label: 'Identity Studio' },
-  { path: '/PrizeDashboard', icon: Trophy, label: 'Prizes' },
-  { path: '/KYCManagement', icon: Lock, label: 'Legal Identity' },
-  { path: '/AutopilotLogs', icon: Activity, label: 'Execution Logs' },
-  { path: '/SecurityDashboard', icon: Shield, label: 'Security' },
 ];
 
 export default function AppLayout() {
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => { if (moreRef.current && !moreRef.current.contains(e.target)) setMoreOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const allNav = [...primaryNav, ...moreNav];
-  const isMoreActive = moreNav.some(n => n.path === location.pathname);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="fixed top-0 left-0 right-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/50">
-        <div className="flex items-center justify-between px-4 h-14">
-          {/* Logo */}
-          <Link to="/Dashboard" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-sm hidden sm:block">Profit Engine</span>
-          </Link>
-
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-0.5">
-            {primaryNav.map(({ path, icon: Icon, label, highlight }) => {
-              const isActive = location.pathname === path;
-              return (
-                <Link key={path} to={path}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    isActive ? 'bg-slate-800 text-emerald-400'
-                    : highlight ? 'text-emerald-500 hover:text-emerald-300 hover:bg-emerald-950/30'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                  }`}>
-                  <Icon className="w-3.5 h-3.5" />
-                  {label}
-                  {highlight && !isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                </Link>
-              );
-            })}
-
-            {/* More dropdown */}
-            <div ref={moreRef} className="relative">
-              <button onClick={() => setMoreOpen(v => !v)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  isMoreActive ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                }`}>
-                <MoreHorizontal className="w-3.5 h-3.5" />
-                More
-              </button>
-              {moreOpen && (
-                <div className="absolute top-full right-0 mt-1 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-xl py-1.5 z-50">
-                  {moreNav.map(({ path, icon: Icon, label }) => {
-                    const isActive = location.pathname === path;
-                    return (
-                      <Link key={path} to={path} onClick={() => setMoreOpen(false)}
-                        className={`flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors ${
-                          isActive ? 'text-emerald-400 bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                        }`}>
-                        <Icon className="w-3.5 h-3.5" />
-                        {label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            {/* Identity banner */}
-            <div className="hidden md:block">
-              <ActiveIdentityBanner />
-            </div>
-            {/* Mobile toggle */}
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white">
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+      {/* Top Bar */}
+      <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-slate-950/95 backdrop-blur-xl border-b border-slate-800/60 flex items-center px-4 gap-3">
+        <Link to="/Dashboard" className="flex items-center gap-2 shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center">
+            <Zap className="w-3.5 h-3.5 text-white" />
           </div>
-        </div>
+          <span className="font-bold text-sm hidden sm:block tracking-tight">Profit Engine</span>
+        </Link>
 
-        {/* Mobile Nav */}
-        {mobileMenuOpen && (
-          <nav className="md:hidden border-t border-slate-800 bg-slate-950 px-4 py-3 grid grid-cols-2 gap-1">
-            {allNav.map(({ path, icon: Icon, label }) => {
-              const isActive = location.pathname === path;
-              return (
-                <Link key={path} to={path} onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive ? 'bg-slate-800 text-emerald-400' : 'text-slate-500 hover:text-white hover:bg-slate-900'
-                  }`}>
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </Link>
-              );
-            })}
-          </nav>
-        )}
+        {/* Desktop Dept Nav */}
+        <nav className="hidden md:flex items-center gap-0.5 ml-4 flex-1">
+          {DEPARTMENTS.map(({ path, icon: Icon, label, color, activeColor, activeBg, badge }) => {
+            const isActive = location.pathname === path || (path !== '/Dashboard' && location.pathname.startsWith(path));
+            return (
+              <Link key={path} to={path}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  isActive ? `${activeBg} ${activeColor}` : `${color} hover:text-white hover:bg-slate-900`
+                }`}>
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+                {badge && !isActive && <span className={`w-1.5 h-1.5 rounded-full ${badge} animate-pulse opacity-70`} />}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="hidden md:block">
+            <ActiveIdentityBanner />
+          </div>
+          {QUICK_LINKS.map(({ path, icon: Icon, label }) => (
+            <Link key={path} to={path}
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-900 transition-colors">
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </Link>
+          ))}
+          <button onClick={() => setMobileOpen(v => !v)} className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white">
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </header>
+
+      {/* Mobile Nav */}
+      {mobileOpen && (
+        <nav className="fixed top-14 left-0 right-0 z-40 bg-slate-950 border-b border-slate-800 px-4 py-3 grid grid-cols-2 gap-1.5 md:hidden">
+          {DEPARTMENTS.map(({ path, icon: Icon, label, color, activeColor, activeBg }) => {
+            const isActive = location.pathname === path;
+            return (
+              <Link key={path} to={path} onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive ? `${activeBg} ${activeColor}` : `${color} hover:text-white hover:bg-slate-900`
+                }`}>
+                <Icon className="w-4 h-4" />
+                {label}
+              </Link>
+            );
+          })}
+          {QUICK_LINKS.map(({ path, icon: Icon, label }) => (
+            <Link key={path} to={path} onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-900">
+              <Icon className="w-4 h-4" />
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       <main className="pt-14 min-h-screen">
         <Outlet />

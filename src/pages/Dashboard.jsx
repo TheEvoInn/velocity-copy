@@ -124,19 +124,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Top Row: Wallet + Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="md:col-span-2 lg:col-span-1">
-          <WalletCard 
-            balance={goals.wallet_balance || 0} 
-            totalEarned={goals.total_earned || 0}
-            todayEarned={todayEarned}
-          />
-        </div>
-        <MetricCard icon={Target} label="Active Opps" value={activeOpps.length} sublabel="being tracked" color="amber" />
-        <MetricCard icon={TrendingUp} label="Completed Today" value={completedToday} sublabel="opportunities" color="emerald" />
-        <MetricCard icon={BarChart3} label="Total Scanned" value={opportunities.length} sublabel="all time" color="blue" />
-      </div>
+      {/* Top Row: Live Real-Time Metrics */}
+      <LiveMetricsBar goals={goals} />
 
       {/* Dual Stream Progress */}
       {(aiEarnedToday > 0 || userEarnedToday > 0) && (

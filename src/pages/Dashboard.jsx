@@ -24,6 +24,8 @@ import RiskComplianceDashboard from '../components/risk/RiskComplianceDashboard'
 import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard';
 import InsightsDashboard from '../components/insights/InsightsDashboard';
 import { usePersistentUserData } from '../hooks/usePersistentUserData';
+import { useRealtimeNotifications } from '../hooks/useRealtimeNotifications';
+import NotificationPermissionBanner from '../components/notifications/NotificationPermissionBanner';
 
 export default function Dashboard() {
   const [selectedOpp, setSelectedOpp] = useState(null);

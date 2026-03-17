@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
 
     // ── batch_execute_opportunities ────────────────────────────────────────────
     if (action === 'batch_execute_opportunities') {
-      const { filter_criteria, max_count } = await req.json();
+      const { filter_criteria, max_count } = body;
 
       // Fetch opportunities matching criteria
       const opps = await base44.asServiceRole.entities.Opportunity.filter(

@@ -1,38 +1,18 @@
 import React from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
 import { Wallet, Clock, Play, CheckCircle2, AlertCircle, TrendingUp, DollarSign, Zap } from 'lucide-react';
 
-export default function LiveMetricsBar({ goals = {} }) {
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['live_metrics_transactions'],
-    queryFn: () => base44.entities.Transaction.list('-created_date', 200),
-    refetchInterval: 10000,
-  });
+export default function LiveMetricsBar({ goals = {}, transactions = [], opportunities = [], tasks = [] }) {
+  const today = new Date().toDateString();
 
-  const { data: opportunities = [] } = useQuery({
-    queryKey: ['live_metrics_opportunities'],
-    queryFn: () => base44.entities.Opportunity.list('-created_date', 300),
-    refetchInterval: 8000,
-  });
-
-  const { data: tasks = [] } = useQuery({
-    queryKey: ['live_metrics_tasks'],
-    queryFn: () => base44.entities.TaskExecutionQueue.list('-created_date', 200),
-    refetchInterval: 8000,
-  });
-
-  // Earnings
+  // Earnings from live transaction data
   const incomeTxs = transactions.filter(t => t.type === 'income');
   const totalEarned = incomeTxs.reduce((sum, t) => sum + (t.net_amount ?? t.amount ?? 0), 0);
-  const walletBalance = goals.wallet_balance ?? totalEarned;
-
-  const today = new Date().toDateString();
   const todayEarned = incomeTxs
     .filter(t => new Date(t.created_date).toDateString() === today)
     .reduce((sum, t) => sum + (t.net_amount ?? t.amount ?? 0), 0);
+  const walletBalance = goals.wallet_balance > 0 ? goals.wallet_balance : totalEarned;
 
-  // Opportunities pipeline
+  // Opportunity pipeline
   const oppQueued    = opportunities.filter(o => o.status === 'queued').length;
   const oppExecuting = opportunities.filter(o => ['executing', 'reviewing'].includes(o.status)).length;
   const oppSubmitted = opportunities.filter(o => o.status === 'submitted').length;
@@ -44,6 +24,14 @@ export default function LiveMetricsBar({ goals = {} }) {
   const taskProcessing = tasks.filter(t => ['processing', 'navigating', 'filling', 'submitting', 'understanding'].includes(t.status)).length;
   const taskCompleted  = tasks.filter(t => t.status === 'completed').length;
   const taskFailed     = tasks.filter(t => ['failed', 'needs_review'].includes(t.status)).length;
+
+  // Pipeline estimated value
+  const pipelineValue = opportunities
+    .filter(o => ['queued', 'executing', 'reviewing', 'submitted'].includes(o.status))
+    .reduce((sum, o) => sum + (((o.profit_estimate_low || 0) + (o.profit_estimate_high || 0)) / 2), 0);
+
+  const dailyTarget = goals.daily_target || 1000;
+  const dailyPct = Math.min(100, (todayEarned / dailyTarget) * 100);
 
   const metrics = [
     {
@@ -58,14 +46,32 @@ export default function LiveMetricsBar({ goals = {} }) {
     {
       label: 'Total Earned',
       value: `$${totalEarned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      sublabel: `${incomeTxs.length} transactions`,
+      sublabel: `${incomeTxs.length} income transactions`,
       icon: DollarSign,
       color: 'text-blue-400',
       bg: 'from-blue-950/50 to-slate-900/40 border-blue-900/30',
       pulse: false,
     },
     {
-      label: 'Opps Queued',
+      label: "Today's Profit",
+      value: `$${todayEarned.toFixed(2)}`,
+      sublabel: `${dailyPct.toFixed(0)}% of $${dailyTarget} target`,
+      icon: TrendingUp,
+      color: 'text-violet-400',
+      bg: 'from-violet-950/50 to-slate-900/40 border-violet-900/30',
+      pulse: false,
+    },
+    {
+      label: 'Pipeline Value',
+      value: `$${pipelineValue.toFixed(0)}`,
+      sublabel: `${oppQueued + oppExecuting + oppSubmitted} active opps`,
+      icon: Zap,
+      color: 'text-cyan-400',
+      bg: 'from-cyan-950/40 to-slate-900/40 border-cyan-900/20',
+      pulse: taskProcessing > 0,
+    },
+    {
+      label: 'Queued',
       value: oppQueued,
       sublabel: `${taskQueued} tasks waiting`,
       icon: Clock,
@@ -96,30 +102,9 @@ export default function LiveMetricsBar({ goals = {} }) {
       value: oppFailed,
       sublabel: `${taskFailed} needs review`,
       icon: AlertCircle,
-      color: 'text-red-400',
-      bg: 'from-red-950/40 to-slate-900/40 border-red-900/20',
+      color: taskFailed > 0 ? 'text-red-400' : 'text-slate-500',
+      bg: taskFailed > 0 ? 'from-red-950/40 to-slate-900/40 border-red-900/20' : 'from-slate-800/30 to-slate-900/40 border-slate-700/30',
       pulse: taskFailed > 0,
-    },
-    {
-      label: 'Today\'s Profit',
-      value: `$${todayEarned.toFixed(2)}`,
-      sublabel: `${goals.daily_target ? Math.min(((todayEarned / goals.daily_target) * 100), 100).toFixed(0) : 0}% of daily target`,
-      icon: TrendingUp,
-      color: 'text-violet-400',
-      bg: 'from-violet-950/50 to-slate-900/40 border-violet-900/30',
-      pulse: false,
-    },
-    {
-      label: 'Pipeline Value',
-      value: `$${opportunities
-        .filter(o => ['queued', 'executing', 'reviewing', 'submitted'].includes(o.status))
-        .reduce((sum, o) => sum + ((o.profit_estimate_low + o.profit_estimate_high) / 2 || 0), 0)
-        .toFixed(0)}`,
-      sublabel: 'estimated in queue',
-      icon: Zap,
-      color: 'text-cyan-400',
-      bg: 'from-cyan-950/40 to-slate-900/40 border-cyan-900/20',
-      pulse: false,
     },
   ];
 

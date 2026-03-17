@@ -1,8 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
 /**
- * Scheduled function that runs every 5 minutes to process pending retries
- * Checks if scheduled retry time has arrived and re-queues tasks
+ * Scheduled function that runs every 5 minutes to process pending retries.
+ * Checks if scheduled retry time has arrived and re-queues tasks.
+ * Last redeployed: 2026-03-17
  */
 Deno.serve(async (req) => {
   try {

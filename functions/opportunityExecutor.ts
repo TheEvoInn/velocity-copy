@@ -16,6 +16,12 @@ Deno.serve(async (req) => {
       return await handleAutomationTrigger(base44, body);
     }
 
+    // --- Scheduled automation trigger (from "Complete Failed Tasks Retry" automation) ---
+    // Payload shape: { automation: { id, name, type }, args: {...} }
+    if (body.automation && body.automation.type === 'scheduled') {
+      return await handleScheduledRetry(base44);
+    }
+
     // --- Direct invocation (from frontend / other functions) ---
     const user = await base44.auth.me();
     if (!user) {

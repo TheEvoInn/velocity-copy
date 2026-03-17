@@ -38,52 +38,64 @@ export default function Dashboard() {
     queryKey: ['userGoals'],
     queryFn: () => base44.entities.UserGoals.list(),
     initialData: [],
+    refetchInterval: 30000,
   });
 
+  // Fetch ALL opportunities for full pipeline view
   const { data: opportunities = [] } = useQuery({
     queryKey: ['opportunities'],
-    queryFn: () => base44.entities.Opportunity.list('-overall_score', 10),
+    queryFn: () => base44.entities.Opportunity.list('-created_date', 500),
     initialData: [],
+    refetchInterval: 10000,
   });
 
+  // Fetch ALL transactions for real earnings data
   const { data: transactions = [] } = useQuery({
     queryKey: ['transactions'],
-    queryFn: async () => {
-      const user = await base44.auth.me();
-      if (!user?.email) return [];
-      return base44.entities.Transaction.filter({
-        created_by: user.email
-      }, '-created_date', 50);
-    },
+    queryFn: () => base44.entities.Transaction.list('-created_date', 500),
     initialData: [],
+    refetchInterval: 10000,
+  });
+
+  // Fetch task execution queue
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['taskQueue'],
+    queryFn: () => base44.entities.TaskExecutionQueue.list('-created_date', 200),
+    initialData: [],
+    refetchInterval: 8000,
   });
 
   const { data: autopilotLogs = [] } = useQuery({
     queryKey: ['autopilotLogs'],
-    queryFn: async () => {
-      const user = await base44.auth.me();
-      if (!user?.email) return [];
-      return base44.entities.ActivityLog.filter({
-        created_by: user.email,
-        action_type: { $in: ['scan', 'opportunity_found', 'alert'] }
-      }, '-created_date', 20);
-    },
+    queryFn: () => base44.entities.ActivityLog.list('-created_date', 30),
     initialData: [],
+    refetchInterval: 15000,
   });
 
   const goals = userGoals[0] || {};
-  // Check both database (UserGoals) and persistent user data for onboarding completion
   const hasCompletedOnboarding = userGoals.length > 0 || userData?.onboarding_completed === true;
   const needsOnboarding = !goalsLoading && !hasCompletedOnboarding;
 
-  // Calculate today's earnings split by stream
+  // --- Real-time earnings derived from Transaction entity ---
   const today = new Date().toDateString();
-  const todayTxs = transactions.filter(t => t.type === 'income' && new Date(t.created_date).toDateString() === today);
-  const todayEarned = todayTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
-  const aiEarnedToday = todayTxs.filter(t => t.description?.startsWith('[AI Autopilot]')).reduce((sum, t) => sum + (t.amount || 0), 0);
-  const userEarnedToday = todayTxs.filter(t => !t.description?.startsWith('[AI Autopilot]')).reduce((sum, t) => sum + (t.amount || 0), 0);
+  const incomeTxs = transactions.filter(t => t.type === 'income');
+  const todayTxs = incomeTxs.filter(t => new Date(t.created_date).toDateString() === today);
+  const todayEarned = todayTxs.reduce((sum, t) => sum + (t.net_amount ?? t.amount ?? 0), 0);
+  const totalEarned = incomeTxs.reduce((sum, t) => sum + (t.net_amount ?? t.amount ?? 0), 0);
 
-  const activeOpps = opportunities.filter(o => o.status === 'new' || o.status === 'executing');
+  // Wallet balance: use goals if set, otherwise derive from transactions
+  const walletBalance = goals.wallet_balance > 0 ? goals.wallet_balance : totalEarned;
+
+  // AI vs User split from transaction descriptions
+  const aiEarnedToday = todayTxs.filter(t => t.description?.startsWith('[AI Autopilot]')).reduce((sum, t) => sum + (t.net_amount ?? t.amount ?? 0), 0);
+  const userEarnedToday = todayTxs.filter(t => !t.description?.startsWith('[AI Autopilot]')).reduce((sum, t) => sum + (t.net_amount ?? t.amount ?? 0), 0);
+
+  // All-time AI vs User split
+  const aiTotalEarned = goals.ai_total_earned ?? incomeTxs.filter(t => t.description?.startsWith('[AI Autopilot]')).reduce((sum, t) => sum + (t.net_amount ?? t.amount ?? 0), 0);
+  const userTotalEarned = goals.user_total_earned ?? incomeTxs.filter(t => !t.description?.startsWith('[AI Autopilot]')).reduce((sum, t) => sum + (t.net_amount ?? t.amount ?? 0), 0);
+
+  // Opportunities pipeline counts (all statuses)
+  const activeOpps = opportunities.filter(o => ['new', 'queued', 'reviewing', 'executing'].includes(o.status));
   const completedToday = opportunities.filter(o => o.status === 'completed' && new Date(o.updated_date).toDateString() === today).length;
 
   useEffect(() => {

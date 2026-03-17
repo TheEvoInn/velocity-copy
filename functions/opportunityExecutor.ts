@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
 
     // --- Scheduled automation trigger (from "Complete Failed Tasks Retry" automation) ---
     // Payload shape: { automation: { id, name, type }, args: {...} }
-    if (body.automation && body.automation.type === 'scheduled') {
+    if (body.automation) {
       return await handleScheduledRetry(base44);
     }
 

@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [showTxForm, setShowTxForm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { userData } = usePersistentUserData();
+  useRealtimeNotifications();
   const queryClient = useQueryClient();
 
   const { data: userGoals = [], isLoading: goalsLoading } = useQuery({

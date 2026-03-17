@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
 
     // ── execute_opportunity_end_to_end ──────────────────────────────────────────
     if (action === 'execute_opportunity_end_to_end') {
-      const { opportunity_id, force_identity_id } = await req.json();
+      const { opportunity_id, force_identity_id } = body;
 
       // Step 1: Queue agent task
       const taskRes = await base44.asServiceRole.functions.invoke('unifiedAutopilot', {

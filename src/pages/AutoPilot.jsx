@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bot, Play, RefreshCw, FileText, Power, Zap, Radio } from 'lucide-react';
+import { Bot, Play, RefreshCw, FileText, Power, Zap, Radio, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Link } from 'react-router-dom';

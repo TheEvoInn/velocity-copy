@@ -203,7 +203,7 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
           );
         })}
 
-        <div className="mt-auto pt-4 border-t border-slate-800/60">
+        <div className="mt-auto pt-4 border-t border-slate-800/60 space-y-2">
           <Link to="/Chat" onClick={onClose}
             className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all">
             <MessageSquare className="w-4 h-4 text-violet-400" />

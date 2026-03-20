@@ -85,14 +85,31 @@ export default function AutoPilot() {
 
   const runManualCycle = async () => {
     setIsManualRunning(true);
+    setLastRunResult(null);
     try {
-      await base44.functions.invoke('unifiedOrchestrator', { action: 'full_cycle' });
+      const res = await base44.functions.invoke('unifiedOrchestrator', { action: 'full_cycle' });
+      setLastRunResult(res?.data);
       await refetchTasks();
       qc.invalidateQueries({ queryKey: ['transactions'] });
       qc.invalidateQueries({ queryKey: ['userGoals'] });
       refetchState();
     } finally {
       setIsManualRunning(false);
+    }
+  };
+
+  const runForceRun = async () => {
+    setIsForceRunning(true);
+    setLastRunResult(null);
+    try {
+      const res = await base44.functions.invoke('unifiedOrchestrator', { action: 'force_run' });
+      setLastRunResult(res?.data);
+      await refetchTasks();
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['userGoals'] });
+      refetchState();
+    } finally {
+      setIsForceRunning(false);
     }
   };
 

@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Shield, TrendingDown, CheckCircle, Zap, AlertTriangle } from 'lucide-react';
+import { AlertCircle, Shield, TrendingDown, CheckCircle, Zap, AlertTriangle, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function RiskComplianceDashboard() {
+  const navigate = useNavigate();
   const [selectedOpp, setSelectedOpp] = useState(null);
   const [riskAnalysis, setRiskAnalysis] = useState(null);
   const [fraudAnalysis, setFraudAnalysis] = useState(null);
+  const [approvingOppId, setApprovingOppId] = useState(null);
   const queryClient = useQueryClient();
 
   // Fetch opportunities

@@ -195,19 +195,8 @@ Deno.serve(async (req) => {
       scanSummary.push({ source: 'n8n_mcp', found: mcpOpps.length });
     }
 
-    // ── Upwork API (if token set) ─────────────────────────────────────────────
-    if (Deno.env.get('UPWORK_ACCESS_TOKEN') && Deno.env.get('UPWORK_ACCESS_TOKEN') !== '') {
-      try {
-        const upworkRes = await base44.asServiceRole.functions.invoke('upworkAPI', {
-          action: 'search_jobs',
-          payload: { query: 'remote freelance', limit: 10 },
-        });
-        const upworkData = upworkRes?.data || upworkRes;
-        scanSummary.push({ source: 'upwork_api', found: upworkData?.total || 0, saved: upworkData?.saved || 0 });
-      } catch (e) {
-        scanSummary.push({ source: 'upwork_api', error: e.message });
-      }
-    }
+    // ── Upwork API (enabled when UPWORK_ACCESS_TOKEN is configured) ───────────
+    // Add UPWORK_ACCESS_TOKEN to Secrets to enable Upwork job scanning
 
     // ── Save AI web search + n8n opps to database ────────────────────────────
     let totalSaved = 0;

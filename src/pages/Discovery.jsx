@@ -16,6 +16,7 @@ import OpportunityCard from '@/components/dashboard/OpportunityCard';
 import OpportunityDetail from '@/components/opportunity/OpportunityDetail';
 import RealTimeAlertSystem from '@/components/scanning/RealTimeAlertSystem';
 import OpportunityAnalysisPanel from '@/components/scanning/OpportunityAnalysisPanel';
+import RealJobScanPanel from '@/components/discovery/RealJobScanPanel';
 
 const STATUS_COLORS = {
   new: 'bg-amber-500/20 text-amber-300 border-amber-500/30',

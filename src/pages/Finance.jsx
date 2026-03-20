@@ -14,6 +14,7 @@ import TransactionForm from '@/components/wallet/TransactionForm';
 import ProfitChart from '@/components/dashboard/ProfitChart';
 import FinancialDashboard from '@/components/financial/FinancialDashboard';
 import RiskComplianceDashboard from '@/components/risk/RiskComplianceDashboard';
+import PayoutVerifierPanel from '@/components/wallet/PayoutVerifierPanel';
 import { Link } from 'react-router-dom';
 
 const TX_TYPE_CONFIG = {

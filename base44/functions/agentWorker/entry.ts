@@ -7,7 +7,31 @@ import OpenAI from 'npm:openai@4.47.1';
  * NO fake simulations. All content is real and usable.
  */
 
-const openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') });
+let _openai = null;
+function getOpenAI() {
+  if (!_openai) _openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') });
+  return _openai;
+}
+
+// Helper: call OpenAI with fallback to base44 InvokeLLM
+async function llmComplete(base44, messages, maxTokens = 1500) {
+  try {
+    const openai = getOpenAI();
+    const res = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages,
+      max_tokens: maxTokens,
+    });
+    return res.choices[0].message.content;
+  } catch (e) {
+    console.log(`[AgentWorker] OpenAI failed (${e.message}), using InvokeLLM fallback`);
+    const systemMsg = messages.find(m => m.role === 'system')?.content || '';
+    const userMsg = messages.find(m => m.role === 'user')?.content || '';
+    return await base44.asServiceRole.integrations.Core.InvokeLLM({
+      prompt: `${systemMsg}\n\n${userMsg}`,
+    });
+  }
+}
 
 Deno.serve(async (req) => {
   try {

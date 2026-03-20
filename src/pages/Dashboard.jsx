@@ -2,7 +2,7 @@
  * COMMAND CENTER — Cross-department hub
  * Shows unified real-time status from all 4 departments.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDepartmentSync } from '@/hooks/useDepartmentSync';

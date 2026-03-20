@@ -115,6 +115,14 @@ export default function Execution() {
         </div>
       )}
 
+      {/* Instant Task — Real browser automation */}
+      <div className="mb-5">
+        <InstantTaskPanel
+          opportunities={opportunities || []}
+          onTaskComplete={() => queryClient.invalidateQueries({ queryKey: ['taskQueue'] })}
+        />
+      </div>
+
       {/* Task Queue */}
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 mb-5">
         <div className="flex items-center justify-between mb-4">

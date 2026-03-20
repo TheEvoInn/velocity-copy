@@ -201,7 +201,10 @@ export default function IdentityForm({ identity, onSave, onCancel }) {
         </div>
         <div className="flex-1 space-y-2">
           <Field label="Identity Name *">
-            <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Alex Mercer"
+            <Input value={form.name}
+              onChange={e => set('name', e.target.value)}
+              onBlur={() => autoGenerateAll(form)}
+              placeholder="e.g. Alex Mercer"
               className="bg-slate-800 border-slate-700 text-white text-sm h-9" />
           </Field>
           <Field label="Role Label">

@@ -51,10 +51,16 @@ const accountTypes = {
 };
 
 export default function AccountLinker({ identity, onClose, onSuccess }) {
+  const [selectedAccountType, setSelectedAccountType] = useState('freelance');
   const [selectedPlatform, setSelectedPlatform] = useState('upwork');
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [useExistingAccount, setUseExistingAccount] = useState(false);
-  const [userAccountData, setUserAccountData] = useState({ username: '' });
+  const [userAccountData, setUserAccountData] = useState({});
+
+  const currentType = accountTypes[selectedAccountType];
+  const availablePlatforms = currentType.platforms.length > 0 
+    ? currentType.platforms 
+    : selectedPlatform ? [selectedPlatform] : [];
 
   // Fetch linked accounts
   const { data: linkedAccounts, refetch } = useQuery({

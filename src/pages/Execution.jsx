@@ -15,6 +15,7 @@ import AutopilotPanel from '@/components/autopilot/AutopilotPanel';
 import DualStreamCard from '@/components/autopilot/DualStreamCard';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import InstantTaskPanel from '@/components/execution/InstantTaskPanel';
+import AICreativeStudio from '@/components/creative/AICreativeStudio';
 
 const STATUS_CONFIG = {
   queued:     { color: 'text-amber-400',   bg: 'bg-amber-500/15 border-amber-500/25',   label: 'Queued' },

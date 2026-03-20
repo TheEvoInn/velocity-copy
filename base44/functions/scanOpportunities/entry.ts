@@ -20,7 +20,12 @@ async function scanViaAIWebSearch(base44, categories) {
       const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
         prompt: `Search the internet right now for 3 real, currently active, legitimate ${cat.label} as of ${now.toISOString().slice(0, 10)}.
 
-For each, return a JSON object with:
+CRITICAL REQUIREMENT — DIGITAL ONLY:
+Only include opportunities that can be completed 100% online/digitally with NO physical requirements whatsoever.
+EXCLUDE anything that requires: in-person attendance, physical mail/shipping, physical documents, a physical product, in-store visit, phone calls, or any offline action.
+INCLUDE only: online forms, digital submissions, email applications, web-based contests, online sweepstakes entries, digital grant applications, remote/online freelance work.
+
+For each qualifying opportunity, return a JSON object with:
 - title: exact name of the opportunity
 - description: 1-2 sentences explaining what it is and how to earn
 - url: direct link to apply/enter (must be a real, working URL)
@@ -29,9 +34,10 @@ For each, return a JSON object with:
 - profit_high: maximum USD you can earn (number)
 - time_sensitivity: one of immediate/hours/days/weeks/ongoing
 - deadline: ISO date string if known, otherwise null
+- digital_completion: true (only include if this is true)
 
-Only include opportunities that are definitively REAL and ACTIVE TODAY.
-If you cannot find 3 real ones, return fewer rather than invent any.
+Only include opportunities that are definitively REAL, ACTIVE TODAY, and 100% DIGITALLY COMPLETABLE.
+If you cannot find 3 qualifying ones, return fewer rather than invent any or include non-digital ones.
 Return ONLY a JSON object: { "opportunities": [...] }`,
         add_context_from_internet: true,
         response_json_schema: {

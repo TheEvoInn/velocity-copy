@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, Mail, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Mail, Clock, AlertCircle, Loader } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function EmailReviewQueue() {

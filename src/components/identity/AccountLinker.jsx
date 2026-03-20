@@ -1,11 +1,54 @@
 import React, { useState } from 'react';
-import { X, Plus, AlertCircle } from 'lucide-react';
+import { X, Plus, AlertCircle, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 
-const platformOptions = ['upwork', 'fiverr', 'freelancer', 'guru', 'toptal', 'prize_portal', 'grant_site'];
+const accountTypes = {
+  freelance: {
+    label: 'Freelance Platforms',
+    platforms: ['upwork', 'fiverr', 'freelancer', 'guru', 'toptal', '99designs'],
+    fields: ['username', 'password'],
+  },
+  ecommerce: {
+    label: 'E-Commerce Platforms',
+    platforms: ['ebay', 'amazon', 'etsy', 'shopify'],
+    fields: ['username', 'password'],
+  },
+  email: {
+    label: 'Email Providers',
+    platforms: ['gmail', 'outlook', 'yahoo'],
+    fields: ['email', 'password', 'app_password'],
+  },
+  banking: {
+    label: 'Banking Institutions',
+    platforms: ['chase', 'wells_fargo', 'bank_of_america', 'paypal', 'stripe', 'revolut'],
+    fields: ['username', 'password', 'account_number', 'routing_number'],
+  },
+  social: {
+    label: 'Social Media',
+    platforms: ['twitter', 'linkedin', 'instagram', 'tiktok', 'facebook'],
+    fields: ['username', 'password'],
+  },
+  content: {
+    label: 'Content & Subscription',
+    platforms: ['medium', 'substack', 'patreon', 'youtube'],
+    fields: ['username', 'password', 'api_key'],
+  },
+  grants: {
+    label: 'Grant & Prize Platforms',
+    platforms: ['grants_gov', 'prize_portal', 'contest_site'],
+    fields: ['username', 'password', 'tax_id'],
+  },
+  other: {
+    label: 'Custom URL Accounts',
+    platforms: [],
+    fields: ['website_url', 'username', 'password', 'notes'],
+  },
+};
 
 export default function AccountLinker({ identity, onClose, onSuccess }) {
   const [selectedPlatform, setSelectedPlatform] = useState('upwork');

@@ -179,10 +179,19 @@ export default function AutoPilot() {
           </Button>
 
           <Button size="sm"
-            onClick={runManualCycle} disabled={isManualRunning}
+            onClick={runManualCycle} disabled={isManualRunning || isForceRunning}
             className="btn-cosmic text-white text-xs h-9 gap-1.5">
             <Play className={`w-3.5 h-3.5 ${isManualRunning ? 'animate-pulse' : ''}`} />
             {isManualRunning ? 'Running...' : 'Run Cycle'}
+          </Button>
+
+          <Button size="sm"
+            onClick={runForceRun} disabled={isManualRunning || isForceRunning}
+            className="text-white text-xs h-9 gap-1.5"
+            style={{ background: 'linear-gradient(135deg, #dc2626, #ea580c)', border: '1px solid rgba(220,38,38,0.5)' }}
+            title="Force Run: Bypasses scheduling, forces execution of all queued tasks immediately">
+            <Flame className={`w-3.5 h-3.5 ${isForceRunning ? 'animate-pulse' : ''}`} />
+            {isForceRunning ? 'Force Running...' : '⚡ Force Run'}
           </Button>
 
           <Link to="/AutopilotLogs">

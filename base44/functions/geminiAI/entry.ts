@@ -207,7 +207,7 @@ Current type: ${type}
 
 Write compelling, conversion-focused content. No placeholder text.`;
 
-      const result = await callGemini(PRO_MODEL, prompt, null, null, 0.85);
+      const result = await callAI(PRO_MODEL, prompt, null, null, 0.85);
       return Response.json({ success: true, content: result });
     }
 

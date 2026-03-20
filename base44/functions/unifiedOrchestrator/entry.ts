@@ -129,12 +129,29 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
   };
 
   try {
-    // 1. Ensure active identity
+    // 1. Ensure active identity (inline — avoids cross-function auth issues)
     addLog('identity_check', 'running', 'Ensuring active identity exists');
-    const identityRes = await base44.asServiceRole.functions.invoke('autopilotOrchestrator', {
-      action: 'ensure_identity'
-    });
-    result.identity_check = identityRes.data?.identity?.name || 'unknown';
+    let activeIdentity = null;
+    const activeIds = await base44.asServiceRole.entities.AIIdentity.filter({ is_active: true }, null, 1);
+    activeIdentity = activeIds[0];
+    if (!activeIdentity) {
+      const allIds = await base44.asServiceRole.entities.AIIdentity.list('-created_date', 1);
+      if (allIds.length) {
+        activeIdentity = await base44.asServiceRole.entities.AIIdentity.update(allIds[0].id, { is_active: true });
+      } else {
+        activeIdentity = await base44.asServiceRole.entities.AIIdentity.create({
+          name: 'Default Autopilot Agent',
+          role_label: 'Freelancer',
+          email: user?.email || '',
+          is_active: true,
+          skills: ['general', 'writing', 'research', 'communication'],
+          bio: 'Autonomous agent optimized for profit generation',
+          communication_tone: 'professional'
+        });
+        addLog('identity_check', 'info', 'Created default identity');
+      }
+    }
+    result.identity_check = activeIdentity?.name || 'unknown';
     addLog('identity_check', 'success', `Identity ready: ${result.identity_check}`);
 
     // 2. Run opportunity scan

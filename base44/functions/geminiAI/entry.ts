@@ -131,7 +131,7 @@ Return a JSON object with:
 - time_estimate: string (how long to execute)
 - difficulty: "easy"|"medium"|"hard"`;
 
-      const result = await callGemini(PRO_MODEL, prompt, 'You are an expert profit opportunity analyst. Always return valid JSON.', true, 0.3);
+      const result = await callAI(PRO_MODEL, prompt, 'You are an expert profit opportunity analyst. Always return valid JSON.', true, 0.3);
       return Response.json({ success: true, analysis: result });
     }
 

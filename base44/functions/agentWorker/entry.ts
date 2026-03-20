@@ -183,13 +183,11 @@ Your bio: ${identity.bio || 'Experienced professional writer with expertise in m
 Your skills: ${(identity.skills || []).join(', ') || 'writing, editing, research, SEO'}
 Communication tone: ${identity.communication_tone || 'professional'}`;
 
-  const deliverable = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: `You have been assigned this writing task:
+  const content = await llmComplete(base44, [
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: `You have been assigned this writing task:
 
 Title: ${opp.title}
 Platform: ${opp.platform}
@@ -200,12 +198,8 @@ URL: ${opp.url}
 Write the complete deliverable for this assignment now. This is a REAL paid assignment. 
 Produce publication-ready work that meets professional standards.
 Include a cover note at the top explaining your approach, then the full content.`
-      }
-    ],
-    max_tokens: 2000,
-  });
-
-  const content = deliverable.choices[0].message.content;
+    }
+  ], 2000);
   log('content_generated', 'success', `Generated ${content.length} character deliverable`);
 
   // Generate submission cover letter/proposal if needed

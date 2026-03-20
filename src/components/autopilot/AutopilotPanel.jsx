@@ -25,7 +25,13 @@ export default function AutopilotPanel({ goals, onUpdate }) {
   const queryClient = useQueryClient();
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.UserGoals.update(goals.id, data),
+    mutationFn: (data) => {
+      if (goals?.id) {
+        return base44.entities.UserGoals.update(goals.id, data);
+      } else {
+        return base44.entities.UserGoals.create(data);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });
       if (onUpdate) onUpdate();
@@ -33,7 +39,7 @@ export default function AutopilotPanel({ goals, onUpdate }) {
   });
 
   const toggleAutopilot = () => {
-    updateMutation.mutate({ autopilot_enabled: !goals.autopilot_enabled });
+    updateMutation.mutate({ autopilot_enabled: !goals?.autopilot_enabled });
   };
 
   const toggleCategory = (cat) => {

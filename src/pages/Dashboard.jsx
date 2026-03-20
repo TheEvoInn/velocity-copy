@@ -125,14 +125,16 @@ export default function Dashboard() {
             <p className="text-xs text-slate-500 tracking-wide">All departments · Real-time sync</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button size="sm" onClick={() => setShowTxForm(true)}
             className="bg-slate-800/80 hover:bg-slate-700 text-white text-xs h-8 gap-1.5 border border-slate-700/60">
-            <Plus className="w-3.5 h-3.5" /> Log Transaction
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Log Transaction</span>
           </Button>
           <Link to="/Chat">
             <Button size="sm" className="btn-cosmic text-white text-xs h-8 gap-1.5">
-              <Zap className="w-3.5 h-3.5" /> Mission AI
+              <Zap className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Mission AI</span>
             </Button>
           </Link>
         </div>

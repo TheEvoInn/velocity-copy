@@ -40,6 +40,7 @@ import AdminControlPanel from './pages/AdminControlPanel';
 import BackgroundExecutionHub from './pages/BackgroundExecutionHub';
 import EmailOutreachHub from './pages/EmailOutreachHub';
 import UserAccessPage from './pages/UserAccessPage';
+import TaskQueueApproval from './pages/TaskQueueApproval';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

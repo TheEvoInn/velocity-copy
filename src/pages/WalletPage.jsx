@@ -142,6 +142,11 @@ export default function WalletPage() {
         </div>
       </div>
 
+      {/* Verify & Deposit Real Payments */}
+      <div className="mb-4">
+        <PaymentVerifier onVerified={() => { queryClient.invalidateQueries({ queryKey: ['transactions'] }); queryClient.invalidateQueries({ queryKey: ['userGoals'] }); }} />
+      </div>
+
       {/* Phase 8: Payout Management Dashboard */}
       <div className="mb-4">
         <PayoutDashboard />

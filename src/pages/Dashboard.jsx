@@ -148,7 +148,8 @@ export default function Dashboard() {
         <div className="flex flex-wrap gap-2 mb-4">
           {failedTasks > 0 && (
             <Link to="/Execution">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-red-950/30 border border-red-500/25 rounded-lg text-xs text-red-400">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-red-300"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 0 12px rgba(239,68,68,0.2)' }}>
                 <AlertTriangle className="w-3.5 h-3.5" />
                 {failedTasks} failed task{failedTasks > 1 ? 's' : ''} — click to review
               </div>
@@ -156,7 +157,8 @@ export default function Dashboard() {
           )}
           {reviewTasks > 0 && (
             <Link to="/Execution">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-950/30 border border-amber-500/25 rounded-lg text-xs text-amber-400">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-amber-300"
+                style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', boxShadow: '0 0 12px rgba(245,158,11,0.2)' }}>
                 <Clock className="w-3.5 h-3.5" />
                 {reviewTasks} task{reviewTasks > 1 ? 's' : ''} need review
               </div>
@@ -215,10 +217,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
           {/* Recent Opportunities */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
+          <div className="glass-card rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Target className="w-4 h-4 text-amber-400" />
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2 font-orbitron tracking-wide">
+                <span className="text-base">🔭</span>
                 Top Active Opportunities
               </h2>
               <Link to="/Discovery" className="text-xs text-amber-400/70 hover:text-amber-400 transition-colors flex items-center gap-1">
@@ -254,10 +256,10 @@ export default function Dashboard() {
           </div>
 
           {/* Active Tasks */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
+          <div className="glass-card rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-blue-400" />
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2 font-orbitron tracking-wide">
+                <span className="text-base">🚀</span>
                 Execution Pipeline
               </h2>
               <Link to="/Execution" className="text-xs text-blue-400/70 hover:text-blue-400 transition-colors flex items-center gap-1">
@@ -296,9 +298,9 @@ export default function Dashboard() {
             totalEarned={totalEarned}
             walletBalance={walletBalance}
           />
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-slate-400" />
+          <div className="glass-card rounded-2xl p-4">
+            <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2 font-orbitron tracking-wide">
+              <span className="text-base">✦</span>
               Live Activity
             </h3>
             <ActivityFeed logs={activityLogs} />

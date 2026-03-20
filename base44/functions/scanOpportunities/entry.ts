@@ -187,46 +187,62 @@ Deno.serve(async (req) => {
 
       await Promise.all(batch.map(async (source) => {
         try {
-          // Use OpenAI with web search context to find real current opportunities
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [
-              {
-                role: 'system',
-                content: `You are a real-time opportunity researcher. Today is ${today}. Find REAL, currently active opportunities on ${source.url_base} for: ${source.label}. Return only verifiable, real listings with accurate URLs. Never fabricate opportunities.`
-              },
-              {
-                role: 'user',
-                content: `Search ${source.name} right now for 3 real, active ${source.label} available today (${today}).
+          // Try OpenAI first, fall back to platform InvokeLLM
+          let parsed = [];
+          const promptText = `Search ${source.name} right now for 3 real, active ${source.label} available today (${today}).
 
-For each, return a JSON array of objects:
-[
-  {
-    "title": "exact title of the listing",
-    "description": "what needs to be done, deliverables, requirements",
-    "url": "direct link to the specific listing or contest page",
-    "profit_low": <number - minimum payout in USD>,
-    "profit_high": <number - maximum payout in USD>,
-    "deadline": "<ISO date or null>",
-    "requirements": "what skills/tools are needed",
-    "claim_type": "${source.claim_type}"
-  }
-]
+Return a JSON object with key "opportunities" containing an array of objects, each with:
+- title: exact title of the listing
+- description: what needs to be done, deliverables, requirements
+- url: direct link to the specific listing or contest page
+- profit_low: minimum payout in USD (number)
+- profit_high: maximum payout in USD (number)
+- deadline: ISO date string or null
+- requirements: what skills/tools are needed
 
-Only return real opportunities that exist right now. If you cannot find 3, return however many are real. Return ONLY the JSON array, no other text.`
-              }
-            ],
-            response_format: { type: 'json_object' },
-          });
+Only return real opportunities. If fewer than 3 exist, return what is real.`;
 
-          let parsed;
           try {
+            const openai = getOpenAI();
+            const completion = await openai.chat.completions.create({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: `You are a real-time opportunity researcher. Today is ${today}. Find REAL, currently active opportunities on ${source.url_base}. Return only verifiable listings with accurate URLs.` },
+                { role: 'user', content: promptText }
+              ],
+              response_format: { type: 'json_object' },
+            });
             const raw = completion.choices[0].message.content;
             const obj = JSON.parse(raw);
-            // Handle both array and {opportunities: []} formats
             parsed = Array.isArray(obj) ? obj : (obj.opportunities || obj.results || obj.listings || Object.values(obj)[0] || []);
-          } catch {
-            parsed = [];
+          } catch (openaiErr) {
+            console.log(`[Scan] OpenAI failed for ${source.name} (${openaiErr.message}), using InvokeLLM fallback`);
+            // Fallback to platform InvokeLLM with internet search
+            const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
+              prompt: `Today is ${today}. ${promptText}\n\nSearch the web for real current listings. Return JSON with "opportunities" array.`,
+              add_context_from_internet: true,
+              response_json_schema: {
+                type: 'object',
+                properties: {
+                  opportunities: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        title: { type: 'string' },
+                        description: { type: 'string' },
+                        url: { type: 'string' },
+                        profit_low: { type: 'number' },
+                        profit_high: { type: 'number' },
+                        deadline: { type: 'string' },
+                        requirements: { type: 'string' }
+                      }
+                    }
+                  }
+                }
+              }
+            });
+            parsed = result?.opportunities || [];
           }
 
           let sourceCreated = 0;

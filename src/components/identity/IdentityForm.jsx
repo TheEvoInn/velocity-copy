@@ -206,11 +206,17 @@ export default function IdentityForm({ identity, onSave, onCancel }) {
 
       {/* Tagline + Bio */}
       <Field label="Tagline / Headline" hint="Used on platform profiles">
+        <div className="flex items-center gap-2 mb-1">
+          <MissionWriteButton field="tagline" identity={form} onResult={v => set('tagline', v)} />
+        </div>
         <Input value={form.tagline} onChange={e => set('tagline', e.target.value)}
           placeholder="Expert freelancer delivering quality results"
           className="bg-slate-800 border-slate-700 text-white text-xs h-8" />
       </Field>
       <Field label="Full Bio">
+        <div className="flex items-center gap-2 mb-1">
+          <MissionWriteButton field="bio" identity={form} onResult={v => set('bio', v)} />
+        </div>
         <textarea value={form.bio} onChange={e => set('bio', e.target.value)} rows={3}
           placeholder="Detailed professional bio used in proposals and profiles..."
           className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500/50 resize-none" />

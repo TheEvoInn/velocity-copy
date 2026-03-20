@@ -232,7 +232,7 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
           status: 'queued',
           task_execution_id: task.id,
           identity_id: identityId,
-          identity_name: activeIdentity?.name
+          identity_name: opp.identity_name || activeIdentity?.name
         });
 
         result.queued++;

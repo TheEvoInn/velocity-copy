@@ -26,6 +26,8 @@ export default function AutoPilot() {
   const [activeTab, setActiveTab] = useState('hud');
   const [isManualRunning, setIsManualRunning] = useState(false);
   const [isScanRunning, setIsScanRunning] = useState(false);
+  const [isForceRunning, setIsForceRunning] = useState(false);
+  const [lastRunResult, setLastRunResult] = useState(null);
   const qc = useQueryClient();
 
   const { data: userGoalsList = [] } = useQuery({

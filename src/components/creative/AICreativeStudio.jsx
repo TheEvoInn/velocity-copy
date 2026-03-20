@@ -27,7 +27,7 @@ export default function AICreativeStudio() {
 
   // Image Gen state
   const [imgPrompt, setImgPrompt] = useState('');
-  const [imgStyle, setImgStyle] = useState('hd');
+  const [imgStyle, setImgStyle] = useState('standard');
   const [imgResult, setImgResult] = useState(null);
   const [imgLoading, setImgLoading] = useState(false);
 

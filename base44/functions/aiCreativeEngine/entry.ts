@@ -48,7 +48,8 @@ async function generateImage({ prompt, style = 'hd' }) {
     body: formData,
   });
   const data = await res.json();
-  if (!res.ok || data.err) throw new Error(data.err || 'DeepAI image generation failed');
+  console.log('[generateImage] DeepAI response:', JSON.stringify(data).substring(0, 300));
+  if (!res.ok || data.err) throw new Error(data.err || `DeepAI error (${res.status}): ${JSON.stringify(data)}`);
 
   return Response.json({
     success: true,

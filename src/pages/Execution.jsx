@@ -145,7 +145,6 @@ export default function Execution() {
         </div>
         
         <div className="flex items-center justify-between mb-4">
-          <div></div>
           <div className="flex gap-1 bg-slate-800 rounded-lg p-0.5">
             {['all', 'queued', 'processing', 'completed', 'failed', 'needs_review'].map(s => (
               <button key={s} onClick={() => setStatusFilter(s)}

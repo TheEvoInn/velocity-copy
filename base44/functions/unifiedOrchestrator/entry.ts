@@ -347,8 +347,8 @@ async function executeQueuedTasks(base44, user, maxTasks = 3) {
         start_timestamp: new Date().toISOString()
       });
 
-      // Execute via agentWorker
-      const execRes = await base44.asServiceRole.functions.invoke('agentWorker', {
+      // Execute via agentWorker (use base44.functions not asServiceRole to pass auth token through)
+      const execRes = await base44.functions.invoke('agentWorker', {
         action: 'execute_task',
         payload: {
           task_id: task.id,

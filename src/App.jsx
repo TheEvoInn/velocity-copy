@@ -93,6 +93,7 @@ const AuthenticatedApp = () => {
         <Route path="/ExchangeConnectivity" element={<ExchangeConnectivity />} />
         <Route path="/AdminControlPanel" element={<AdminControlPanel />} />
         <Route path="/BackgroundExecutionHub" element={<BackgroundExecutionHub />} />
+        <Route path="/EmailOutreachHub" element={<EmailOutreachHub />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

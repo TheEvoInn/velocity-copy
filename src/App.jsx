@@ -97,6 +97,7 @@ const AuthenticatedApp = () => {
         <Route path="/BackgroundExecutionHub" element={<BackgroundExecutionHub />} />
         <Route path="/EmailOutreachHub" element={<EmailOutreachHub />} />
         <Route path="/UserAccessPage" element={<UserAccessPage />} />
+        <Route path="/TaskQueueApproval" element={<TaskQueueApproval />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

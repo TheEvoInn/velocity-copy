@@ -197,8 +197,22 @@ Deno.serve(async (req) => {
         });
         cycleResults.opportunities_found = scanRes.data?.opportunities?.length || 0;
 
-        // 4. Ensure accounts for discovered opportunities
+        // 4. Gemini-score new opportunities
         const opportunities = scanRes.data?.opportunities || [];
+        for (const opp of opportunities.slice(0, 5)) {
+          if (!opp.overall_score && opp.id) {
+            const scores = await geminiScore(opp.title, opp.category, opp.platform, opp.capital_required);
+            if (scores) {
+              await base44.asServiceRole.entities.Opportunity.update(opp.id, {
+                velocity_score: scores.velocity_score,
+                risk_score: scores.risk_score,
+                overall_score: scores.overall_score,
+              }).catch(() => {});
+            }
+          }
+        }
+
+        // 4b. Ensure accounts for discovered opportunities
         const platformsNeeded = [...new Set(opportunities.map(o => o.platform || 'upwork'))];
 
         for (const platform of platformsNeeded) {

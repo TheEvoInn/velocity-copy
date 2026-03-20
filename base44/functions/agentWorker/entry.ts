@@ -219,13 +219,11 @@ Include a cover note at the top explaining your approach, then the full content.
 async function executeDesignOpportunity(opp, identity, log) {
   log('design_brief', 'running', 'Analyzing design contest brief with OpenAI');
 
-  const brief = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: `You are ${identity.name}, a professional designer. Skills: ${(identity.skills || ['logo design', 'branding', 'graphic design']).join(', ')}` },
-      {
-        role: 'user',
-        content: `Design contest opportunity:
+  const content = await llmComplete(base44, [
+    { role: 'system', content: `You are ${identity.name}, a professional designer. Skills: ${(identity.skills || ['logo design', 'branding', 'graphic design']).join(', ')}` },
+    {
+      role: 'user',
+      content: `Design contest opportunity:
 Title: ${opp.title}
 Platform: ${opp.platform}
 Description: ${opp.description}
@@ -238,12 +236,8 @@ Produce:
 4. Step-by-step instructions to create this design in Canva or Adobe Express
 
 Be specific and actionable. This is a real contest entry.`
-      }
-    ],
-    max_tokens: 1500,
-  });
-
-  const content = brief.choices[0].message.content;
+    }
+  ], 1500);
   log('design_brief_ready', 'success', 'Design concept and entry statement generated');
 
   return {

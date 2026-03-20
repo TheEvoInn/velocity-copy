@@ -205,9 +205,26 @@ Deno.serve(async (req) => {
     // Add UPWORK_ACCESS_TOKEN to Secrets to enable Upwork job scanning
 
     // ── Save AI web search + n8n opps to database ────────────────────────────
+    // Digital-only blocklist: skip any opp that contains physical/offline keywords
+    const PHYSICAL_KEYWORDS = [
+      'mail in', 'mail-in', 'postcard', 'physical', 'in-person', 'in person',
+      'walk in', 'walk-in', 'on-site', 'on site', 'ship', 'shipping', 'postal',
+      'store visit', 'retail', 'print and', 'print &', 'notarize', 'notarized',
+      'fax', 'in store', 'in-store', 'attend in', 'must attend', 'local only',
+    ];
+    const isDigitalOnly = (opp) => {
+      const text = `${opp.title} ${opp.description}`.toLowerCase();
+      return !PHYSICAL_KEYWORDS.some(kw => text.includes(kw));
+    };
+
     let totalSaved = 0;
     for (const opp of allOpps) {
       if (!opp.title || !opp.url) continue;
+      // Skip non-digital opportunities
+      if (!isDigitalOnly(opp)) {
+        console.log(`[Scan] Skipped non-digital: ${opp.title}`);
+        continue;
+      }
       const existing = await base44.asServiceRole.entities.Opportunity.filter({ url: opp.url });
       if (existing.length > 0) continue;
 

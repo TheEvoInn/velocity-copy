@@ -39,6 +39,7 @@ import ExchangeConnectivity from './pages/ExchangeConnectivity';
 import AdminControlPanel from './pages/AdminControlPanel';
 import BackgroundExecutionHub from './pages/BackgroundExecutionHub';
 import EmailOutreachHub from './pages/EmailOutreachHub';
+import UserAccessPage from './pages/UserAccessPage';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

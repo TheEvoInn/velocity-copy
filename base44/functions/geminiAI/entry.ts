@@ -180,7 +180,7 @@ Return JSON:
   "reasoning": string (1 sentence explanation)
 }`;
 
-      const result = await callGemini(DEFAULT_MODEL, prompt, 'You are a financial risk analyst. Return only valid JSON.', true, 0.2);
+      const result = await callAI(DEFAULT_MODEL, prompt, 'You are a financial risk analyst. Return only valid JSON.', true, 0.2);
       return Response.json({ success: true, scores: result });
     }
 

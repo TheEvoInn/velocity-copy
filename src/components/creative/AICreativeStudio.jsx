@@ -111,7 +111,7 @@ export default function AICreativeStudio() {
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="w-5 h-5 text-purple-400" />
         <h2 className="text-white font-semibold text-lg">AI Creative Studio</h2>
-        <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">DeepAI + Perchance</Badge>
+        <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">DeepAI + OpenAI</Badge>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>

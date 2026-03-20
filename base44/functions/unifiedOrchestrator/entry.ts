@@ -131,9 +131,8 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
   try {
     // 1. Ensure active identity (inline — avoids cross-function auth issues)
     addLog('identity_check', 'running', 'Ensuring active identity exists');
-    let activeIdentity = null;
     const activeIds = await base44.asServiceRole.entities.AIIdentity.filter({ is_active: true }, null, 1);
-    activeIdentity = activeIds[0];
+    let activeIdentity = activeIds[0];
     if (!activeIdentity) {
       const allIds = await base44.asServiceRole.entities.AIIdentity.list('-created_date', 1);
       if (allIds.length) {

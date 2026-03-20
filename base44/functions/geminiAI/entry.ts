@@ -245,7 +245,7 @@ Be concise, actionable, and data-driven. Use bullet points when listing items. A
       const historyContext = history.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
       const fullPrompt = historyContext ? `${historyContext}\nUser: ${message}` : message;
 
-      const result = await callGemini(DEFAULT_MODEL, fullPrompt, system, null, 0.7);
+      const result = await callAI(DEFAULT_MODEL, fullPrompt, system, null, 0.7);
       return Response.json({ success: true, reply: result });
     }
 

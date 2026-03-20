@@ -218,6 +218,7 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
 // ─── Main Layout ──────────────────────────────────────────────────────────────
 export default function AppLayout() {
   const location = useLocation();
+  const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 

@@ -1,138 +1,11 @@
-/**
- * Payout Verifier — verifies real payments from PayPal and Stripe
- * Used to confirm actual earnings before depositing to wallet
- */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import Stripe from 'npm:stripe@14.21.0';
 
-const PAYPAL_CLIENT_ID = Deno.env.get('PAYPAL_CLIENT_ID');
-const PAYPAL_CLIENT_SECRET = Deno.env.get('PAYPAL_CLIENT_SECRET');
-const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY');
-
-// ── PayPal helpers ────────────────────────────────────────────────────────────
-
-async function getPayPalAccessToken() {
-  const creds = btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`);
-  const res = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${creds}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`PayPal auth failed: ${err}`);
-  }
-  const data = await res.json();
-  return data.access_token;
-}
-
-async function verifyPayPalPayment(transactionId) {
-  const token = await getPayPalAccessToken();
-  const res = await fetch(`https://api-m.paypal.com/v2/payments/captures/${transactionId}`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    // Try orders API if captures fails
-    const orderRes = await fetch(`https://api-m.paypal.com/v2/checkout/orders/${transactionId}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (!orderRes.ok) throw new Error(`PayPal transaction ${transactionId} not found`);
-    const order = await orderRes.json();
-    return {
-      verified: order.status === 'COMPLETED',
-      status: order.status,
-      amount: parseFloat(order.purchase_units?.[0]?.amount?.value || 0),
-      currency: order.purchase_units?.[0]?.amount?.currency_code || 'USD',
-      payer_email: order.payer?.email_address,
-      transaction_id: transactionId,
-      provider: 'paypal',
-    };
-  }
-  const capture = await res.json();
-  return {
-    verified: capture.status === 'COMPLETED',
-    status: capture.status,
-    amount: parseFloat(capture.amount?.value || 0),
-    currency: capture.amount?.currency_code || 'USD',
-    transaction_id: transactionId,
-    provider: 'paypal',
-  };
-}
-
-async function listRecentPayPalPayments(days = 7) {
-  const token = await getPayPalAccessToken();
-  const startDate = new Date(Date.now() - days * 86400000).toISOString().split('.')[0] + 'Z';
-  const res = await fetch(
-    `https://api-m.paypal.com/v1/reporting/transactions?start_date=${startDate}&end_date=${new Date().toISOString().split('.')[0] + 'Z'}&fields=all&page_size=20`,
-    { headers: { 'Authorization': `Bearer ${token}` } }
-  );
-  if (!res.ok) throw new Error(`PayPal transactions list failed: ${res.status}`);
-  const data = await res.json();
-  return (data.transaction_details || []).map(t => ({
-    transaction_id: t.transaction_info?.transaction_id,
-    amount: parseFloat(t.transaction_info?.transaction_amount?.value || 0),
-    currency: t.transaction_info?.transaction_amount?.currency_code || 'USD',
-    status: t.transaction_info?.transaction_status,
-    date: t.transaction_info?.transaction_initiation_date,
-    payer_email: t.payer_info?.email_address,
-    provider: 'paypal',
-  }));
-}
-
-// ── Stripe helpers ────────────────────────────────────────────────────────────
-
-async function verifyStripePayment(paymentIntentId) {
-  const res = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
-    headers: { 'Authorization': `Bearer ${STRIPE_SECRET_KEY}` },
-  });
-  if (!res.ok) {
-    // Try charges
-    const chargeRes = await fetch(`https://api.stripe.com/v1/charges/${paymentIntentId}`, {
-      headers: { 'Authorization': `Bearer ${STRIPE_SECRET_KEY}` },
-    });
-    if (!chargeRes.ok) throw new Error(`Stripe payment ${paymentIntentId} not found`);
-    const charge = await chargeRes.json();
-    return {
-      verified: charge.status === 'succeeded',
-      status: charge.status,
-      amount: charge.amount / 100,
-      currency: charge.currency?.toUpperCase() || 'USD',
-      transaction_id: paymentIntentId,
-      provider: 'stripe',
-    };
-  }
-  const pi = await res.json();
-  return {
-    verified: pi.status === 'succeeded',
-    status: pi.status,
-    amount: pi.amount_received / 100,
-    currency: pi.currency?.toUpperCase() || 'USD',
-    transaction_id: paymentIntentId,
-    provider: 'stripe',
-  };
-}
-
-async function listRecentStripePayments(days = 7) {
-  const since = Math.floor(Date.now() / 1000) - days * 86400;
-  const res = await fetch(
-    `https://api.stripe.com/v1/payment_intents?limit=20&created[gte]=${since}`,
-    { headers: { 'Authorization': `Bearer ${STRIPE_SECRET_KEY}` } }
-  );
-  if (!res.ok) throw new Error(`Stripe list failed: ${res.status}`);
-  const data = await res.json();
-  return (data.data || []).map(pi => ({
-    transaction_id: pi.id,
-    amount: pi.amount_received / 100,
-    currency: pi.currency?.toUpperCase() || 'USD',
-    status: pi.status,
-    date: new Date(pi.created * 1000).toISOString(),
-    provider: 'stripe',
-  }));
-}
-
-// ── Main handler ──────────────────────────────────────────────────────────────
+/**
+ * Payout Verifier
+ * Verifies real payments from Stripe and PayPal.
+ * Only deposits to wallet when payment is confirmed real.
+ */
 
 Deno.serve(async (req) => {
   try {
@@ -142,140 +15,246 @@ Deno.serve(async (req) => {
 
     const { action, payload } = await req.json();
 
-    // Verify a specific transaction ID
-    if (action === 'verify_payment') {
-      const { transaction_id, provider } = payload;
-      let result;
-      if (provider === 'paypal') {
-        if (!PAYPAL_CLIENT_ID) return Response.json({ error: 'PayPal not configured' }, { status: 500 });
-        result = await verifyPayPalPayment(transaction_id);
-      } else if (provider === 'stripe') {
-        if (!STRIPE_SECRET_KEY) return Response.json({ error: 'Stripe not configured' }, { status: 500 });
-        result = await verifyStripePayment(transaction_id);
-      } else {
-        return Response.json({ error: 'Unknown provider. Use: paypal or stripe' }, { status: 400 });
-      }
+    if (action === 'verify_stripe_payment') return await verifyStripePayment(base44, user, payload);
+    if (action === 'verify_paypal_payment') return await verifyPayPalPayment(base44, user, payload);
+    if (action === 'get_stripe_balance') return await getStripeBalance(base44, user);
+    if (action === 'get_stripe_payouts') return await getStripePayouts(base44, user, payload);
+    if (action === 'get_paypal_balance') return await getPayPalBalance(base44, user);
+    if (action === 'confirm_manual_payment') return await confirmManualPayment(base44, user, payload);
 
-      // If verified, deposit to wallet
-      if (result.verified) {
-        const goals = await base44.entities.UserGoals.list();
-        const wallet = goals[0];
-        if (wallet) {
-          await base44.entities.Transaction.create({
-            type: 'income',
-            amount: result.amount,
-            net_amount: result.amount,
-            platform: provider,
-            description: `Verified ${provider} payment: ${transaction_id}`,
-            payout_status: 'cleared',
-            confirmation_number: transaction_id,
-          });
-          await base44.entities.UserGoals.update(wallet.id, {
-            wallet_balance: (wallet.wallet_balance || 0) + result.amount,
-            total_earned: (wallet.total_earned || 0) + result.amount,
-          });
-          await base44.entities.ActivityLog.create({
-            action_type: 'wallet_update',
-            message: `✅ Payment verified & deposited: $${result.amount} from ${provider} (${transaction_id})`,
-            severity: 'success',
-            metadata: result,
-          });
-        }
-      }
-
-      return Response.json({ success: true, ...result });
-    }
-
-    // List recent payments from all configured providers
-    if (action === 'list_recent_payments') {
-      const days = payload?.days || 7;
-      const payments = [];
-      const errors = [];
-
-      if (PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET) {
-        try {
-          const ppPayments = await listRecentPayPalPayments(days);
-          payments.push(...ppPayments);
-        } catch (e) {
-          errors.push({ provider: 'paypal', error: e.message });
-        }
-      }
-
-      if (STRIPE_SECRET_KEY) {
-        try {
-          const stripePayments = await listRecentStripePayments(days);
-          payments.push(...stripePayments);
-        } catch (e) {
-          errors.push({ provider: 'stripe', error: e.message });
-        }
-      }
-
-      return Response.json({ success: true, payments, errors, total: payments.length });
-    }
-
-    // Sync: check for new completed payments and auto-deposit unrecorded ones
-    if (action === 'sync_payments') {
-      const days = payload?.days || 3;
-      const synced = [];
-      const errors = [];
-
-      const syncProvider = async (paymentsFn, providerName) => {
-        const payments = await paymentsFn(days);
-        for (const p of payments) {
-          if (!p.transaction_id || p.amount <= 0) continue;
-          // Check if already recorded
-          const existing = await base44.entities.Transaction.filter({ confirmation_number: p.transaction_id });
-          if (existing.length > 0) continue;
-          // Only sync completed/succeeded payments
-          const isCompleted = ['COMPLETED', 'succeeded', 'S'].includes(p.status);
-          if (!isCompleted) continue;
-
-          const goals = await base44.entities.UserGoals.list();
-          const wallet = goals[0];
-          await base44.entities.Transaction.create({
-            type: 'income',
-            amount: p.amount,
-            net_amount: p.amount,
-            platform: providerName,
-            description: `Auto-synced ${providerName} payment`,
-            payout_status: 'cleared',
-            confirmation_number: p.transaction_id,
-          });
-          if (wallet) {
-            await base44.entities.UserGoals.update(wallet.id, {
-              wallet_balance: (wallet.wallet_balance || 0) + p.amount,
-              total_earned: (wallet.total_earned || 0) + p.amount,
-            });
-          }
-          synced.push({ provider: providerName, amount: p.amount, transaction_id: p.transaction_id });
-        }
-      };
-
-      if (PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET) {
-        try { await syncProvider(listRecentPayPalPayments, 'paypal'); }
-        catch (e) { errors.push({ provider: 'paypal', error: e.message }); }
-      }
-      if (STRIPE_SECRET_KEY) {
-        try { await syncProvider(listRecentStripePayments, 'stripe'); }
-        catch (e) { errors.push({ provider: 'stripe', error: e.message }); }
-      }
-
-      if (synced.length > 0) {
-        await base44.entities.ActivityLog.create({
-          action_type: 'wallet_update',
-          message: `💰 Payment sync: ${synced.length} new payment(s) deposited`,
-          severity: 'success',
-          metadata: { synced, errors },
-        });
-      }
-
-      return Response.json({ success: true, synced, errors, total_synced: synced.length });
-    }
-
-    return Response.json({ error: 'Unknown action. Use: verify_payment, list_recent_payments, sync_payments' }, { status: 400 });
-
+    return Response.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
-    console.error('[payoutVerifier] Error:', error.message);
+    console.error('[PayoutVerifier]', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+
+async function verifyStripePayment(base44, user, payload) {
+  const { payment_intent_id, opportunity_id } = payload;
+  if (!payment_intent_id) return Response.json({ error: 'payment_intent_id required' }, { status: 400 });
+
+  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
+
+  const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id);
+
+  if (paymentIntent.status !== 'succeeded') {
+    return Response.json({
+      verified: false,
+      status: paymentIntent.status,
+      message: `Payment not yet completed. Status: ${paymentIntent.status}`
+    });
+  }
+
+  const amount = paymentIntent.amount / 100; // Stripe amounts are in cents
+  const currency = paymentIntent.currency.toUpperCase();
+
+  // Deposit to wallet
+  await depositVerifiedEarning(base44, user, {
+    amount,
+    currency,
+    source: 'stripe',
+    reference: payment_intent_id,
+    opportunity_id,
+    description: paymentIntent.description || `Stripe payment ${payment_intent_id}`,
+  });
+
+  return Response.json({
+    verified: true,
+    amount,
+    currency,
+    payment_intent_id,
+    status: 'succeeded',
+    message: `$${amount} verified and deposited from Stripe`,
+  });
+}
+
+async function verifyPayPalPayment(base44, user, payload) {
+  const { order_id, opportunity_id } = payload;
+  if (!order_id) return Response.json({ error: 'order_id required' }, { status: 400 });
+
+  // Get PayPal access token
+  const clientId = Deno.env.get('PAYPAL_CLIENT_ID');
+  const clientSecret = Deno.env.get('PAYPAL_CLIENT_SECRET');
+  const credentials = btoa(`${clientId}:${clientSecret}`);
+
+  const tokenRes = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${credentials}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials',
+  });
+
+  if (!tokenRes.ok) {
+    return Response.json({ error: 'PayPal auth failed', details: await tokenRes.text() }, { status: 500 });
+  }
+
+  const { access_token } = await tokenRes.json();
+
+  // Verify the order
+  const orderRes = await fetch(`https://api-m.paypal.com/v2/checkout/orders/${order_id}`, {
+    headers: { 'Authorization': `Bearer ${access_token}` },
+  });
+
+  if (!orderRes.ok) {
+    return Response.json({ error: 'PayPal order not found' }, { status: 404 });
+  }
+
+  const order = await orderRes.json();
+
+  if (order.status !== 'COMPLETED') {
+    return Response.json({
+      verified: false,
+      status: order.status,
+      message: `PayPal payment not completed. Status: ${order.status}`
+    });
+  }
+
+  const amount = parseFloat(order.purchase_units?.[0]?.amount?.value || 0);
+  const currency = order.purchase_units?.[0]?.amount?.currency_code || 'USD';
+
+  await depositVerifiedEarning(base44, user, {
+    amount,
+    currency,
+    source: 'paypal',
+    reference: order_id,
+    opportunity_id,
+    description: `PayPal order ${order_id}`,
+  });
+
+  return Response.json({
+    verified: true,
+    amount,
+    currency,
+    order_id,
+    message: `$${amount} verified and deposited from PayPal`,
+  });
+}
+
+async function getStripeBalance(base44, user) {
+  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
+  const balance = await stripe.balance.retrieve();
+
+  return Response.json({
+    success: true,
+    available: balance.available.map(b => ({ amount: b.amount / 100, currency: b.currency })),
+    pending: balance.pending.map(b => ({ amount: b.amount / 100, currency: b.currency })),
+    source: 'stripe',
+  });
+}
+
+async function getStripePayouts(base44, user, payload) {
+  const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
+  const payouts = await stripe.payouts.list({ limit: payload?.limit || 10 });
+
+  return Response.json({
+    success: true,
+    payouts: payouts.data.map(p => ({
+      id: p.id,
+      amount: p.amount / 100,
+      currency: p.currency,
+      status: p.status,
+      arrival_date: new Date(p.arrival_date * 1000).toISOString(),
+      description: p.description,
+    })),
+  });
+}
+
+async function getPayPalBalance(base44, user) {
+  const clientId = Deno.env.get('PAYPAL_CLIENT_ID');
+  const clientSecret = Deno.env.get('PAYPAL_CLIENT_SECRET');
+  const credentials = btoa(`${clientId}:${clientSecret}`);
+
+  const tokenRes = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
+    method: 'POST',
+    headers: { 'Authorization': `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=client_credentials',
+  });
+
+  if (!tokenRes.ok) return Response.json({ error: 'PayPal auth failed' }, { status: 500 });
+  const { access_token } = await tokenRes.json();
+
+  const balRes = await fetch('https://api-m.paypal.com/v1/reporting/balances', {
+    headers: { 'Authorization': `Bearer ${access_token}` },
+  });
+
+  if (!balRes.ok) return Response.json({ error: 'Could not retrieve PayPal balance' }, { status: 500 });
+  const data = await balRes.json();
+
+  return Response.json({ success: true, balance: data, source: 'paypal' });
+}
+
+async function confirmManualPayment(base44, user, payload) {
+  const { amount, source, description, opportunity_id, reference } = payload;
+
+  if (!amount || amount <= 0) return Response.json({ error: 'Invalid amount' }, { status: 400 });
+
+  await depositVerifiedEarning(base44, user, {
+    amount,
+    currency: 'USD',
+    source: source || 'manual',
+    reference: reference || `MANUAL-${Date.now()}`,
+    opportunity_id,
+    description: description || 'Manually confirmed payment',
+  });
+
+  return Response.json({
+    success: true,
+    amount,
+    message: `$${amount} confirmed and deposited`,
+  });
+}
+
+async function depositVerifiedEarning(base44, user, { amount, currency, source, reference, opportunity_id, description }) {
+  // Get current wallet
+  const goals = await base44.entities.UserGoals.list('-created_date', 1);
+  const wallet = goals?.[0];
+
+  if (!wallet) throw new Error('Wallet not initialized');
+
+  const platformFee = amount * 0.15;
+  const netAmount = amount - platformFee;
+  const newBalance = (wallet.wallet_balance || 0) + netAmount;
+
+  // Create verified transaction
+  await base44.entities.Transaction.create({
+    type: 'income',
+    amount,
+    net_amount: netAmount,
+    platform_fee: platformFee,
+    platform_fee_pct: 15,
+    platform: source,
+    category: 'service',
+    description: `[VERIFIED] ${description}`,
+    opportunity_id,
+    balance_after: newBalance,
+    payout_status: 'cleared',
+    confirmation_number: reference,
+  });
+
+  // Update wallet
+  await base44.entities.UserGoals.update(wallet.id, {
+    wallet_balance: newBalance,
+    total_earned: (wallet.total_earned || 0) + amount,
+  });
+
+  // Update opportunity if linked
+  if (opportunity_id) {
+    await base44.entities.Opportunity.update(opportunity_id, {
+      status: 'completed',
+      submission_confirmed: true,
+      confirmation_number: reference,
+    }).catch(() => {});
+  }
+
+  // Log
+  await base44.entities.ActivityLog.create({
+    action_type: 'wallet_update',
+    message: `💰 VERIFIED: $${netAmount.toFixed(2)} deposited from ${source} (ref: ${reference})`,
+    severity: 'success',
+    metadata: { amount, net_amount: netAmount, source, reference, opportunity_id },
+  });
+
+  console.log(`[PayoutVerifier] Deposited $${netAmount.toFixed(2)} from ${source}`);
+}

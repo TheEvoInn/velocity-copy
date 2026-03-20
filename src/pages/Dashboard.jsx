@@ -104,8 +104,8 @@ export default function Dashboard() {
       )}
 
       {/* ── Galaxy Header ── */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between mb-6 gap-3 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="relative">
             <div
               className="w-12 h-12 rounded-2xl flex items-center justify-center"

@@ -89,6 +89,7 @@ const AuthenticatedApp = () => {
         <Route path="/DataPersistenceAudit" element={<DataPersistenceAudit />} />
         <Route path="/PlatformAuditDashboard" element={<PlatformAuditDashboard />} />
         <Route path="/ExchangeConnectivity" element={<ExchangeConnectivity />} />
+        <Route path="/AdminControlPanel" element={<AdminControlPanel />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

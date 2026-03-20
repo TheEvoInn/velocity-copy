@@ -197,9 +197,6 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
       { status: 'new', auto_execute: true }, '-overall_score', 15
     );
 
-    const activeIdentities = await base44.asServiceRole.entities.AIIdentity.filter({ is_active: true }, null, 1);
-    const activeIdentity = activeIdentities[0];
-
     for (const opp of eligibleOpps.slice(0, forceRun ? 10 : 5)) {
       try {
         // Skip if no URL

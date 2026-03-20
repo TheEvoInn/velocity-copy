@@ -45,6 +45,10 @@ Deno.serve(async (req) => {
 
     if (action === 'execute_task') return await executeTask(base44, payload);
     if (action === 'execute_next_task') return await executeNextTask(base44);
+    // Remaining actions require user auth
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
     if (action === 'generate_proposal') return await generateProposal(base44, payload);
     if (action === 'generate_content') return await generateContent(base44, payload);
     if (action === 'queue_task') return await queueTask(base44, payload);

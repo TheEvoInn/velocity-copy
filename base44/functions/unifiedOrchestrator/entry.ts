@@ -191,13 +191,28 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
     }
     addLog('scoring', 'success', `Scored ${scored} opportunities`);
 
-    // 4. Queue eligible opportunities
+    // 4. Queue eligible opportunities (digital-only filter)
     addLog('queue', 'running', 'Queuing eligible opportunities');
     const eligibleOpps = await base44.asServiceRole.entities.Opportunity.filter(
-      { status: 'new', auto_execute: true }, '-overall_score', 15
+      { status: 'new', auto_execute: true }, '-overall_score', 20
     );
 
-    for (const opp of eligibleOpps.slice(0, forceRun ? 10 : 5)) {
+    // Digital-only filter — block any opportunity requiring physical/offline action
+    const PHYSICAL_KEYWORDS = [
+      'mail in', 'mail-in', 'postcard', 'physical', 'in-person', 'in person',
+      'walk in', 'walk-in', 'on-site', 'on site', 'ship', 'shipping', 'postal',
+      'store visit', 'retail', 'print and', 'print &', 'notarize', 'notarized',
+      'fax', 'in store', 'in-store', 'attend in', 'must attend', 'local only',
+    ];
+    const isDigital = (opp) => {
+      const text = `${opp.title} ${opp.description || ''}`.toLowerCase();
+      return !PHYSICAL_KEYWORDS.some(kw => text.includes(kw));
+    };
+
+    const digitalOpps = eligibleOpps.filter(isDigital);
+    addLog('queue', 'info', `${eligibleOpps.length - digitalOpps.length} non-digital opps filtered out`);
+
+    for (const opp of digitalOpps.slice(0, forceRun ? 10 : 5)) {
       try {
         // Skip if no URL
         if (!opp.url) {

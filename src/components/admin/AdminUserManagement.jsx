@@ -1,0 +1,211 @@
+/**
+ * Admin User Management — Non-sensitive user overview
+ * Shows onboarding, identity setup, autopilot status.
+ * NO access to KYC docs, API keys, bank details, or private messages.
+ */
+import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Users, CheckCircle2, Clock, XCircle, Bot, Shield,
+  Search, ChevronDown, ChevronUp, RefreshCw
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+const STATUS_BADGE = {
+  complete:    { color: '#10b981', label: 'Complete' },
+  partial:     { color: '#f59e0b', label: 'Partial' },
+  not_started: { color: '#64748b', label: 'Not Started' },
+};
+
+function Badge({ status, text }) {
+  const cfg = STATUS_BADGE[status] || STATUS_BADGE.not_started;
+  return (
+    <span className="px-2 py-0.5 rounded text-[10px] font-medium"
+      style={{ background: `${cfg.color}15`, border: `1px solid ${cfg.color}30`, color: cfg.color }}>
+      {text || cfg.label}
+    </span>
+  );
+}
+
+function UserRow({ user, identities, goals, connections, kycs }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const userIdentities  = identities.filter(i => i.created_by === user.email);
+  const userGoal        = goals.find(g => g.created_by === user.email);
+  const userConnections = connections.filter(c => c.created_by === user.email);
+  const userKyc         = kycs.find(k => k.created_by === user.email);
+
+  const identityStatus = userIdentities.length > 0 ? 'complete' : 'not_started';
+  const onboardStatus  = userGoal?.onboarded ? 'complete' : userGoal ? 'partial' : 'not_started';
+  const autopilotOn    = userGoal?.autopilot_enabled;
+  const kycStatus      = userKyc?.status;
+
+  return (
+    <div className="border border-slate-800 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 p-3 bg-slate-800/30 hover:bg-slate-800/50 transition-colors cursor-pointer"
+        onClick={() => setExpanded(p => !p)}>
+        <div className="w-8 h-8 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0">
+          <Users className="w-4 h-4 text-violet-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-white truncate">{user.full_name || '—'}</p>
+          <p className="text-xs text-slate-500 truncate">{user.email}</p>
+        </div>
+        <div className="hidden sm:flex items-center gap-2">
+          <Badge status={onboardStatus} text={onboardStatus === 'complete' ? 'Onboarded' : 'Setup Incomplete'} />
+          <Badge status={identityStatus} text={`${userIdentities.length} ID${userIdentities.length !== 1 ? 's' : ''}`} />
+          {autopilotOn && (
+            <span className="px-2 py-0.5 rounded text-[10px] bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">Autopilot ON</span>
+          )}
+        </div>
+        <div className="text-xs text-slate-500 shrink-0">
+          {user.role === 'admin' ? <Shield className="w-3.5 h-3.5 text-red-400" /> : null}
+        </div>
+        {expanded ? <ChevronUp className="w-4 h-4 text-slate-500 shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />}
+      </div>
+
+      {expanded && (
+        <div className="p-4 border-t border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-slate-900/40">
+          <div>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Onboarding</p>
+            <Badge status={onboardStatus} />
+            {userGoal?.daily_target && (
+              <p className="text-slate-400 mt-1">Target: ${userGoal.daily_target}/day</p>
+            )}
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Identities</p>
+            {userIdentities.length === 0
+              ? <p className="text-slate-600">None created</p>
+              : userIdentities.map(i => (
+                <p key={i.id} className="text-violet-300">• {i.name} ({i.role_label})</p>
+              ))
+            }
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Platform Connections</p>
+            {userConnections.length === 0
+              ? <p className="text-slate-600">None connected</p>
+              : userConnections.map(c => (
+                <p key={c.id} className="text-blue-300">• {c.platform} ({c.status})</p>
+              ))
+            }
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">KYC Status</p>
+            {kycStatus
+              ? <Badge status={kycStatus === 'approved' ? 'complete' : kycStatus === 'pending' ? 'partial' : 'not_started'}
+                  text={kycStatus.replace('_', ' ')} />
+              : <p className="text-slate-600">Not submitted</p>
+            }
+            <p className="text-[10px] text-slate-600 mt-1">⚠️ No private data shown</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AdminUserManagement() {
+  const [search, setSearch] = useState('');
+
+  const { data: users = [], isLoading: loadingUsers, refetch } = useQuery({
+    queryKey: ['admin_all_users'],
+    queryFn: () => base44.entities.User.list('-created_date', 100),
+    refetchInterval: 30000,
+  });
+
+  const { data: identities = [] } = useQuery({
+    queryKey: ['admin_all_identities'],
+    queryFn: () => base44.entities.AIIdentity.list('-created_date', 200),
+  });
+
+  const { data: goals = [] } = useQuery({
+    queryKey: ['admin_all_goals'],
+    queryFn: () => base44.entities.UserGoals.list('-created_date', 200),
+  });
+
+  const { data: connections = [] } = useQuery({
+    queryKey: ['admin_all_connections'],
+    queryFn: () => base44.entities.PlatformConnection.list('-created_date', 200),
+  });
+
+  const { data: kycs = [] } = useQuery({
+    queryKey: ['admin_all_kycs'],
+    queryFn: () => base44.entities.KYCVerification.list('-created_date', 200),
+  });
+
+  const filtered = users.filter(u =>
+    u.email?.toLowerCase().includes(search.toLowerCase()) ||
+    u.full_name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const onboarded   = goals.filter(g => g.onboarded).length;
+  const autopilotOn = goals.filter(g => g.autopilot_enabled).length;
+  const pendingKyc  = kycs.filter(k => ['pending', 'submitted', 'under_review'].includes(k.status)).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-orbitron text-base font-bold text-violet-400 tracking-wide flex items-center gap-2">
+          <Users className="w-4 h-4" /> User Management
+        </h2>
+        <Button size="sm" variant="outline" onClick={refetch}
+          className="border-slate-700 text-slate-400 text-xs h-7 gap-1.5">
+          <RefreshCw className="w-3 h-3" /> Refresh
+        </Button>
+      </div>
+
+      {/* Privacy Notice */}
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/20">
+        <Shield className="w-4 h-4 text-amber-400 shrink-0" />
+        <p className="text-xs text-amber-300/70">
+          Privacy protected — No KYC documents, API keys, banking details, or credentials are displayed.
+        </p>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Total Users',    value: users.length,  color: '#a855f7', icon: Users },
+          { label: 'Onboarded',      value: onboarded,      color: '#10b981', icon: CheckCircle2 },
+          { label: 'Autopilot On',   value: autopilotOn,    color: '#06b6d4', icon: Bot },
+          { label: 'Pending KYC',    value: pendingKyc,     color: '#f59e0b', icon: Clock },
+        ].map(({ label, value, color, icon: Icon }) => (
+          <div key={label} className="rounded-xl p-3" style={{ background: `${color}10`, border: `1px solid ${color}25` }}>
+            <div className="flex items-center gap-2 mb-1">
+              <Icon className="w-3.5 h-3.5" style={{ color }} />
+              <p className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</p>
+            </div>
+            <p className="text-xl font-orbitron font-bold" style={{ color }}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+        <Input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name or email..."
+          className="pl-9 bg-slate-800/60 border-slate-700 text-white text-sm h-9" />
+      </div>
+
+      {/* User List */}
+      <div className="space-y-2">
+        {loadingUsers ? (
+          <div className="text-center py-8 text-slate-500 text-sm">Loading users...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-8 text-slate-500 text-sm">No users found.</div>
+        ) : (
+          filtered.map(u => (
+            <UserRow key={u.id} user={u}
+              identities={identities} goals={goals}
+              connections={connections} kycs={kycs} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

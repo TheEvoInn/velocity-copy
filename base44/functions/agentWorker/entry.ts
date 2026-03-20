@@ -39,9 +39,8 @@ Deno.serve(async (req) => {
     }
 
     // --- Direct invocation ---
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
+    // execute_task and execute_next_task can be called by the orchestrator (service role)
+    // so we allow them without user auth but use asServiceRole for entity ops
     const { action, payload } = body;
 
     if (action === 'execute_task') return await executeTask(base44, payload);

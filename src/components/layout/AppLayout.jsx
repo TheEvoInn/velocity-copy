@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   Zap, LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal,
-  MessageSquare, ChevronRight, X, Menu, Shield
+  MessageSquare, ChevronRight, X, Menu, Shield, Settings
 } from 'lucide-react';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
+import NotificationBell from '../notifications/NotificationBell';
 import StarfieldCanvas from './StarfieldCanvas';
 import GalaxyOrbs from './GalaxyOrbs';
 import { useAuth } from '@/lib/AuthContext';

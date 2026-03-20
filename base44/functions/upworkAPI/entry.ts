@@ -44,10 +44,11 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (!UPWORK_ACCESS_TOKEN) {
+    if (!UPWORK_ACCESS_TOKEN || UPWORK_ACCESS_TOKEN.trim() === '') {
       return Response.json({
         error: 'UPWORK_ACCESS_TOKEN not configured. Please add it in Settings → Secrets.',
         setup_url: 'https://www.upwork.com/developer/keys/apply',
+        configured: false,
       }, { status: 503 });
     }
 

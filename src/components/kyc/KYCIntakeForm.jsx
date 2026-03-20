@@ -37,13 +37,14 @@ export default function KYCIntakeForm({ onSubmitSuccess }) {
       const kyc = await base44.entities.KYCVerification.create({
         ...formData,
         status: 'submitted',
+        admin_status: 'submitted',
         verification_type: 'standard',
       });
       return kyc;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['kyc'] });
-      toast.success('KYC submission received. Verification in progress.');
+      toast.success('Application submitted. An administrator will review it within 5 business days.');
       if (onSubmitSuccess) onSubmitSuccess(data);
     },
     onError: (error) => {

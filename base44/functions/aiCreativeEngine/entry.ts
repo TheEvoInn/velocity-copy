@@ -163,10 +163,12 @@ async function perchanceGenerate({ generator, count = 5 }) {
   });
 
   const data = await res.json();
+  console.log('[perchanceGenerate] OpenAI raw:', JSON.stringify(data).substring(0, 500));
   const raw = data.choices?.[0]?.message?.content || '';
   const results = raw.split('\n')
-    .filter(l => l.trim())
-    .map(l => l.replace(/^\d+[\.\)]\s*/, '').trim())
+    .map(l => l.trim())
+    .filter(l => l.length > 3)
+    .map(l => l.replace(/^\d+[\.\)\-\*]\s*/, '').trim())
     .filter(l => l.length > 3)
     .slice(0, count);
 

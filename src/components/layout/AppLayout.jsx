@@ -278,6 +278,18 @@ export default function AppLayout() {
               <MessageSquare className="w-3.5 h-3.5" />
               <span className="hidden lg:block font-orbitron text-[10px] tracking-wide">MISSION AI</span>
             </Link>
+            {user?.role === 'admin' && (
+              <Link to="/AdminControlPanel"
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-xs ${
+                  location.pathname === '/AdminControlPanel'
+                    ? 'border-red-500/50 text-red-300 bg-red-500/10'
+                    : 'border-red-500/20 text-red-400/70 hover:text-red-300 hover:border-red-400/40 hover:bg-red-500/8'
+                }`}
+                style={{ boxShadow: location.pathname === '/AdminControlPanel' ? '0 0 12px rgba(239,68,68,0.2)' : 'none' }}>
+                <Shield className="w-3.5 h-3.5" />
+                <span className="hidden lg:block font-orbitron text-[10px] tracking-wide">ADMIN</span>
+              </Link>
+            )}
             <div className="hidden md:block">
               <ActiveIdentityBanner />
             </div>

@@ -52,7 +52,9 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
       }
     },
     onSuccess: () => {
+      // Invalidate all identity-related query keys
       queryClient.invalidateQueries({ queryKey: ['userIdentities'] });
+      queryClient.invalidateQueries({ queryKey: ['identities'] });
       toast.success(identity ? 'Identity updated' : 'Identity created');
       onComplete?.();
     },

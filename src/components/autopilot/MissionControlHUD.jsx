@@ -7,7 +7,8 @@ const HEALTH_CONFIG = {
   critical: { color: '#ef4444', label: 'CRITICAL', glow: 'rgba(239,68,68,0.5)' },
 };
 
-function HUDMetric({ label, value, color = '#06b6d4', icon: Icon, sub }) {
+function HUDMetric({ label, value, color = '#06b6d4', icon: IconComp, sub }) {
+  const Icon = IconComp;
   return (
     <div className="relative rounded-xl p-3 overflow-hidden"
       style={{ background: `${color}08`, border: `1px solid ${color}25` }}>

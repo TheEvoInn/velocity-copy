@@ -22,6 +22,29 @@ const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const DEFAULT_MODEL = 'gemini-2.0-flash';
 const PRO_MODEL = 'gemini-1.5-pro';
 
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+
+// OpenAI fallback when Gemini quota is exceeded
+async function callOpenAIFallback(prompt, systemInstruction, jsonMode, temperature) {
+  const messages = [];
+  if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
+  messages.push({ role: 'user', content: prompt });
+
+  const body = { model: 'gpt-4o-mini', messages, temperature, max_tokens: 4096 };
+  if (jsonMode) body.response_format = { type: 'json_object' };
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`OpenAI fallback error ${res.status}`);
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content || '';
+  if (jsonMode) { try { return JSON.parse(text); } catch { return { raw: text }; } }
+  return text;
+}
+
 async function callGemini(model, prompt, systemInstruction = null, jsonSchema = null, temperature = 0.7) {
   const url = `${GEMINI_BASE}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
 

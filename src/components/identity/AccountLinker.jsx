@@ -93,23 +93,32 @@ export default function AccountLinker({ identity, onClose, onSuccess }) {
   };
 
   const handleUserOverride = async () => {
-    if (!userAccountData.username.trim()) return;
+    const requiredFields = currentType.fields;
+    const missingFields = requiredFields.filter(f => !userAccountData[f]?.toString().trim());
+    
+    if (missingFields.length > 0) {
+      toast.error(`Missing required fields: ${missingFields.join(', ')}`);
+      return;
+    }
 
     try {
       const res = await base44.functions.invoke('accountCreationEngine', {
         action: 'override_with_user_account',
-        account_id: linkedAccounts?.[0]?.id,
-        user_username: userAccountData.username,
+        platform: selectedPlatform,
+        account_type: selectedAccountType,
+        identity_id: identity.id,
         user_credential_data: userAccountData
       });
 
       if (res.data?.success) {
         refetch();
         setUseExistingAccount(false);
-        setUserAccountData({ username: '' });
+        setUserAccountData({});
+        toast.success('Account linked successfully');
+        onSuccess?.();
       }
     } catch (error) {
-      console.error(error);
+      toast.error(error.message || 'Failed to link account');
     }
   };
 

@@ -100,7 +100,10 @@ export default function StarfieldCanvas() {
         // Star glow
         if (s.size > 1.5) {
           const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.size * 3);
-          grad.addColorStop(0, s.color === '#ffffff' ? `rgba(255,255,255,${alpha * 0.4})` : s.color.replace(')', `,${alpha * 0.3})`).replace('#', 'rgba('));
+          const glowColor = s.color === '#a78bfa' ? `rgba(167,139,250,${alpha * 0.3})` :
+                            s.color === '#67e8f9' ? `rgba(103,232,249,${alpha * 0.3})` :
+                            `rgba(255,255,255,${alpha * 0.4})`;
+          grad.addColorStop(0, glowColor);
           grad.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = grad;
           ctx.beginPath();

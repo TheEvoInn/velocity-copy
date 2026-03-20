@@ -45,7 +45,7 @@ export default function AIIdentityStudio() {
 
   const handleIdentityCreated = () => {
     setShowNewIdentityForm(false);
-    queryClient.invalidateQueries({ queryKey: ['userIdentities', user?.email] });
+    queryClient.invalidateQueries({ queryKey: ['identities', user?.email] });
   };
 
   return (

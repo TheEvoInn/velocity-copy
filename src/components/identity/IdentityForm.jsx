@@ -229,12 +229,18 @@ export default function IdentityForm({ identity, onSave, onCancel }) {
 
       {/* Email Signature */}
       <Field label="Email Signature">
+        <div className="flex items-center gap-2 mb-1">
+          <MissionWriteButton field="email_signature" identity={form} onResult={v => set('email_signature', v)} />
+        </div>
         <textarea value={form.email_signature} onChange={e => set('email_signature', e.target.value)} rows={3}
           className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500/50 resize-none" />
       </Field>
 
       {/* Proposal style */}
       <Field label="Proposal Writing Instructions" hint="How the AI should write proposals for this identity">
+        <div className="flex items-center gap-2 mb-1">
+          <MissionWriteButton field="proposal_style" identity={form} onResult={v => set('proposal_style', v)} />
+        </div>
         <textarea value={form.proposal_style} onChange={e => set('proposal_style', e.target.value)} rows={2}
           placeholder="Always start with the client's specific pain point. Use bullet points for deliverables. Close with a clear CTA."
           className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500/50 resize-none" />

@@ -257,7 +257,7 @@ Be concise, actionable, and data-driven. Use bullet points when listing items. A
       for (const opp of opportunities.slice(0, 10)) {
         const prompt = `Score this opportunity (1-100 each): Title: "${opp.title}", Category: ${opp.category}, Platform: ${opp.platform || 'unknown'}.
 Return JSON: {"velocity_score": number, "risk_score": number, "overall_score": number}`;
-        const score = await callGemini(DEFAULT_MODEL, prompt, null, true, 0.2);
+        const score = await callAI(DEFAULT_MODEL, prompt, null, true, 0.2);
         results.push({ id: opp.id, ...score });
       }
 

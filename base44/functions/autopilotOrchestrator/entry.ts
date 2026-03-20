@@ -1,4 +1,24 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+
+const GEMINI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY');
+
+async function geminiScore(title, category, platform, capital = 0) {
+  if (!GEMINI_API_KEY) return null;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const prompt = `Score this opportunity (JSON only, no markdown):
+Title: "${title}", Category: ${category}, Platform: ${platform || 'unknown'}, Capital: $${capital}
+Return: {"velocity_score":number,"risk_score":number,"overall_score":number,"reasoning":string}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 256 } })
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  try { return JSON.parse(text.replace(/```json|```/g, '').trim()); } catch { return null; }
+}
 
 // Orchestrate autonomous profit generation across all modules
 Deno.serve(async (req) => {

@@ -29,7 +29,7 @@ const STATUS_CONFIG = {
 };
 
 export default function Execution() {
-  const { tasks, userGoals, activityLogs, todayEarned, DeptBus, DEPT_EVENTS } = useDepartmentSync();
+  const { tasks, opportunities, userGoals, activityLogs, todayEarned, DeptBus, DEPT_EVENTS } = useDepartmentSync();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('all');
 

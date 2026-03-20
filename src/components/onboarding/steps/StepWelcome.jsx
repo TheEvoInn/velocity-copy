@@ -1,5 +1,4 @@
 import React from 'react';
-import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Zap, ArrowRight, Bot, Shield, DollarSign, Rocket } from 'lucide-react';
 

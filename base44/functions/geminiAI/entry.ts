@@ -83,6 +83,19 @@ async function callGemini(model, prompt, systemInstruction = null, jsonSchema = 
   return text;
 }
 
+// Smart router: try Gemini first, fall back to OpenAI on quota/rate errors
+async function callAI(model, prompt, systemInstruction = null, jsonSchema = null, temperature = 0.7) {
+  try {
+    return await callGemini(model, prompt, systemInstruction, jsonSchema, temperature);
+  } catch (err) {
+    if ((err.message.includes('429') || err.message.includes('quota') || err.message.includes('RESOURCE_EXHAUSTED')) && OPENAI_API_KEY) {
+      console.log('Gemini quota hit — falling back to OpenAI');
+      return await callOpenAIFallback(prompt, systemInstruction, !!jsonSchema, temperature);
+    }
+    throw err;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);

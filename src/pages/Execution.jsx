@@ -124,6 +124,11 @@ export default function Execution() {
         />
       </div>
 
+      {/* AI Creative Studio */}
+      <div className="mb-5">
+        <AICreativeStudio />
+      </div>
+
       {/* Task Queue */}
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 mb-5">
         <div className="flex items-center justify-between mb-4">

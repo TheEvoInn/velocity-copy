@@ -156,7 +156,7 @@ Identity Profile:
 
 Write a compelling, tailored proposal (150-300 words). Be specific, highlight relevant experience, and include a clear call to action. Do NOT use generic filler phrases.`;
 
-      const result = await callGemini(PRO_MODEL, prompt, system, null, 0.75);
+      const result = await callAI(PRO_MODEL, prompt, system, null, 0.75);
       return Response.json({ success: true, proposal: result });
     }
 

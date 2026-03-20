@@ -116,12 +116,47 @@ async function injectProposal(base44, user, payload) {
 }
 
 /**
+ * Build brand context string from identity brand_assets
+ */
+function buildBrandContext(identity) {
+  if (!identity) return '';
+  const b = identity.brand_assets || {};
+  const lines = [`=== IDENTITY BRAND PROFILE: ${identity.name} ===`];
+  if (identity.role_label) lines.push(`Role: ${identity.role_label}`);
+  if (identity.tagline) lines.push(`Tagline: "${identity.tagline}"`);
+  if (identity.bio) lines.push(`Bio: ${identity.bio}`);
+  if (identity.communication_tone) lines.push(`Tone: ${identity.communication_tone}`);
+  if (identity.skills?.length) lines.push(`Skills: ${identity.skills.join(', ')}`);
+  if (b.ai_persona_instructions) { lines.push('\nPERSONA INSTRUCTIONS:'); lines.push(b.ai_persona_instructions); }
+  if (b.formality_level) lines.push(`Formality: ${b.formality_level.replace(/_/g, ' ')}`);
+  if (b.vocabulary_style?.length) lines.push(`Vocabulary: ${b.vocabulary_style.join(', ')}`);
+  if (b.industry_alignment?.length) lines.push(`Industry: ${b.industry_alignment.join(', ')}`);
+  if (b.industry_language?.length) lines.push(`Use these terms: ${b.industry_language.join(', ')}`);
+  if (b.signature_phrases?.length) lines.push(`Signature phrases: "${b.signature_phrases.join('" | "')}"`);
+  if (b.always_rules?.length) lines.push(`ALWAYS: ${b.always_rules.join('. ')}`);
+  if (b.never_rules?.length) lines.push(`NEVER: ${b.never_rules.join('. ')}`);
+  if (b.forbidden_phrases?.length) lines.push(`FORBIDDEN: ${b.forbidden_phrases.join(', ')}`);
+  if (b.strengths?.length) lines.push(`Strengths: ${b.strengths.join(', ')}`);
+  if (b.differentiators?.length) lines.push(`Differentiators: ${b.differentiators.join(', ')}`);
+  if (b.certifications?.length) lines.push(`Credentials: ${b.certifications.join(', ')}`);
+  if (b.work_history_summary) lines.push(`Experience: ${b.work_history_summary}`);
+  if (identity.proposal_style) { lines.push('\nPROPOSAL STYLE:'); lines.push(identity.proposal_style); }
+  lines.push('=== END IDENTITY CONTEXT ===');
+  return lines.join('\n');
+}
+
+/**
  * Build contextual prompt for proposal generation
  */
 function buildProposalPrompt(opportunity, identity, platform) {
-  let prompt = `You are an AI assistant helping to generate a professional proposal or application for a freelance/earning opportunity.
+  let prompt = `You are an AI assistant helping to generate a professional proposal or application for a freelance/earning opportunity.\n\n`;
 
-OPPORTUNITY DETAILS:
+  // Inject full brand context if available
+  if (identity) {
+    prompt += buildBrandContext(identity) + '\n\n';
+  }
+
+  prompt += `OPPORTUNITY DETAILS:
 Title: ${opportunity.title}
 Description: ${opportunity.description}
 Platform: ${platform || opportunity.platform}
@@ -131,16 +166,7 @@ Expected Profit: $${opportunity.profit_estimate_low}-$${opportunity.profit_estim
 `;
 
   if (identity) {
-    prompt += `IDENTITY CONTEXT:
-Name: ${identity.name}
-Role: ${identity.role_label}
-Bio: ${identity.bio || 'Professional freelancer'}
-Tone: ${identity.communication_tone}
-Skills: ${identity.skills?.join(', ') || 'General skills'}
-Tagline: ${identity.tagline || identity.role_label}
-Past Success: ${identity.tasks_executed || 0} tasks completed, $${identity.total_earned || 0} earned
-
-`;
+    prompt += `Past Success: ${identity.tasks_executed || 0} tasks completed, $${identity.total_earned || 0} earned\n\n`;
   }
 
   // Platform-specific instructions

@@ -252,13 +252,11 @@ Be specific and actionable. This is a real contest entry.`
 async function executeGrantApplication(opp, identity, log) {
   log('grant_research', 'running', 'Researching grant requirements and drafting application');
 
-  const application = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: `You are ${identity.name}. Bio: ${identity.bio || 'Professional seeking funding opportunities.'}` },
-      {
-        role: 'user',
-        content: `Grant opportunity:
+  const content = await llmComplete(base44, [
+    { role: 'system', content: `You are ${identity.name}. Bio: ${identity.bio || 'Professional seeking funding opportunities.'}` },
+    {
+      role: 'user',
+      content: `Grant opportunity:
 Title: ${opp.title}
 Platform: ${opp.platform}
 Description: ${opp.description}
@@ -274,12 +272,8 @@ Write a complete grant application including:
 7. Conclusion
 
 Make it compelling, professional, and ready to submit.`
-      }
-    ],
-    max_tokens: 2500,
-  });
-
-  const content = application.choices[0].message.content;
+    }
+  ], 2500);
   log('grant_application_ready', 'success', 'Full grant application drafted');
 
   return {

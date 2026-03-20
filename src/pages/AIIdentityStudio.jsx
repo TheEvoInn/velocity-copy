@@ -98,8 +98,19 @@ export default function AIIdentityStudio() {
                           : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'
                       }`}
                     >
-                      <div className="font-semibold text-white truncate">{identity.name}</div>
+                      <div className="flex items-center gap-2 mb-1">
+                        {identity.color && (
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: identity.brand_assets?.primary_color || identity.color }} />
+                        )}
+                        <div className="font-semibold text-white truncate">{identity.name}</div>
+                        {identity.brand_assets?.ai_persona_instructions && (
+                          <Palette className="w-2.5 h-2.5 text-violet-400 shrink-0" title="Brand assets configured" />
+                        )}
+                      </div>
                       <div className="text-slate-500 truncate text-[10px]">{identity.role_label}</div>
+                      {identity.brand_assets?.graphic_style?.length > 0 && (
+                        <div className="text-violet-500 text-[9px] truncate">{identity.brand_assets.graphic_style.slice(0,2).join(', ')}</div>
+                      )}
                       <div className="text-slate-600 text-[9px] mt-1">
                         {identity.tasks_executed || 0} tasks · ${(identity.total_earned || 0).toFixed(2)}
                       </div>

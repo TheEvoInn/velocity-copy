@@ -74,10 +74,17 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   useRealtimeNotifications();
 
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTxForm, setShowTxForm] = useState(false);
 
   const hasOnboarded = userGoals.id || userGoals.onboarded;
+  // Auto-show onboarding for new users once goals data has loaded (not loading = no record = first visit)
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  React.useEffect(() => {
+    if (!hasOnboarded && userGoals !== undefined) {
+      const timer = setTimeout(() => setShowOnboarding(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [hasOnboarded]);
   const today = new Date().toDateString();
   const completedToday = opportunities.filter(o => o.status === 'completed' && new Date(o.updated_date).toDateString() === today).length;
   const failedTasks = tasks.filter(t => t.status === 'failed').length;

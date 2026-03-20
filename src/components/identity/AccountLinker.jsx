@@ -160,52 +160,111 @@ export default function AccountLinker({ identity, onClose, onSuccess }) {
           )}
         </div>
 
-        {/* Create/Override Options */}
+        {/* Account Type Selection */}
         <div className="border-t border-slate-800 pt-4 space-y-4">
-          {!useExistingAccount ? (
-            <>
-              <div>
-                <label className="text-xs font-medium text-slate-300 block mb-2">Select Platform</label>
-                <select
-                  value={selectedPlatform}
-                  onChange={(e) => setSelectedPlatform(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md border border-slate-700 bg-slate-950 text-white text-sm"
+          <div>
+            <label className="text-xs font-medium text-slate-300 block mb-2">Account Type</label>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(accountTypes).map(([key, config]) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setSelectedAccountType(key);
+                    if (config.platforms.length > 0) setSelectedPlatform(config.platforms[0]);
+                  }}
+                  className={`px-3 py-2 rounded-md text-xs font-medium transition ${
+                    selectedAccountType === key
+                      ? 'bg-violet-600 text-white'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
                 >
-                  {platformOptions.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
+                  {config.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-              <div className="flex gap-3">
-                <Button
-                  onClick={handleAutoCreate}
-                  disabled={isCreatingAccount}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  {isCreatingAccount ? 'Creating...' : 'Auto-Create Account'}
-                </Button>
-                <Button
-                  onClick={() => setUseExistingAccount(true)}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Use My Account
-                </Button>
-              </div>
-            </>
+          {/* Platform Selection */}
+          {availablePlatforms.length > 0 && (
+            <div>
+              <label className="text-xs font-medium text-slate-300 block mb-2">Select Platform</label>
+              <select
+                value={selectedPlatform}
+                onChange={(e) => setSelectedPlatform(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-slate-700 bg-slate-950 text-white text-sm"
+              >
+                {availablePlatforms.map((p) => (
+                  <option key={p} value={p}>{p.replace(/_/g, ' ')}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Custom URL for "Other" type */}
+          {selectedAccountType === 'other' && (
+            <div>
+              <label className="text-xs font-medium text-slate-300 block mb-2">Website URL</label>
+              <Input
+                type="url"
+                placeholder="https://example.com"
+                value={userAccountData.website_url || ''}
+                onChange={(e) => setUserAccountData({ ...userAccountData, website_url: e.target.value })}
+                className="bg-slate-800 border-slate-700"
+              />
+            </div>
+          )}
+
+          {!useExistingAccount ? (
+            <div className="flex gap-3">
+              <Button
+                onClick={handleAutoCreate}
+                disabled={isCreatingAccount || selectedAccountType === 'banking' || selectedAccountType === 'email'}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                title={selectedAccountType === 'banking' || selectedAccountType === 'email' ? 'Auto-create not available for this type' : ''}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {isCreatingAccount ? 'Creating...' : 'Auto-Create Account'}
+              </Button>
+              <Button
+                onClick={() => setUseExistingAccount(true)}
+                variant="outline"
+                className="flex-1"
+              >
+                Link My Account
+              </Button>
+            </div>
           ) : (
             <div className="space-y-3 bg-slate-950 rounded-lg p-4 border border-slate-800">
-              <p className="text-sm text-white font-medium">Link Your Account</p>
-              <input
-                type="text"
-                placeholder="Your username"
-                value={userAccountData.username}
-                onChange={(e) => setUserAccountData({ ...userAccountData, username: e.target.value })}
-                className="w-full px-3 py-2 rounded-md border border-slate-700 bg-slate-900 text-white text-sm"
-              />
-              <div className="flex gap-2">
+              <p className="text-sm text-white font-medium flex items-center gap-2">
+                <Lock className="w-4 h-4" />
+                Link Your Account
+              </p>
+
+              {currentType.fields.map((field) => (
+                <div key={field}>
+                  <label className="text-xs text-slate-300 block mb-1 capitalize">
+                    {field.replace(/_/g, ' ')} {currentType.fields.includes(field) ? '*' : ''}
+                  </label>
+                  {field === 'notes' ? (
+                    <textarea
+                      placeholder={`Enter ${field.replace(/_/g, ' ')}`}
+                      value={userAccountData[field] || ''}
+                      onChange={(e) => setUserAccountData({ ...userAccountData, [field]: e.target.value })}
+                      className="w-full px-3 py-2 rounded-md border border-slate-700 bg-slate-900 text-white text-sm h-20"
+                    />
+                  ) : (
+                    <Input
+                      type={field.includes('password') || field.includes('secret') ? 'password' : 'text'}
+                      placeholder={`Your ${field.replace(/_/g, ' ')}`}
+                      value={userAccountData[field] || ''}
+                      onChange={(e) => setUserAccountData({ ...userAccountData, [field]: e.target.value })}
+                      className="bg-slate-800 border-slate-700 text-sm"
+                    />
+                  )}
+                </div>
+              ))}
+
+              <div className="flex gap-2 pt-2">
                 <Button
                   onClick={() => setUseExistingAccount(false)}
                   variant="outline"
@@ -215,7 +274,6 @@ export default function AccountLinker({ identity, onClose, onSuccess }) {
                 </Button>
                 <Button
                   onClick={handleUserOverride}
-                  disabled={!userAccountData.username.trim()}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700"
                 >
                   Link Account

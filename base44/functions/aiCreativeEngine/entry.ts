@@ -130,52 +130,79 @@ async function deepAIChat({ message, history = [] }) {
   return Response.json({ success: true, reply: data.output, provider: 'deepai' });
 }
 
-// ─── Perchance: Text Generator ────────────────────────────────────────────────
+// ─── Creative Prompt Generator (OpenAI-powered, Perchance-style) ─────────────
 async function perchanceGenerate({ generator, count = 5 }) {
-  const res = await fetch(
-    `https://perchance.org/api/generateList.php?generator=${encodeURIComponent(generator)}&count=${count}`,
-    { headers: { 'Accept': 'application/json' } }
-  );
-  if (!res.ok) throw new Error(`Perchance API error: ${res.status}`);
+  const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY');
+
+  // Use OpenAI to generate Perchance-style creative prompts/content
+  const generatorInstructions = {
+    'ai-character': `Generate ${count} unique fictional AI character descriptions. Each should be 1-2 sentences with name, role, and personality trait.`,
+    'image-prompts': `Generate ${count} vivid, detailed text-to-image prompts for AI art generation. Each should be evocative and specific with style, subject, lighting, and mood.`,
+    'story-ideas': `Generate ${count} unique short story concepts in 1-2 sentences each. Include genre, protagonist type, and core conflict.`,
+    'job-titles': `Generate ${count} creative and unusual professional job titles for a futuristic freelance economy. Make them specific and intriguing.`,
+    'business-names': `Generate ${count} catchy, memorable business names for a digital services / AI company. Include a one-word tagline.`,
+    'product-descriptions': `Generate ${count} compelling digital product descriptions (templates, tools, assets) ready for marketplace listing. Each 1-2 sentences.`,
+  };
+
+  const instruction = generatorInstructions[generator] || `Generate ${count} creative ideas related to: ${generator}. One per line.`;
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a creative content generator. Output ONLY a numbered list, one item per line, no extra commentary.' },
+        { role: 'user', content: instruction }
+      ],
+      max_tokens: 600,
+    }),
+  });
+
   const data = await res.json();
+  const raw = data.choices?.[0]?.message?.content || '';
+  const results = raw.split('\n')
+    .filter(l => l.trim())
+    .map(l => l.replace(/^\d+[\.\)]\s*/, '').trim())
+    .filter(l => l.length > 3)
+    .slice(0, count);
 
   return Response.json({
     success: true,
-    results: data,
+    results,
     generator,
-    provider: 'perchance',
+    provider: 'openai-creative',
   });
 }
 
-// ─── Combined: Generate Creative Brief (Perchance → DeepAI image) ────────────
-async function generateCreativeBrief({ type = 'ai-character', category = 'freelance' }) {
+// ─── Combined: Generate Creative Brief (OpenAI prompt → DeepAI image) ────────
+async function generateCreativeBrief({ type = 'logo', category = 'freelance' }) {
+  const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY');
   const DEEPAI_KEY = Deno.env.get('DEEPAI_API_KEY');
 
-  // Step 1: Get a creative prompt from Perchance
-  let promptText = null;
-  try {
-    const pcRes = await fetch(
-      `https://perchance.org/api/generateList.php?generator=${encodeURIComponent(type)}&count=1`,
-      { headers: { 'Accept': 'application/json' } }
-    );
-    if (pcRes.ok) {
-      const pcData = await pcRes.json();
-      promptText = Array.isArray(pcData) ? pcData[0] : null;
-    }
-  } catch (_) { /* fallback to LLM prompt */ }
+  // Step 1: Use OpenAI to generate an optimal image prompt for the asset type
+  const promptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are an expert prompt engineer for AI image generation. Output ONLY the image prompt, nothing else.' },
+        { role: 'user', content: `Write a single, detailed text-to-image prompt for a professional ${type} for a ${category} business. Include style, colors, composition, and mood. Keep it under 100 words.` }
+      ],
+      max_tokens: 120,
+    }),
+  });
+  const promptData = await promptRes.json();
+  const promptText = promptData.choices?.[0]?.message?.content?.trim() || `Professional ${type} for ${category}, clean modern design, white background`;
 
-  // Step 2: If perchance didn't give us something useful, build a prompt
-  if (!promptText || promptText.length < 5) {
-    const prompts = {
-      logo: `Professional minimalist logo design for a ${category} business, clean vector style, white background`,
-      banner: `Eye-catching promotional banner for a ${category} service, vibrant colors, modern typography`,
-      avatar: `Professional avatar portrait for a ${category} freelancer, photorealistic, neutral background`,
-      product: `High-quality product mockup for digital ${category} services, studio lighting`,
-    };
-    promptText = prompts[type] || `Professional creative design for ${category} work`;
-  }
-
-  // Step 3: Generate image with DeepAI
+  // Step 2: Generate image with DeepAI
   const formData = new FormData();
   formData.append('text', promptText);
   formData.append('grid_size', '1');
@@ -192,6 +219,6 @@ async function generateCreativeBrief({ type = 'ai-character', category = 'freela
     prompt_used: promptText,
     image_url: imgData.output_url || null,
     image_error: imgData.err || null,
-    provider: 'deepai+perchance',
+    provider: 'openai+deepai',
   });
 }

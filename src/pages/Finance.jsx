@@ -148,6 +148,11 @@ export default function Finance() {
         <FinancialDashboard />
       </div>
 
+      {/* Payout Verifier — PayPal & Stripe */}
+      <div className="mb-5">
+        <PayoutVerifierPanel />
+      </div>
+
       {/* Risk & Compliance */}
       <RiskComplianceDashboard />
     </div>

@@ -177,6 +177,13 @@ export default function Discovery() {
         )}
       </div>
 
+      {/* Real Job Scan Panel */}
+      <div className="mb-5">
+        <RealJobScanPanel onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+        }} />
+      </div>
+
       {/* Deep Analysis Panel */}
       <OpportunityAnalysisPanel />
     </div>

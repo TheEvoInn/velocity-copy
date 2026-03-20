@@ -8,6 +8,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 const RAPIDAPI_KEY = Deno.env.get('RAPIDAPI_KEY');
 
 async function searchJSearch(query, numPages = 1) {
+  // NOTE: Requires subscribing to "JSearch" at https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch
   const url = `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&num_pages=${numPages}&date_posted=today`;
   const res = await fetch(url, {
     headers: {

@@ -236,6 +236,14 @@ export default function IdentityForm({ identity, onSave, onCancel }) {
         </Field>
       </div>
 
+      {/* Auto-generating banner */}
+      {autoGenerating && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2.5">
+          <Loader2 className="w-4 h-4 text-violet-400 animate-spin flex-shrink-0" />
+          <span className="text-xs text-violet-300">MISSION is writing your tagline, bio, signature & proposal style...</span>
+        </div>
+      )}
+
       {/* Tagline + Bio */}
       <div>
         <div className="flex items-center justify-between mb-1">

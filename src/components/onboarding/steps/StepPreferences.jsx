@@ -1,4 +1,5 @@
 import React from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowRight, ArrowLeft, Sliders } from 'lucide-react';

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Rocket, CheckCircle, User, Shield, Sliders, DollarSign, Zap, Loader2 } from 'lucide-react';
 

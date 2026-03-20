@@ -36,6 +36,7 @@ import KYCManagement from './pages/KYCManagement';
 import DataPersistenceAudit from './pages/DataPersistenceAudit';
 import PlatformAuditDashboard from './pages/PlatformAuditDashboard';
 import ExchangeConnectivity from './pages/ExchangeConnectivity';
+import AdminControlPanel from './pages/AdminControlPanel';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

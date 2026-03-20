@@ -218,11 +218,11 @@ export default function AICreativeStudio() {
           )}
         </TabsContent>
 
-        {/* ── PERCHANCE ── */}
+        {/* ── PROMPT GENERATOR ── */}
         <TabsContent value="perchance" className="space-y-3">
-          <p className="text-slate-400 text-xs">Generate creative prompts & content ideas using Perchance generators</p>
+          <p className="text-slate-400 text-xs">Generate creative prompts & content ideas using AI</p>
           <div className="flex flex-wrap gap-2">
-            {PERCHANCE_GENERATORS.map(g => (
+            {PROMPT_GENERATORS.map(g => (
               <button
                 key={g.id}
                 onClick={() => setPcGenerator(g.id)}

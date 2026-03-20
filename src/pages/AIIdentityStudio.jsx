@@ -140,9 +140,12 @@ export default function AIIdentityStudio() {
               </div>
             ) : (
               <Tabs defaultValue="profile" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 bg-slate-900 border-b border-slate-800 rounded-none mb-6">
+                <TabsList className="grid w-full grid-cols-5 bg-slate-900 border-b border-slate-800 rounded-none mb-6">
                   <TabsTrigger value="profile" className="flex items-center gap-2">
                     <User className="w-4 h-4" /> Profile
+                  </TabsTrigger>
+                  <TabsTrigger value="brand" className="flex items-center gap-2 text-violet-400 data-[state=active]:text-violet-300">
+                    <Palette className="w-4 h-4" /> Brand
                   </TabsTrigger>
                   <TabsTrigger value="accounts" className="flex items-center gap-2">
                     <Database className="w-4 h-4" /> Accounts
@@ -160,6 +163,10 @@ export default function AIIdentityStudio() {
                     queryClient.invalidateQueries({ queryKey: ['userIdentities', user?.email] });
                     setSelectedIdentity(null);
                   }} />
+                </TabsContent>
+
+                <TabsContent value="brand">
+                  <BrandAssetsEditor identity={selectedIdentity} />
                 </TabsContent>
 
                 <TabsContent value="accounts">

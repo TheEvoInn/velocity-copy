@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
-import { User, Lock, Database, Settings2, Plus, Search } from 'lucide-react';
+import { User, Lock, Database, Settings2, Plus, Search, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import IdentityProfileBuilder from '../components/identity/IdentityProfileBuilde
 import CredentialKeyManager from '../components/identity/CredentialKeyManager';
 import IdentityDataExplorer from '../components/identity/IdentityDataExplorer';
 import LinkedAccountsManager from '../components/identity/LinkedAccountsManager';
+import BrandAssetsEditor from '../components/identity/BrandAssetsEditor';
 
 export default function AIIdentityStudio() {
   const { user } = useAuth();

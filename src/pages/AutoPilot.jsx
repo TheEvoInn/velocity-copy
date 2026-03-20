@@ -203,6 +203,28 @@ export default function AutoPilot() {
         </div>
       </div>
 
+      {/* ── Last Run Result Banner ── */}
+      {lastRunResult && (
+        <div className="mb-4 px-4 py-3 rounded-xl text-xs"
+          style={{
+            background: lastRunResult.success ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+            border: `1px solid ${lastRunResult.success ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+          }}>
+          <div className="flex items-center justify-between">
+            <span className={lastRunResult.success ? 'text-emerald-400' : 'text-red-400'}>
+              {lastRunResult.force_run ? '⚡ Force Run' : '🤖 Cycle'} completed
+              {lastRunResult.success
+                ? ` — ${lastRunResult.queued || 0} queued, ${lastRunResult.executed || 0} executed`
+                : ` — Error: ${lastRunResult.errors?.[0] || 'Unknown error'}`}
+            </span>
+            <button onClick={() => setLastRunResult(null)} className="text-slate-500 hover:text-white ml-4">✕</button>
+          </div>
+          {lastRunResult.errors?.length > 0 && lastRunResult.success && (
+            <p className="text-amber-500 mt-1">{lastRunResult.errors.length} warning(s): {lastRunResult.errors[0]}</p>
+          )}
+        </div>
+      )}
+
       {/* ── Tab Navigation ── */}
       <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1 scrollbar-none">
         {TABS.map(tab => (

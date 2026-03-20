@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useDepartmentSync } from '@/hooks/useDepartmentSync';
-import { SlidersHorizontal, User, Shield, Wrench, Bot, Link2, Lock, Target, Settings, ToggleLeft, ToggleRight, Edit3, PlusCircle, CheckCircle2, Star } from 'lucide-react';
+import { SlidersHorizontal, User, Shield, Wrench, Bot, Link2, Lock, Target, Settings, ToggleLeft, ToggleRight, Edit3, PlusCircle, CheckCircle2, Star, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';

@@ -205,22 +205,26 @@ export default function IdentityForm({ identity, onSave, onCancel }) {
       </div>
 
       {/* Tagline + Bio */}
-      <Field label="Tagline / Headline" hint="Used on platform profiles">
-        <div className="flex items-center gap-2 mb-1">
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-[10px] text-slate-500 uppercase tracking-wider">Tagline / Headline</label>
           <MissionWriteButton field="tagline" identity={form} onResult={v => set('tagline', v)} />
         </div>
         <Input value={form.tagline} onChange={e => set('tagline', e.target.value)}
           placeholder="Expert freelancer delivering quality results"
           className="bg-slate-800 border-slate-700 text-white text-xs h-8" />
-      </Field>
-      <Field label="Full Bio">
-        <div className="flex items-center gap-2 mb-1">
+        <p className="text-[10px] text-slate-600 mt-0.5">Used on platform profiles</p>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-[10px] text-slate-500 uppercase tracking-wider">Full Bio</label>
           <MissionWriteButton field="bio" identity={form} onResult={v => set('bio', v)} />
         </div>
         <textarea value={form.bio} onChange={e => set('bio', e.target.value)} rows={3}
           placeholder="Detailed professional bio used in proposals and profiles..."
           className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500/50 resize-none" />
-      </Field>
+      </div>
 
       {/* Communication Tone */}
       <Field label="Communication Tone">
@@ -228,23 +232,26 @@ export default function IdentityForm({ identity, onSave, onCancel }) {
       </Field>
 
       {/* Email Signature */}
-      <Field label="Email Signature">
-        <div className="flex items-center gap-2 mb-1">
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-[10px] text-slate-500 uppercase tracking-wider">Email Signature</label>
           <MissionWriteButton field="email_signature" identity={form} onResult={v => set('email_signature', v)} />
         </div>
         <textarea value={form.email_signature} onChange={e => set('email_signature', e.target.value)} rows={3}
           className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500/50 resize-none" />
-      </Field>
+      </div>
 
       {/* Proposal style */}
-      <Field label="Proposal Writing Instructions" hint="How the AI should write proposals for this identity">
-        <div className="flex items-center gap-2 mb-1">
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-[10px] text-slate-500 uppercase tracking-wider">Proposal Writing Instructions</label>
           <MissionWriteButton field="proposal_style" identity={form} onResult={v => set('proposal_style', v)} />
         </div>
         <textarea value={form.proposal_style} onChange={e => set('proposal_style', e.target.value)} rows={2}
           placeholder="Always start with the client's specific pain point. Use bullet points for deliverables. Close with a clear CTA."
           className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500/50 resize-none" />
-      </Field>
+        <p className="text-[10px] text-slate-600 mt-0.5">How the AI should write proposals for this identity</p>
+      </div>
 
       {/* Skills */}
       <Field label="Skills (comma separated)">

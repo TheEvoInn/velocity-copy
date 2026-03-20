@@ -189,22 +189,30 @@ export default function Control() {
 
       {/* ACCOUNTS TAB */}
       {activeTab === 'Accounts' && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Link2 className="w-4 h-4 text-purple-400" />
-              Linked Accounts
-            </h2>
-          </div>
+        <div className="space-y-4">
+          <Link to="/ExchangeConnectivity" className="block">
+            <div className="rounded-xl p-5 transition-all"
+              style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(6,182,212,0.08))', border: '1px solid rgba(124,58,237,0.35)', boxShadow: '0 0 24px rgba(124,58,237,0.15)' }}>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">🔌</span>
+                <div>
+                  <h3 className="text-sm font-semibold text-white font-orbitron tracking-wide">Exchange Connectivity Hub</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Connect eBay, Etsy, Upwork, Fiverr, Shopify, Amazon & more</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-violet-400 ml-auto shrink-0" />
+              </div>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {['eBay', 'Etsy', 'Upwork', 'Fiverr', 'Amazon', 'Shopify', 'Stripe'].map(p => (
+                  <span key={p} className="text-[9px] px-2 py-0.5 bg-violet-500/15 text-violet-300 border border-violet-500/25 rounded-full">{p}</span>
+                ))}
+              </div>
+            </div>
+          </Link>
           <Link to="/AccountManager">
-            <Button variant="outline" size="sm" className="border-slate-700 text-slate-400 text-xs hover:bg-slate-800 mb-4">
+            <Button variant="outline" size="sm" className="border-slate-700 text-slate-400 text-xs hover:bg-slate-800">
               Open Account Manager →
             </Button>
           </Link>
-          <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-8 text-center">
-            <Link2 className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-            <p className="text-sm text-slate-500">Manage your platform accounts in the Account Manager.</p>
-          </div>
         </div>
       )}
 

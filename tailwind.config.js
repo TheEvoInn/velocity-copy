@@ -2,6 +2,16 @@
 module.exports = {
     darkMode: ["class"],
     content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
+    safelist: [
+      'font-orbitron', 'font-inter',
+      'glass-card', 'glass-card-bright', 'glass-nav',
+      'glow-violet', 'glow-cyan', 'glow-emerald', 'glow-amber', 'glow-blue', 'glow-pink',
+      'text-glow-violet', 'text-glow-cyan', 'text-glow-emerald', 'text-glow-amber',
+      'planet-nav', 'btn-cosmic', 'tilt-card', 'float-anim', 'float-anim-slow',
+      'star-twinkle', 'star-twinkle-slow', 'star-twinkle-fast',
+      'nebula-drift', 'nebula-drift-slow', 'orbit-dot', 'orbit-dot-slow',
+      'pulse-glow', 'page-enter', 'constellation-line',
+    ],
   theme: {
   	extend: {
       fontFamily: {

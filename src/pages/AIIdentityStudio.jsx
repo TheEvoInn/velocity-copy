@@ -170,11 +170,11 @@ export default function AIIdentityStudio() {
                 </TabsList>
 
                 <TabsContent value="profile" className="space-y-6">
-                  <IdentityProfileBuilder identity={selectedIdentity} mode="edit" onComplete={() => {
-                    queryClient.invalidateQueries({ queryKey: ['userIdentities', user?.email] });
-                    setSelectedIdentity(null);
-                  }} />
-                </TabsContent>
+                   <IdentityProfileBuilder identity={selectedIdentity} mode="edit" onComplete={() => {
+                     queryClient.invalidateQueries({ queryKey: ['identities', user?.email] });
+                     setSelectedIdentity(null);
+                   }} />
+                 </TabsContent>
 
                 <TabsContent value="brand">
                   <BrandAssetsEditor identity={selectedIdentity} />

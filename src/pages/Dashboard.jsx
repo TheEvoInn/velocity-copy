@@ -121,7 +121,7 @@ export default function Dashboard() {
               style={{ boxShadow: '0 0 8px #06b6d4', animation: 'pulse-glow 2s ease-in-out infinite' }} />
           </div>
           <div>
-            <h1 className="font-orbitron text-xl font-bold tracking-widest text-white text-glow-cyan">COMMAND CENTER</h1>
+            <h1 className="font-orbitron text-base sm:text-xl font-bold tracking-widest text-white text-glow-cyan truncate">COMMAND CENTER</h1>
             <p className="text-xs text-slate-500 tracking-wide">All departments · Real-time sync</p>
           </div>
         </div>

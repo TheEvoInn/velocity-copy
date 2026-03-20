@@ -60,15 +60,8 @@ async function generateProposal(base44, user, payload) {
       (await base44.entities.AIIdentity.filter({ id: identity_id }, null, 1))?.[0] :
       (await base44.entities.AIIdentity.filter({ is_active: true }, null, 1))?.[0];
 
-    // Call LLM to generate proposal
-    const proposal = await base44.integrations.Core.InvokeLLM({
-      prompt: buildProposalPrompt(
-        opp[0],
-        identity,
-        platform
-      ),
-      model: 'gemini_3_flash'
-    });
+    // Call Gemini directly for high-quality proposal generation
+    const proposal = await generateWithGemini(buildProposalPrompt(opp[0], identity, platform));
 
     return Response.json({
       success: true,

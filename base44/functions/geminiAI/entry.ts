@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     // ── GENERATE ───────────────────────────────────────────────────────────────
     if (action === 'generate') {
       const { prompt, system, model = DEFAULT_MODEL, temperature = 0.7 } = params;
-      const result = await callGemini(model, prompt, system, null, temperature);
+      const result = await callAI(model, prompt, system, null, temperature);
       return Response.json({ success: true, text: result });
     }
 

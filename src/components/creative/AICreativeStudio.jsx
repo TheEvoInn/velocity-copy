@@ -259,7 +259,7 @@ export default function AICreativeStudio() {
 
         {/* ── CREATIVE BRIEF ── */}
         <TabsContent value="brief" className="space-y-3">
-          <p className="text-slate-400 text-xs">Auto-generate a visual creative brief: Perchance prompt → DeepAI image</p>
+          <p className="text-slate-400 text-xs">Auto-generate a visual creative brief: AI prompt → DeepAI image</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-slate-400 text-xs mb-1">Asset Type</p>

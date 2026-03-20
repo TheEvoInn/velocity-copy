@@ -22,7 +22,7 @@ export default function AIIdentityStudio() {
 
   // Fetch all user identities
   const { data: identities = [], isLoading } = useQuery({
-    queryKey: ['userIdentities', user?.email],
+    queryKey: ['identities', user?.email],
     queryFn: () => base44.entities.AIIdentity.filter({ created_by: user?.email }, '-created_date', 100),
     enabled: !!user?.email,
     refetchInterval: 30000

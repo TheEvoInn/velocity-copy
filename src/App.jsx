@@ -41,6 +41,7 @@ import BackgroundExecutionHub from './pages/BackgroundExecutionHub';
 import EmailOutreachHub from './pages/EmailOutreachHub';
 import UserAccessPage from './pages/UserAccessPage';
 import TaskQueueApproval from './pages/TaskQueueApproval';
+import FinancialDashboard from './pages/FinancialDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

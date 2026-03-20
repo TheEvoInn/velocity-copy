@@ -99,6 +99,7 @@ const AuthenticatedApp = () => {
         <Route path="/EmailOutreachHub" element={<EmailOutreachHub />} />
         <Route path="/UserAccessPage" element={<UserAccessPage />} />
         <Route path="/TaskQueueApproval" element={<TaskQueueApproval />} />
+        <Route path="/FinancialDashboard" element={<FinancialDashboard />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

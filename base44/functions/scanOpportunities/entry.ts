@@ -3,11 +3,15 @@ import OpenAI from 'npm:openai@4.47.1';
 
 /**
  * Real Opportunity Scanner
- * Uses OpenAI web-search + RapidAPI job feeds to find REAL, instantly-claimable opportunities.
+ * Uses OpenAI (with InvokeLLM fallback) + RapidAPI job feeds to find REAL, instantly-claimable opportunities.
  * NO Upwork. NO Fiverr. Focus on instant-claim / no-hiring-process platforms.
  */
 
-const openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') });
+let _openai = null;
+function getOpenAI() {
+  if (!_openai) _openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') });
+  return _openai;
+}
 
 // Platforms that allow instant claim, self-assign, or no hiring process
 const INSTANT_CLAIM_SOURCES = [

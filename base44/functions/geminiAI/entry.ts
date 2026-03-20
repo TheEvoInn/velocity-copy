@@ -229,7 +229,7 @@ Return a JSON object with:
 - recommended_actions: array of strings (next steps)
 - sources_to_check: array of strings (platforms/resources to explore)`;
 
-      const result = await callGemini(model, prompt, 'You are an expert market researcher and profit strategist. Return valid JSON.', true, 0.4);
+      const result = await callAI(model, prompt, 'You are an expert market researcher and profit strategist. Return valid JSON.', true, 0.4);
       return Response.json({ success: true, research: result });
     }
 

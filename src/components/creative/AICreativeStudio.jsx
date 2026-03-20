@@ -17,8 +17,9 @@ const PROMPT_GENERATORS = [
 ];
 
 const IMAGE_STYLES = [
-  { id: 'hd', label: 'HD Photo' },
-  { id: 'anime', label: 'Anime Portrait' },
+  { id: 'standard', label: 'Standard' },
+  { id: 'vivid', label: 'Vivid' },
+  { id: 'natural', label: 'Natural' },
 ];
 
 export default function AICreativeStudio() {

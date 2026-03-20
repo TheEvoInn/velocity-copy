@@ -1,171 +1,151 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
-import OpenAI from 'npm:openai@4.47.1';
-
 /**
- * Real Opportunity Scanner
- * Uses OpenAI (with InvokeLLM fallback) + RapidAPI job feeds to find REAL, instantly-claimable opportunities.
- * NO Upwork. NO Fiverr. Focus on instant-claim / no-hiring-process platforms.
+ * Scan Opportunities — Unified real-data opportunity discovery
+ * Source 1: AI web search (InvokeLLM + internet) for contests, grants, giveaways
+ * Source 2: RapidAPI job feeds (real live jobs via realJobSearch)
+ * Source 3: n8n MCP workflows (if configured)
+ *
+ * NO simulated or placeholder data is ever created.
  */
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
-let _openai = null;
-function getOpenAI() {
-  if (!_openai) _openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') });
-  return _openai;
+const N8N_MCP_URL = 'https://velocitypulse.app.n8n.cloud/mcp-server/http';
+const N8N_TOKEN = Deno.env.get('N8N_MCP_BEARER_TOKEN');
+
+async function scanViaAIWebSearch(base44, categories) {
+  const now = new Date();
+  const results = [];
+
+  for (const cat of categories) {
+    try {
+      const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
+        prompt: `Search the internet right now for 3 real, currently active, legitimate ${cat.label} as of ${now.toISOString().slice(0, 10)}.
+
+For each, return a JSON object with:
+- title: exact name of the opportunity
+- description: 1-2 sentences explaining what it is and how to earn
+- url: direct link to apply/enter (must be a real, working URL)
+- platform: the website name
+- profit_low: minimum USD you can earn (number)
+- profit_high: maximum USD you can earn (number)
+- time_sensitivity: one of immediate/hours/days/weeks/ongoing
+- deadline: ISO date string if known, otherwise null
+
+Only include opportunities that are definitively REAL and ACTIVE TODAY.
+If you cannot find 3 real ones, return fewer rather than invent any.
+Return ONLY a JSON object: { "opportunities": [...] }`,
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            opportunities: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  description: { type: 'string' },
+                  url: { type: 'string' },
+                  platform: { type: 'string' },
+                  profit_low: { type: 'number' },
+                  profit_high: { type: 'number' },
+                  time_sensitivity: { type: 'string' },
+                  deadline: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const opps = result?.opportunities || [];
+      for (const opp of opps) {
+        if (!opp.title || !opp.url) continue;
+        // Skip if URL looks fake/generic
+        if (opp.url.includes('example.com') || opp.url === '#') continue;
+        results.push({ ...opp, category: cat.name, opportunity_type: cat.type, source: 'ai_web_search' });
+      }
+      console.log(`[AI Web Search] ${cat.name}: found ${opps.length} opportunities`);
+    } catch (e) {
+      console.error(`[AI Web Search] Error for ${cat.name}:`, e.message);
+    }
+  }
+  return results;
 }
 
-// Platforms that allow instant claim, self-assign, or no hiring process
-const INSTANT_CLAIM_SOURCES = [
-  {
-    name: 'textbroker',
-    label: 'Textbroker open-order writing assignments',
-    url_base: 'https://www.textbroker.com',
-    types: ['content writing', 'article writing', 'blog posts'],
-    profit_range: [5, 150],
-    category: 'service',
-    opportunity_type: 'job',
-    claim_type: 'instant',
-  },
-  {
-    name: 'iwriter',
-    label: 'iWriter available writing requests',
-    url_base: 'https://www.iwriter.com',
-    types: ['article', 'blog post', 'product description'],
-    profit_range: [3, 100],
-    category: 'service',
-    opportunity_type: 'job',
-    claim_type: 'instant',
-  },
-  {
-    name: 'constant_content',
-    label: 'Constant Content writing marketplace listings',
-    url_base: 'https://www.constant-content.com',
-    types: ['articles', 'web copy', 'SEO content'],
-    profit_range: [20, 500],
-    category: 'service',
-    opportunity_type: 'job',
-    claim_type: 'instant',
-  },
-  {
-    name: 'designhill_contests',
-    label: 'Designhill open logo and design contests',
-    url_base: 'https://www.designhill.com/design-contests',
-    types: ['logo design', 'brand identity', 'social media graphics'],
-    profit_range: [100, 1000],
-    category: 'contest',
-    opportunity_type: 'contest',
-    claim_type: 'instant',
-  },
-  {
-    name: '99designs_contests',
-    label: '99designs open design contests accepting entries',
-    url_base: 'https://99designs.com/contests',
-    types: ['logo design', 'website design', 'brand identity', 'packaging'],
-    profit_range: [200, 1500],
-    category: 'contest',
-    opportunity_type: 'contest',
-    claim_type: 'instant',
-  },
-  {
-    name: 'reedsy',
-    label: 'Reedsy marketplace book editing and writing projects',
-    url_base: 'https://reedsy.com/freelancers',
-    types: ['book editing', 'proofreading', 'ghostwriting', 'cover design'],
-    profit_range: [100, 3000],
-    category: 'service',
-    opportunity_type: 'application',
-    claim_type: 'apply',
-  },
-  {
-    name: 'guru',
-    label: 'Guru.com instant-hire job postings',
-    url_base: 'https://www.guru.com/d/jobs',
-    types: ['writing', 'design', 'programming', 'data entry'],
-    profit_range: [20, 500],
-    category: 'service',
-    opportunity_type: 'job',
-    claim_type: 'instant',
-  },
-  {
-    name: 'peopleperhour',
-    label: 'PeoplePerHour Hourlies (fixed-price instant-buy services)',
-    url_base: 'https://www.peopleperhour.com/hourlie',
-    types: ['copywriting', 'logo', 'SEO audit', 'social media'],
-    profit_range: [25, 300],
-    category: 'service',
-    opportunity_type: 'job',
-    claim_type: 'instant',
-  },
-  {
-    name: 'crowdspring',
-    label: 'Crowdspring open design and naming contests',
-    url_base: 'https://www.crowdspring.com/projects',
-    types: ['logo', 'product naming', 'tagline', 'web design'],
-    profit_range: [150, 2000],
-    category: 'contest',
-    opportunity_type: 'contest',
-    claim_type: 'instant',
-  },
-  {
-    name: 'writeraccess',
-    label: 'WriterAccess open content orders available to claim',
-    url_base: 'https://app.writeraccess.com',
-    types: ['blog posts', 'white papers', 'product descriptions', 'email copy'],
-    profit_range: [10, 300],
-    category: 'service',
-    opportunity_type: 'job',
-    claim_type: 'instant',
-  },
-  {
-    name: 'amazon_kdp',
-    label: 'Amazon KDP low-content book publishing opportunities (activity books, journals, planners)',
-    url_base: 'https://kdp.amazon.com',
-    types: ['journal', 'planner', 'activity book', 'coloring book', 'notebook'],
-    profit_range: [50, 5000],
-    category: 'digital_flip',
-    opportunity_type: 'other',
-    claim_type: 'instant',
-  },
-  {
-    name: 'creative_market',
-    label: 'Creative Market trending design asset gaps to fill and sell',
-    url_base: 'https://creativemarket.com',
-    types: ['fonts', 'templates', 'graphics', 'UI kits', 'mockups'],
-    profit_range: [30, 2000],
-    category: 'digital_flip',
-    opportunity_type: 'other',
-    claim_type: 'instant',
-  },
-  {
-    name: 'nonfiction_writing_contests',
-    label: 'Active cash-prize essay and nonfiction writing contests',
-    url_base: 'https://www.writersdigest.com/competitions',
-    types: ['essay', 'short story', 'nonfiction', 'flash fiction'],
-    profit_range: [50, 5000],
-    category: 'contest',
-    opportunity_type: 'contest',
-    claim_type: 'instant',
-  },
-  {
-    name: 'envato_elements',
-    label: 'Envato Elements / GraphicRiver in-demand asset categories',
-    url_base: 'https://graphicriver.net',
-    types: ['presentation templates', 'resume templates', 'flyer templates'],
-    profit_range: [20, 500],
-    category: 'digital_flip',
-    opportunity_type: 'other',
-    claim_type: 'instant',
-  },
-  {
-    name: 'grant_watch',
-    label: 'GrantWatch small business and individual grants open for application',
-    url_base: 'https://www.grantwatch.com',
-    types: ['small business grant', 'creative grant', 'minority grant', 'women grant'],
-    profit_range: [500, 25000],
-    category: 'grant',
-    opportunity_type: 'grant',
-    claim_type: 'apply',
-  },
-];
+async function scanViaN8nMCP(base44) {
+  if (!N8N_TOKEN) return [];
+  try {
+    const mcpRes = await fetch(N8N_MCP_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
+        'Authorization': `Bearer ${N8N_TOKEN}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        id: 1,
+      }),
+    });
+
+    const text = await mcpRes.text();
+    const contentType = mcpRes.headers.get('content-type') || '';
+    let mcpData;
+    if (contentType.includes('text/event-stream')) {
+      for (const line of text.split('\n')) {
+        if (line.startsWith('data:')) {
+          try { mcpData = JSON.parse(line.slice(5).trim()); } catch { /* skip */ }
+        }
+      }
+    } else {
+      mcpData = JSON.parse(text);
+    }
+
+    const tools = mcpData?.result?.tools || [];
+    const scanTool = tools.find(t => t.name?.toLowerCase().includes('scan') || t.name?.toLowerCase().includes('job') || t.name?.toLowerCase().includes('opportunity'));
+
+    if (scanTool) {
+      console.log(`[n8n MCP] Found scan tool: ${scanTool.name}`);
+      const execRes = await fetch(N8N_MCP_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/event-stream',
+          'Authorization': `Bearer ${N8N_TOKEN}`,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { name: scanTool.name, arguments: {} },
+          id: 2,
+        }),
+      });
+      const execText = await execRes.text();
+      const execContentType = execRes.headers.get('content-type') || '';
+      let execData;
+      if (execContentType.includes('text/event-stream')) {
+        for (const line of execText.split('\n')) {
+          if (line.startsWith('data:')) {
+            try { execData = JSON.parse(line.slice(5).trim()); } catch { /* skip */ }
+          }
+        }
+      } else {
+        execData = JSON.parse(execText);
+      }
+      const content = execData?.result?.content?.[0]?.text;
+      if (content) {
+        const parsed = JSON.parse(content);
+        const opps = Array.isArray(parsed) ? parsed : parsed.opportunities || [];
+        console.log(`[n8n MCP] ${scanTool.name} returned ${opps.length} items`);
+        return opps.map(o => ({ ...o, source: 'n8n_mcp' }));
+      }
+    }
+  } catch (e) {
+    console.error('[n8n MCP] Error:', e.message);
+  }
+  return [];
+}
 
 Deno.serve(async (req) => {
   try {
@@ -173,181 +153,107 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const now = new Date();
-    const today = now.toISOString().slice(0, 10);
-    console.log(`[ScanOpportunities] Starting real scan at ${now.toISOString()}`);
+    const body = await req.json().catch(() => ({}));
+    const sources = body.sources || ['ai_web', 'rapidapi', 'n8n'];
 
-    let totalCreated = 0;
-    const results = [];
+    const allOpps = [];
+    const scanSummary = [];
 
-    // Process sources in batches of 4 for efficiency
-    const batchSize = 4;
-    for (let i = 0; i < INSTANT_CLAIM_SOURCES.length; i += batchSize) {
-      const batch = INSTANT_CLAIM_SOURCES.slice(i, i + batchSize);
-
-      await Promise.all(batch.map(async (source) => {
-        try {
-          // Try OpenAI first, fall back to platform InvokeLLM
-          let parsed = [];
-          const promptText = `Search ${source.name} right now for 3 real, active ${source.label} available today (${today}).
-
-Return a JSON object with key "opportunities" containing an array of objects, each with:
-- title: exact title of the listing
-- description: what needs to be done, deliverables, requirements
-- url: direct link to the specific listing or contest page
-- profit_low: minimum payout in USD (number)
-- profit_high: maximum payout in USD (number)
-- deadline: ISO date string or null
-- requirements: what skills/tools are needed
-
-Only return real opportunities. If fewer than 3 exist, return what is real.`;
-
-          try {
-            const openai = getOpenAI();
-            const completion = await openai.chat.completions.create({
-              model: 'gpt-4o-mini',
-              messages: [
-                { role: 'system', content: `You are a real-time opportunity researcher. Today is ${today}. Find REAL, currently active opportunities on ${source.url_base}. Return only verifiable listings with accurate URLs.` },
-                { role: 'user', content: promptText }
-              ],
-              response_format: { type: 'json_object' },
-            });
-            const raw = completion.choices[0].message.content;
-            const obj = JSON.parse(raw);
-            parsed = Array.isArray(obj) ? obj : (obj.opportunities || obj.results || obj.listings || Object.values(obj)[0] || []);
-          } catch (openaiErr) {
-            console.log(`[Scan] OpenAI failed for ${source.name} (${openaiErr.message}), using InvokeLLM fallback`);
-            // Fallback to platform InvokeLLM with internet search
-            const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
-              prompt: `Today is ${today}. ${promptText}\n\nSearch the web for real current listings. Return JSON with "opportunities" array.`,
-              add_context_from_internet: true,
-              response_json_schema: {
-                type: 'object',
-                properties: {
-                  opportunities: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        title: { type: 'string' },
-                        description: { type: 'string' },
-                        url: { type: 'string' },
-                        profit_low: { type: 'number' },
-                        profit_high: { type: 'number' },
-                        deadline: { type: 'string' },
-                        requirements: { type: 'string' }
-                      }
-                    }
-                  }
-                }
-              }
-            });
-            parsed = result?.opportunities || [];
-          }
-
-          let sourceCreated = 0;
-          for (const opp of (parsed || []).slice(0, 3)) {
-            if (!opp.title || !opp.url) continue;
-
-            // Deduplicate by URL
-            const existing = await base44.asServiceRole.entities.Opportunity.filter({ url: opp.url }, null, 1);
-            if (existing.length > 0) continue;
-
-            const profitLow = opp.profit_low || source.profit_range[0];
-            const profitHigh = opp.profit_high || source.profit_range[1];
-            const velocityScore = source.claim_type === 'instant' ? 90 : 65;
-            const overallScore = Math.min(99, Math.round(
-              (profitHigh > 1000 ? 85 : profitHigh > 200 ? 75 : 60) +
-              (source.claim_type === 'instant' ? 10 : 0)
-            ));
-
-            await base44.asServiceRole.entities.Opportunity.create({
-              title: opp.title,
-              description: opp.description || `${source.label} opportunity`,
-              url: opp.url,
-              category: source.category,
-              opportunity_type: source.opportunity_type,
-              platform: source.name,
-              profit_estimate_low: profitLow,
-              profit_estimate_high: profitHigh,
-              time_sensitivity: opp.deadline ? 'days' : 'ongoing',
-              deadline: opp.deadline || null,
-              status: 'new',
-              auto_execute: overallScore >= 70,
-              source: 'market_scan',
-              overall_score: overallScore,
-              velocity_score: velocityScore,
-              risk_score: 20,
-              tags: source.types,
-              notes: opp.requirements || '',
-            });
-
-            totalCreated++;
-            sourceCreated++;
-          }
-
-          results.push({ source: source.name, found: parsed?.length || 0, created: sourceCreated });
-          console.log(`[Scan] ${source.name}: ${sourceCreated} new opportunities created`);
-
-        } catch (err) {
-          console.error(`[Scan] Error on ${source.name}:`, err.message);
-          results.push({ source: source.name, error: err.message });
-        }
-      }));
+    // ── Source 1: AI Web Search (contests, grants, giveaways) ────────────────
+    if (sources.includes('ai_web')) {
+      const aiCategories = [
+        { name: 'contest', type: 'contest', label: 'writing contests, design contests, hackathons with cash prizes open for entry' },
+        { name: 'grant', type: 'grant', label: 'small business grants, creative grants, or startup grants currently accepting applications' },
+        { name: 'giveaway', type: 'giveaway', label: 'legitimate sweepstakes and cash giveaways currently open for entry' },
+      ];
+      const aiOpps = await scanViaAIWebSearch(base44, aiCategories);
+      allOpps.push(...aiOpps);
+      scanSummary.push({ source: 'ai_web_search', found: aiOpps.length });
     }
 
-    // Also pull from RapidAPI freelance job feeds if key available
-    const rapidApiKey = Deno.env.get('RAPIDAPI_KEY');
-    if (rapidApiKey) {
+    // ── Source 2: RapidAPI real job feeds ─────────────────────────────────────
+    if (sources.includes('rapidapi') && Deno.env.get('RAPIDAPI_KEY')) {
       try {
-        const feedRes = await fetch('https://freelancer-jobs-api.p.rapidapi.com/jobs?limit=10&type=writing,design,content', {
-          headers: {
-            'X-RapidAPI-Key': rapidApiKey,
-            'X-RapidAPI-Host': 'freelancer-jobs-api.p.rapidapi.com',
-          },
+        const jobRes = await base44.asServiceRole.functions.invoke('realJobSearch', {
+          query: 'remote freelance writing development design marketing',
+          sources: ['jsearch', 'freelancer'],
         });
-        if (feedRes.ok) {
-          const feedData = await feedRes.json();
-          const jobs = feedData.jobs || feedData.data || feedData.results || [];
-          for (const job of jobs.slice(0, 10)) {
-            if (!job.title || !job.url) continue;
-            const existing = await base44.asServiceRole.entities.Opportunity.filter({ url: job.url }, null, 1);
-            if (existing.length > 0) continue;
-            await base44.asServiceRole.entities.Opportunity.create({
-              title: job.title,
-              description: job.description || job.snippet || '',
-              url: job.url || job.link,
-              category: 'service',
-              opportunity_type: 'job',
-              platform: 'rapidapi_feed',
-              profit_estimate_low: job.budget_min || 50,
-              profit_estimate_high: job.budget_max || 500,
-              time_sensitivity: 'days',
-              status: 'new',
-              auto_execute: false,
-              source: 'rapidapi_feed',
-              overall_score: 65,
-            });
-            totalCreated++;
-          }
-          results.push({ source: 'rapidapi_feed', created: jobs.length });
-        }
+        const jobData = jobRes?.data || jobRes;
+        const jobsFound = jobData?.total_fetched || 0;
+        scanSummary.push({ source: 'rapidapi_jobs', found: jobsFound, saved: jobData?.saved || 0 });
+        console.log(`[RapidAPI] Fetched ${jobsFound} real jobs`);
       } catch (e) {
-        console.log('[Scan] RapidAPI feed skipped:', e.message);
+        console.error('[RapidAPI] Error:', e.message);
+        scanSummary.push({ source: 'rapidapi_jobs', error: e.message });
       }
     }
 
+    // ── Source 3: n8n MCP ─────────────────────────────────────────────────────
+    if (sources.includes('n8n')) {
+      const mcpOpps = await scanViaN8nMCP(base44);
+      allOpps.push(...mcpOpps);
+      scanSummary.push({ source: 'n8n_mcp', found: mcpOpps.length });
+    }
+
+    // ── Upwork API (if token set) ─────────────────────────────────────────────
+    if (Deno.env.get('UPWORK_ACCESS_TOKEN') && Deno.env.get('UPWORK_ACCESS_TOKEN') !== '') {
+      try {
+        const upworkRes = await base44.asServiceRole.functions.invoke('upworkAPI', {
+          action: 'search_jobs',
+          payload: { query: 'remote freelance', limit: 10 },
+        });
+        const upworkData = upworkRes?.data || upworkRes;
+        scanSummary.push({ source: 'upwork_api', found: upworkData?.total || 0, saved: upworkData?.saved || 0 });
+      } catch (e) {
+        scanSummary.push({ source: 'upwork_api', error: e.message });
+      }
+    }
+
+    // ── Save AI web search + n8n opps to database ────────────────────────────
+    let totalSaved = 0;
+    for (const opp of allOpps) {
+      if (!opp.title || !opp.url) continue;
+      const existing = await base44.asServiceRole.entities.Opportunity.filter({ url: opp.url });
+      if (existing.length > 0) continue;
+
+      await base44.asServiceRole.entities.Opportunity.create({
+        title: opp.title,
+        description: opp.description || '',
+        url: opp.url,
+        category: opp.category || 'other',
+        opportunity_type: opp.opportunity_type || opp.type || 'other',
+        platform: opp.platform || '',
+        profit_estimate_low: opp.profit_low || opp.profit_estimate_low || 0,
+        profit_estimate_high: opp.profit_high || opp.profit_estimate_high || 0,
+        time_sensitivity: opp.time_sensitivity || 'days',
+        deadline: opp.deadline || null,
+        status: 'new',
+        auto_execute: false,
+        source: opp.source || 'scan',
+        overall_score: 65,
+      });
+      totalSaved++;
+    }
+
+    const totalFromRapidApi = scanSummary.find(s => s.source === 'rapidapi_jobs')?.saved || 0;
+    const totalFromUpwork = scanSummary.find(s => s.source === 'upwork_api')?.saved || 0;
+    const grandTotal = totalSaved + totalFromRapidApi + totalFromUpwork;
+
     await base44.asServiceRole.entities.ActivityLog.create({
       action_type: 'scan',
-      message: `[Real Market Scan] Found ${totalCreated} new real opportunities across ${results.filter(r => !r.error).length} sources`,
-      severity: totalCreated > 0 ? 'success' : 'info',
-      metadata: { total_created: totalCreated, sources: results },
+      message: `[Unified Scan] Saved ${grandTotal} new real opportunities across ${scanSummary.length} sources`,
+      severity: grandTotal > 0 ? 'success' : 'info',
+      metadata: { grand_total: grandTotal, sources: scanSummary },
     });
 
-    return Response.json({ success: true, total_created: totalCreated, results });
+    return Response.json({
+      success: true,
+      grand_total_saved: grandTotal,
+      sources: scanSummary,
+    });
 
   } catch (error) {
-    console.error('[ScanOpportunities] Fatal:', error.message);
+    console.error('[scanOpportunities] Fatal:', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

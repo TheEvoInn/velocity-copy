@@ -7,13 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Image, Wand2, Eraser, ZoomIn, Sparkles, RefreshCw, ExternalLink, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
-const PERCHANCE_GENERATORS = [
+const PROMPT_GENERATORS = [
   { id: 'ai-character', label: 'AI Character' },
-  { id: 'ai-text-to-image-generator', label: 'Image Prompts' },
-  { id: 'random-story', label: 'Story Ideas' },
-  { id: 'job-title', label: 'Job Titles' },
-  { id: 'business-name', label: 'Business Names' },
-  { id: 'product-description', label: 'Product Desc.' },
+  { id: 'image-prompts', label: 'Image Prompts' },
+  { id: 'story-ideas', label: 'Story Ideas' },
+  { id: 'job-titles', label: 'Job Titles' },
+  { id: 'business-names', label: 'Business Names' },
+  { id: 'product-descriptions', label: 'Product Desc.' },
 ];
 
 const IMAGE_STYLES = [

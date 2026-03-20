@@ -273,6 +273,13 @@ export default function AppLayout() {
 
           {/* Right side */}
           <div className="flex items-center gap-2 ml-auto">
+            <NotificationBell />
+            <Link to="/UserAccessPage"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/20 text-cyan-400 hover:text-cyan-300 hover:border-cyan-400/40 hover:bg-cyan-500/10 transition-all text-xs"
+              style={{ boxShadow: '0 0 12px rgba(6,182,212,0.15)' }}
+              title="User Access Page">
+              <Settings className="w-3.5 h-3.5" />
+            </Link>
             <Link to="/Chat"
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-violet-500/20 text-violet-400 hover:text-violet-300 hover:border-violet-400/40 hover:bg-violet-500/10 transition-all text-xs"
               style={{ boxShadow: '0 0 12px rgba(124,58,237,0.15)' }}>

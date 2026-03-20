@@ -1,31 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bot, Zap, Play, RefreshCw, DollarSign, Target, User, TrendingUp, Settings, AlertCircle, FileText } from 'lucide-react';
+import { Bot, Play, RefreshCw, FileText, Power, Zap, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Link } from 'react-router-dom';
-import { format } from 'date-fns';
-import AutopilotPanel from '../components/autopilot/AutopilotPanel';
+
+// Sub-components
+import MissionControlHUD from '../components/autopilot/MissionControlHUD';
+import IdentityRoutinePanel from '../components/autopilot/IdentityRoutinePanel';
+import RiskManagementPanel from '../components/autopilot/RiskManagementPanel';
+import ProfitTargetPanel from '../components/autopilot/ProfitTargetPanel';
 import AITaskFeed from '../components/autopilot/AITaskFeed';
 import DualStreamCard from '../components/autopilot/DualStreamCard';
-import TaskReviewQueuePanel from '../components/autopilot/TaskReviewQueuePanel';
-import SpendingPolicyEditor from '../components/autopilot/SpendingPolicyEditor';
-import AutopilotExecutionHub from '../components/autopilot/AutopilotExecutionHub';
-import UnifiedAutopilotControl from '../components/autopilot/UnifiedAutopilotControl';
-import TaskQueueMonitor from '../components/autopilot/TaskQueueMonitor';
-import SmartRetryPanel from '../components/autopilot/SmartRetryPanel';
-import AdvancedResearchPanel from '../components/research/AdvancedResearchPanel';
-import ExecutionDashboard from '../components/execution/ExecutionDashboard';
-import OpportunityAutoQueuePanel from '../components/autopilot/OpportunityAutoQueuePanel';
+
+const TABS = [
+  { key: 'hud', label: 'Mission HUD', icon: '🛰️' },
+  { key: 'identities', label: 'Identity Routines', icon: '🤖' },
+  { key: 'targets', label: 'Profit Targets', icon: '🎯' },
+  { key: 'risk', label: 'Risk Controls', icon: '🛡️' },
+  { key: 'feed', label: 'Task Feed', icon: '⚡' },
+];
 
 export default function AutoPilot() {
+  const [activeTab, setActiveTab] = useState('hud');
   const [isManualRunning, setIsManualRunning] = useState(false);
   const [isScanRunning, setIsScanRunning] = useState(false);
-  const [platformNotes, setPlatformNotes] = useState('');
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
 
-  const { data: userGoals = [] } = useQuery({
+  const { data: userGoalsList = [] } = useQuery({
     queryKey: ['userGoals'],
     queryFn: () => base44.entities.UserGoals.list(),
     initialData: [],
@@ -36,12 +39,10 @@ export default function AutoPilot() {
     queryFn: async () => {
       const user = await base44.auth.me();
       if (!user?.email) return [];
-      return base44.entities.AITask.filter({
-        created_by: user.email
-      }, '-created_date', 50);
+      return base44.entities.AITask.filter({ created_by: user.email }, '-created_date', 50);
     },
     initialData: [],
-    refetchInterval: 15000, // refresh every 15s
+    refetchInterval: 15000,
   });
 
   const { data: transactions = [] } = useQuery({
@@ -49,41 +50,45 @@ export default function AutoPilot() {
     queryFn: async () => {
       const user = await base44.auth.me();
       if (!user?.email) return [];
-      return base44.entities.Transaction.filter({
-        created_by: user.email
-      }, '-created_date', 100);
+      return base44.entities.Transaction.filter({ created_by: user.email }, '-created_date', 100);
     },
     initialData: [],
   });
 
-  const goals = userGoals[0] || {};
+  // Platform state via orchestrator
+  const { data: platformState, refetch: refetchState } = useQuery({
+    queryKey: ['platformState'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('unifiedOrchestrator', { action: 'get_status' });
+      return res?.data?.state;
+    },
+    refetchInterval: 8000,
+  });
 
-  // Calculate stream earnings for today
+  const goals = userGoalsList[0] || {};
   const today = new Date().toDateString();
-  const todayTxs = transactions.filter(t =>
-    t.type === 'income' && new Date(t.created_date).toDateString() === today
-  );
+  const todayTxs = transactions.filter(t => t.type === 'income' && new Date(t.created_date).toDateString() === today);
+  const aiEarnedToday = todayTxs.filter(t => t.description?.startsWith('[AI Autopilot]')).reduce((s, t) => s + (t.amount || 0), 0);
+  const userEarnedToday = todayTxs.filter(t => !t.description?.startsWith('[AI Autopilot]')).reduce((s, t) => s + (t.amount || 0), 0);
+  const totalAITasks = aiTasks.filter(t => t.stream === 'ai_autonomous' && t.status === 'completed').length;
+  const isAutopilotOn = platformState?.autopilot_enabled || goals?.autopilot_enabled;
 
-  const aiEarnedToday = todayTxs
-    .filter(t => t.description?.startsWith('[AI Autopilot]'))
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
-
-  const userEarnedToday = todayTxs
-    .filter(t => !t.description?.startsWith('[AI Autopilot]'))
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
-
-  const todayTasks = aiTasks.filter(t =>
-    t.created_date && new Date(t.created_date).toDateString() === today
-  );
+  // Toggle autopilot
+  const toggleMutation = useMutation({
+    mutationFn: async (enabled) => {
+      await base44.functions.invoke('unifiedOrchestrator', { action: 'toggle_autopilot', enabled });
+    },
+    onSuccess: () => { refetchState(); qc.invalidateQueries({ queryKey: ['userGoals'] }); },
+  });
 
   const runManualCycle = async () => {
     setIsManualRunning(true);
     try {
       await base44.functions.invoke('unifiedOrchestrator', { action: 'full_cycle' });
       await refetchTasks();
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['userGoals'] });
-      queryClient.invalidateQueries({ queryKey: ['platformState'] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['userGoals'] });
+      refetchState();
     } finally {
       setIsManualRunning(false);
     }
@@ -92,204 +97,184 @@ export default function AutoPilot() {
   const runScan = async () => {
     setIsScanRunning(true);
     try {
-      const res = await base44.functions.invoke('unifiedOrchestrator', { action: 'scan_opportunities' });
-      if (res.data?.success) {
-        queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-        queryClient.invalidateQueries({ queryKey: ['activityLogs'] });
-      }
-    } catch (err) {
-      console.error('Scan error:', err);
+      await base44.functions.invoke('unifiedOrchestrator', { action: 'scan_opportunities' });
+      qc.invalidateQueries({ queryKey: ['opportunities'] });
     } finally {
       setIsScanRunning(false);
     }
   };
 
-  const savePlatformInfo = async () => {
-    if (!goals.id) return;
-    await base44.entities.UserGoals.update(goals.id, {
-      platform_accounts: { notes: platformNotes }
-    });
-    queryClient.invalidateQueries({ queryKey: ['userGoals'] });
-  };
-
-  React.useEffect(() => {
-    if (goals?.platform_accounts?.notes) {
-      setPlatformNotes(goals.platform_accounts.notes);
-    }
-  }, [goals.id]);
-
-  const totalAIEarned = goals.ai_total_earned || 0;
-  const totalAITasks = aiTasks.filter(t => t.stream === 'ai_autonomous' && t.status === 'completed').length;
-
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Bot className="w-5 h-5 text-emerald-400" />
-            Unified Autopilot
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">Unified automation engine — consolidated execution</p>
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+
+      {/* ── Mission Control Header ── */}
+      <div className="flex items-start justify-between mb-6 gap-4">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+              style={{
+                background: isAutopilotOn ? 'rgba(16,185,129,0.2)' : 'rgba(100,116,139,0.15)',
+                border: `1px solid ${isAutopilotOn ? 'rgba(16,185,129,0.5)' : 'rgba(100,116,139,0.3)'}`,
+                boxShadow: isAutopilotOn ? '0 0 24px rgba(16,185,129,0.4)' : 'none',
+                transition: 'all 0.5s ease',
+              }}>
+              <span className="text-2xl">{isAutopilotOn ? '🛰️' : '🤖'}</span>
+            </div>
+            {isAutopilotOn && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-950"
+                style={{ boxShadow: '0 0 8px #10b981', animation: 'pulse-glow 1.5s ease-in-out infinite' }} />
+            )}
+          </div>
+          <div>
+            <h1 className="font-orbitron text-xl font-bold tracking-widest text-white text-glow-emerald">
+              AUTOPILOT
+            </h1>
+            <p className="text-xs text-slate-500 tracking-wide mt-0.5">
+              {isAutopilotOn ? '⚡ Autonomous engine running · All routines active' : '⏸ Engine paused · Awaiting activation'}
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Link to="/AutopilotLogs">
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-slate-700 text-slate-400 hover:text-white text-xs h-8"
-            >
-              <FileText className="w-3.5 h-3.5 mr-1.5" />
-              Logs
-            </Button>
-          </Link>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={runScan}
-            disabled={isScanRunning}
-            className="border-slate-700 text-slate-400 hover:text-white text-xs h-8"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isScanRunning ? 'animate-spin' : ''}`} />
+
+        {/* Master controls */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          {/* Master toggle */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{
+              background: isAutopilotOn ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${isAutopilotOn ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.1)'}`,
+            }}>
+            <Radio className={`w-3.5 h-3.5 ${isAutopilotOn ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
+            <span className="text-xs font-orbitron tracking-wide text-slate-300">AUTOPILOT</span>
+            <Switch
+              checked={!!isAutopilotOn}
+              onCheckedChange={(v) => toggleMutation.mutate(v)}
+              disabled={toggleMutation.isPending}
+            />
+          </div>
+
+          <Button size="sm" variant="outline"
+            onClick={runScan} disabled={isScanRunning}
+            className="border-slate-700/60 text-slate-400 hover:text-white text-xs h-9 gap-1.5">
+            <RefreshCw className={`w-3.5 h-3.5 ${isScanRunning ? 'animate-spin' : ''}`} />
             Scan Market
           </Button>
-          <Button
-            size="sm"
-            onClick={runManualCycle}
-            disabled={isManualRunning || !goals.autopilot_enabled}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8"
-          >
-            <Play className={`w-3.5 h-3.5 mr-1.5 ${isManualRunning ? 'animate-pulse' : ''}`} />
-            {isManualRunning ? 'Running...' : 'Run Now'}
+
+          <Button size="sm"
+            onClick={runManualCycle} disabled={isManualRunning}
+            className="btn-cosmic text-white text-xs h-9 gap-1.5">
+            <Play className={`w-3.5 h-3.5 ${isManualRunning ? 'animate-pulse' : ''}`} />
+            {isManualRunning ? 'Running...' : 'Run Cycle'}
           </Button>
-        </div>
-      </div>
 
-      {/* Unified Orchestrator Control */}
-      <UnifiedAutopilotControl />
-
-      {/* Autopilot Toggle Panel */}
-      <AutopilotPanel goals={goals} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['userGoals'] })} />
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-4">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Bot className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">AI Earned Total</span>
-          </div>
-          <div className="text-xl font-bold text-emerald-400">${totalAIEarned.toFixed(2)}</div>
-        </div>
-        <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-4">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Target className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Tasks Completed</span>
-          </div>
-          <div className="text-xl font-bold text-amber-400">{totalAITasks}</div>
-        </div>
-        <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-4">
-          <div className="flex items-center gap-1.5 mb-2">
-            <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">AI Today</span>
-          </div>
-          <div className="text-xl font-bold text-emerald-400">${aiEarnedToday.toFixed(2)}</div>
-        </div>
-        <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-4">
-          <div className="flex items-center gap-1.5 mb-2">
-            <User className="w-3.5 h-3.5 text-blue-400" />
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">You Today</span>
-          </div>
-          <div className="text-xl font-bold text-blue-400">${userEarnedToday.toFixed(2)}</div>
-        </div>
-      </div>
-
-      {/* Dual Stream Progress */}
-      <DualStreamCard
-        aiEarned={aiEarnedToday}
-        userEarned={userEarnedToday}
-        aiTarget={goals.ai_daily_target || 500}
-        userTarget={goals.user_daily_target || 500}
-      />
-
-      {/* Advanced Research Engine */}
-      <AdvancedResearchPanel />
-
-      {/* Opportunity Auto-Queue */}
-      <OpportunityAutoQueuePanel />
-
-      {/* Unified Execution Engine */}
-      <AutopilotExecutionHub />
-
-      {/* Intelligent Task Queue Monitor */}
-      <TaskQueueMonitor />
-
-      {/* Smart Retry System */}
-      <SmartRetryPanel />
-
-      {/* Intelligent Execution Engine */}
-      <ExecutionDashboard />
-
-      {/* Task Review Queue */}
-      <TaskReviewQueuePanel />
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* AI Task Feed */}
-        <div>
-          <AITaskFeed tasks={aiTasks} isRunning={isManualRunning} />
-        </div>
-
-        {/* Platform Info + Instructions */}
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings className="w-4 h-4 text-slate-400" />
-              <span className="text-sm font-semibold text-white">Platform Accounts & Context</span>
-            </div>
-            <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
-              Tell the AI about your accounts, platforms, niche expertise, or any context that helps it make better decisions on your behalf.
-            </p>
-            <textarea
-              value={platformNotes}
-              onChange={e => setPlatformNotes(e.target.value)}
-              placeholder="E.g. I have an Upwork account (Top Rated). I'm a skilled writer specializing in tech. I have an eBay seller account with 200 reviews. My Etsy store sells digital downloads..."
-              rows={5}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 resize-none focus:outline-none focus:border-emerald-500/50 mb-3"
-            />
-            <Button
-              onClick={savePlatformInfo}
-              className="w-full bg-slate-700 hover:bg-slate-600 text-white text-xs h-8"
-            >
-              Save Context
+          <Link to="/AutopilotLogs">
+            <Button size="sm" variant="outline"
+              className="border-slate-700/60 text-slate-400 hover:text-white text-xs h-9 gap-1.5">
+              <FileText className="w-3.5 h-3.5" /> Logs
             </Button>
-          </div>
-
-          <SpendingPolicyEditor />
-
-          {/* How It Works */}
-          <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-5">
-            <h3 className="text-xs font-semibold text-white mb-3 flex items-center gap-2">
-              <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-              How Autopilot Works
-            </h3>
-            <div className="space-y-2.5">
-              {[
-                { step: '1', text: 'Every 30 minutes, the AI scans your profile, goals, and open opportunities.' },
-                { step: '2', text: 'It selects the highest-value task matching your skills and preferences.' },
-                { step: '3', text: 'Executes the task autonomously, logging each step in real time.' },
-                { step: '4', text: 'Revenue is calculated and automatically deposited to your wallet.' },
-                { step: '5', text: 'Stops when your AI daily target is reached. Resets at midnight.' },
-              ].map(item => (
-                <div key={item.step} className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[9px] font-bold text-emerald-400 shrink-0 mt-0.5">
-                    {item.step}
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">{item.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+          </Link>
         </div>
+      </div>
+
+      {/* ── Tab Navigation ── */}
+      <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1 scrollbar-none">
+        {TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-orbitron tracking-wide whitespace-nowrap transition-all"
+            style={{
+              background: activeTab === tab.key ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${activeTab === tab.key ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.08)'}`,
+              color: activeTab === tab.key ? '#10b981' : '#94a3b8',
+              boxShadow: activeTab === tab.key ? '0 0 12px rgba(16,185,129,0.2)' : 'none',
+            }}
+          >
+            <span>{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tab Content ── */}
+      <div className="space-y-4">
+
+        {activeTab === 'hud' && (
+          <>
+            <MissionControlHUD
+              platformState={platformState}
+              aiEarnedToday={aiEarnedToday}
+              userEarnedToday={userEarnedToday}
+              totalAITasks={totalAITasks}
+              goals={goals}
+            />
+            <DualStreamCard
+              aiEarned={aiEarnedToday}
+              userEarned={userEarnedToday}
+              aiTarget={goals.ai_daily_target || 500}
+              userTarget={goals.user_daily_target || 500}
+            />
+            {/* How It Works */}
+            <div className="glass-card rounded-2xl p-5">
+              <h3 className="font-orbitron text-xs tracking-widest text-slate-400 mb-4">HOW AUTOPILOT WORKS</h3>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                {[
+                  { step: '01', text: 'Scans market every 30 min for high-value opportunities', color: '#f59e0b' },
+                  { step: '02', text: 'Matches opportunities to the best identity & strategy', color: '#3b82f6' },
+                  { step: '03', text: 'Executes tasks autonomously, logging every step', color: '#a855f7' },
+                  { step: '04', text: 'Revenue deposited to wallet automatically', color: '#10b981' },
+                  { step: '05', text: 'Stops at daily target threshold. Resets at midnight', color: '#06b6d4' },
+                ].map(item => (
+                  <div key={item.step} className="text-center p-3 rounded-xl"
+                    style={{ background: `${item.color}08`, border: `1px solid ${item.color}20` }}>
+                    <div className="font-orbitron text-2xl font-bold mb-1" style={{ color: item.color, opacity: 0.6 }}>
+                      {item.step}
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">{item.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'identities' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="font-orbitron text-sm font-bold text-white tracking-wide">IDENTITY EXECUTION ROUTINES</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Toggle automated strategies per AI identity</p>
+              </div>
+              <Link to="/AIIdentityStudio">
+                <Button size="sm" variant="outline" className="border-slate-700/60 text-slate-400 hover:text-white text-xs h-8">
+                  Manage Identities
+                </Button>
+              </Link>
+            </div>
+            <IdentityRoutinePanel />
+          </div>
+        )}
+
+        {activeTab === 'targets' && (
+          <ProfitTargetPanel goals={goals} onUpdate={() => qc.invalidateQueries({ queryKey: ['userGoals'] })} />
+        )}
+
+        {activeTab === 'risk' && (
+          <RiskManagementPanel goals={goals} onUpdate={() => qc.invalidateQueries({ queryKey: ['userGoals'] })} />
+        )}
+
+        {activeTab === 'feed' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-orbitron text-sm font-bold text-white tracking-wide">LIVE TASK FEED</h2>
+              <Button size="sm" variant="outline"
+                onClick={() => refetchTasks()}
+                className="border-slate-700/60 text-slate-400 hover:text-white text-xs h-8 gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5" /> Refresh
+              </Button>
+            </div>
+            <AITaskFeed tasks={aiTasks} isRunning={isManualRunning} />
+          </div>
+        )}
       </div>
     </div>
   );

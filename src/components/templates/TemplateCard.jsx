@@ -103,12 +103,12 @@ export default function TemplateCard({ template, isSaved, isApplied, onSave, onA
         <Button
           size="sm"
           onClick={onApply}
-          disabled={applying || isApplied}
+          disabled={applying}
           className="flex-1 h-8 text-[11px] gap-1 text-white"
-          style={{ background: isApplied ? `${color}30` : `linear-gradient(135deg, ${color}, ${color}cc)` }}
+          style={{ background: isApplied ? `${color}40` : `linear-gradient(135deg, ${color}, ${color}cc)` }}
         >
           <Zap className="w-3 h-3" />
-          {applying ? 'Applying...' : isApplied ? 'Active' : 'Apply'}
+          {applying ? 'Applying...' : isApplied ? 'Reapply' : 'Apply'}
         </Button>
       </div>
     </div>

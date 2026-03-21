@@ -46,6 +46,7 @@ import TemplatesLibrary from './pages/TemplatesLibrary.jsx';
 import DigitalResellers from './pages/DigitalResellers';
 import EmailMarketing from './pages/EmailMarketing';
 import PageCustomizer from './pages/PageCustomizer';
+import CryptoProfitSystems from './pages/CryptoProfitSystems';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -108,6 +109,7 @@ const AuthenticatedApp = () => {
         <Route path="/DigitalResellers" element={<DigitalResellers />} />
         <Route path="/PageCustomizer" element={<PageCustomizer />} />
         <Route path="/EmailMarketing" element={<EmailMarketing />} />
+        <Route path="/CryptoProfitSystems" element={<CryptoProfitSystems />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

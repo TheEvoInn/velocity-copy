@@ -247,6 +247,7 @@ export default function DigitalResellers() {
           { id: 'overview', label: 'Overview', icon: Eye },
           { id: 'storefronts', label: 'Storefronts', icon: Globe },
           { id: 'opportunities', label: 'Opportunities', icon: TrendingUp },
+          { id: 'widgets', label: 'Social Proof', icon: Sparkles },
           { id: 'settings', label: 'Configuration', icon: Settings },
         ].map(tab => (
           <button
@@ -419,6 +420,47 @@ export default function DigitalResellers() {
                 </CardContent>
               </Card>
             ))
+          )}
+        </div>
+      )}
+
+      {activeTab === 'widgets' && (
+        <div className="space-y-4">
+          {storefronts && storefronts.length > 0 ? (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-300 block mb-2">
+                  Select Storefront to Configure Widgets
+                </label>
+                <select
+                  value={selectedStorefrontId || ''}
+                  onChange={(e) => setSelectedStorefrontId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm"
+                >
+                  <option value="">Choose a storefront...</option>
+                  {storefronts.map(sf => (
+                    <option key={sf.id} value={sf.id}>
+                      {sf.page_title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedStorefrontId && (
+                <SocialProofLibrary
+                  storefrontId={selectedStorefrontId}
+                  onAddWidget={(widget) => {
+                    toast.success(`Widget added! Configure it and save.`);
+                  }}
+                />
+              )}
+            </div>
+          ) : (
+            <Card className="glass-card">
+              <CardContent className="p-8 text-center">
+                <AlertCircle className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400">Create a storefront first to add social proof widgets.</p>
+              </CardContent>
+            </Card>
           )}
         </div>
       )}

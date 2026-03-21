@@ -103,6 +103,7 @@ const AuthenticatedApp = () => {
         <Route path="/TaskQueueApproval" element={<TaskQueueApproval />} />
         <Route path="/FinancialDashboard" element={<FinancialDashboard />} />
         <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
+        <Route path="/DigitalResellers" element={<DigitalResellers />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

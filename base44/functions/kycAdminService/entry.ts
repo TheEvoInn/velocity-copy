@@ -13,23 +13,9 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, id, updates } = body;
 
-    if (action === 'list') {
-      const records = await base44.asServiceRole.entities.KYCVerification.filter({ status: 'submitted' }, '-created_date', 200);
-      console.log(`[kycAdminService] fetched ${records.length} submitted KYC records`);
-      return Response.json({ records });
-    }
-
-    if (action === 'list_all') {
-      const submitted = await base44.asServiceRole.entities.KYCVerification.filter({ status: 'submitted' }, '-created_date', 100);
-      const approved  = await base44.asServiceRole.entities.KYCVerification.filter({ status: 'approved' }, '-created_date', 100);
-      const rejected  = await base44.asServiceRole.entities.KYCVerification.filter({ status: 'rejected' }, '-created_date', 100);
-      const seen = new Set();
-      const records = [...submitted, ...approved, ...rejected].filter(r => {
-        if (seen.has(r.id)) return false;
-        seen.add(r.id);
-        return true;
-      }).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-      console.log(`[kycAdminService] fetched ${records.length} total KYC records`);
+    if (action === 'list' || action === 'list_all') {
+      const records = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
+      console.log(`[kycAdminService] fetched ${records.length} KYC records via list`);
       return Response.json({ records });
     }
 

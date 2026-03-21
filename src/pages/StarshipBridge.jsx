@@ -15,6 +15,7 @@ import {
   useAIIdentitiesV2,
 } from '@/lib/velocityHooks';
 import StarshipBridgeScene from '@/components/bridge/StarshipBridgeScene';
+import SectorMapView from '@/components/bridge/SectorMapView';
 import TacticalPanel from '@/components/bridge/TacticalPanel';
 import CommsPanel from '@/components/bridge/CommsPanel';
 import LogPanel from '@/components/bridge/LogPanel';
@@ -25,6 +26,7 @@ export default function StarshipBridge() {
   const { tasks = [] } = useTasksV2();
   const { transactions = [] } = useTransactionsV2();
   const { identities = [] } = useAIIdentitiesV2();
+  const [showSectorMap, setShowSectorMap] = useState(false);
 
   // Derived metrics
   const walletBalance = userGoals?.wallet_balance ?? 0;
@@ -49,13 +51,23 @@ export default function StarshipBridge() {
 
   return (
     <div className="w-full h-screen overflow-hidden bg-black">
-      <StarshipBridgeScene
-        walletBalance={walletBalance}
-        activeIdentities={activeIdentities}
-        recentTasks={recentTasks}
-        todayEarned={todayEarned}
-        onStationFocus={handleStationFocus}
-      />
+      {showSectorMap ? (
+        <SectorMapView
+          onClose={() => setShowSectorMap(false)}
+          activeIdentities={activeIdentities.length}
+          walletBalance={walletBalance}
+          taskCount={recentTasks.length}
+        />
+      ) : (
+        <StarshipBridgeScene
+          walletBalance={walletBalance}
+          activeIdentities={activeIdentities}
+          recentTasks={recentTasks}
+          todayEarned={todayEarned}
+          onStationFocus={handleStationFocus}
+          onOpenSectorMap={() => setShowSectorMap(true)}
+        />
+      )}
     </div>
   );
 }

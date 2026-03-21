@@ -4,14 +4,29 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Verify the caller is an admin
     const user = await base44.auth.me();
-    if (!user || user.role !== 'admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json();
     const { action, id, updates } = body;
+
+    // Allow regular users to fetch their own KYC record
+    if (action === 'get_my_kyc') {
+      const userEmail = user.email;
+      let records = await base44.asServiceRole.entities.KYCVerification.filter({ created_by: userEmail }, '-created_date', 1);
+      if (!records.length) {
+        records = await base44.asServiceRole.entities.KYCVerification.filter({ email_verified: userEmail }, '-created_date', 1);
+      }
+      console.log(`[kycAdminService] get_my_kyc for ${userEmail}: ${records.length} record(s)`);
+      return Response.json({ record: records[0] || null });
+    }
+
+    // All other actions require admin
+    if (user.role !== 'admin') {
+      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
 
     if (action === 'list' || action === 'list_all') {
       // Use asServiceRole to bypass RLS and fetch ALL users' KYC records

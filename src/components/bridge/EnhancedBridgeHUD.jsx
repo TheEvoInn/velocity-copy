@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import SectorMapView from './SectorMapView';
+import { useSectorMapData } from '@/hooks/useSectorMapData';
 
 export default function EnhancedBridgeHUD({ alerts, focusedStation, particleCount, performanceStats = {} }) {
+  const { pois } = useSectorMapData();
   const [time, setTime] = useState(new Date());
   
   useEffect(() => {
@@ -58,41 +61,13 @@ export default function EnhancedBridgeHUD({ alerts, focusedStation, particleCoun
         </div>
       </div>
 
-      {/* Top-right: Navigation Map */}
-      <div className="absolute top-4 right-4 pointer-events-auto">
-        <div className="glass-card p-3 w-72">
-          <div className="text-cyber-cyan font-orbitron text-sm mb-2">NAVIGATION MAP</div>
-          <svg viewBox="0 0 200 150" className="w-full border border-cyan-500/30 bg-slate-950">
-            {/* Grid background */}
-            <defs>
-              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(0,204,255,0.1)" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="200" height="150" fill="url(#grid)" />
-
-            {/* Station positions */}
-            <circle cx="100" cy="75" r="8" fill="none" stroke="#ff6b6b" strokeWidth="2" />
-            <text x="100" y="95" textAnchor="middle" className="text-xs fill-red-500">TAC</text>
-
-            <circle cx="40" cy="60" r="8" fill="none" stroke="#6bcf7f" strokeWidth="2" />
-            <text x="40" y="110" textAnchor="middle" className="text-xs fill-green-500">COM</text>
-
-            <circle cx="160" cy="65" r="8" fill="none" stroke="#ffd93d" strokeWidth="2" />
-            <text x="160" y="115" textAnchor="middle" className="text-xs fill-yellow-500">LOG</text>
-
-            {/* Connection lines */}
-            <line x1="100" y1="75" x2="40" y2="60" stroke="rgba(0,204,255,0.4)" strokeWidth="1" strokeDasharray="2,2" />
-            <line x1="100" y1="75" x2="160" y2="65" stroke="rgba(0,204,255,0.4)" strokeWidth="1" strokeDasharray="2,2" />
-
-            {/* Focus indicator */}
-            {focusedStation && (
-              <circle cx={focusedStation === 'tactical' ? 100 : focusedStation === 'comms' ? 40 : 160} 
-                      cy={focusedStation === 'tactical' ? 75 : focusedStation === 'comms' ? 60 : 65} 
-                      r="12" fill="none" stroke="#00ff00" strokeWidth="1.5" />
-            )}
-          </svg>
-        </div>
+      {/* Top-right: Sector Map */}
+      <div className="absolute top-4 right-4 pointer-events-auto max-w-sm">
+        <SectorMapView 
+          pois={pois} 
+          focusedStation={focusedStation}
+          onPoiClick={(poi) => console.log('POI clicked:', poi)}
+        />
       </div>
 
       {/* Bottom-left: Alert Queue */}

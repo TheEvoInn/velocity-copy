@@ -16,7 +16,7 @@ export default function EmailDraftGenerator({ opportunity, onDraftGenerated, inj
   const queryClient = useQueryClient();
 
   // When a template is injected from the builder, pre-populate the draft
-  React.useEffect(() => {
+  useEffect(() => {
     if (injectedDraft) setGeneratedDraft(injectedDraft);
   }, [injectedDraft]);
 

@@ -1,437 +1,385 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import BridgePOVController from './BridgePOVController';
-import BridgeParticleManager from './BridgeParticleManager';
-import BridgeAlertSystem from './BridgeAlertSystem';
-import PostProcessingComposer from './PostProcessingComposer';
-import StationScreenRenderer from './StationScreenRenderer';
-import { useBridgeAlerts } from '@/hooks/useBridgeAlerts';
-import EnhancedBridgeHUD from './EnhancedBridgeHUD.jsx';
-import AudioEngine from './AudioEngine';
-import AudioUIFeedback from './AudioUIFeedback';
-import BridgeAudioIntegration from './BridgeAudioIntegration';
-import BridgeSystemRefinements from './BridgeSystemRefinements';
-import BridgePerformanceMonitor from './BridgePerformanceMonitor';
-import StationInteractionController from './StationInteractionController';
-import NotificationDataBinding from './NotificationDataBinding';
-import BridgePerformanceTracker from './BridgePerformanceTracker';
-import KeyboardControlScheme from './KeyboardControlScheme';
-import CockpitEnvironment from './CockpitEnvironment';
-import CockpitDataBinding from './CockpitDataBinding';
-import HolographicCommsHub from './HolographicCommsHub';
+import { base44 } from '@/api/base44Client';
 
-export default function StarshipBridgeScene() {
-  const canvasRef = useRef(null);
+export default function StarshipBridgeScene({ onModuleSelect }) {
+  const containerRef = useRef(null);
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
   const rendererRef = useRef(null);
-  const povControllerRef = useRef(null);
-  const particleManagerRef = useRef(null);
-  const alertSystemRef = useRef(null);
-  
-  const postProcessingRef = useRef(null);
-  const stationScreensRef = useRef(null);
-  const audioEngineRef = useRef(null);
-  const audioUIFeedbackRef = useRef(null);
-  const audioIntegrationRef = useRef(null);
-  
-  const interactionControllerRef = useRef(null);
-  const notificationBindingRef = useRef(null);
-  const performanceTrackerRef = useRef(null);
-  const keyboardSchemeRef = useRef(null);
-  const cockpitEnvironmentRef = useRef(null);
-  const cockpitDataBindingRef = useRef(null);
-  
-  const [focusedStation, setFocusedStation] = useState(null);
-  const [alerts, setAlerts] = useState([]);
-  const [particleCount, setParticleCount] = useState(700);
-  const [performanceStats, setPerformanceStats] = useState({});
-  const [cockpitData, setCockpitData] = useState({});
-  
-  // Subscribe to backend alerts
-  useBridgeAlerts((alertEvent) => {
-    alertSystemRef.current?.handleAlert(alertEvent);
-  });
+  const [platformData, setPlatformData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    initializeScene();
+    subscribeToData();
+    return () => {
+      if (rendererRef.current && containerRef.current) {
+        containerRef.current.removeChild(rendererRef.current.domElement);
+      }
+    };
+  }, []);
+
+  const initializeScene = () => {
+    if (!containerRef.current) return;
 
     // Scene setup
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x001a33);
-    scene.fog = new THREE.Fog(0x001a33, 30, 100);
-    sceneRef.current = scene;
+    scene.background = new THREE.Color(0x050714);
+    scene.fog = new THREE.FogExp2(0x050714, 0.0008);
 
     // Camera
     const camera = new THREE.PerspectiveCamera(
       75,
-      window.innerWidth / window.innerHeight,
+      containerRef.current.clientWidth / containerRef.current.clientHeight,
       0.1,
-      1000
+      10000
     );
-    camera.position.set(0, 1.6, 3);
-    camera.lookAt(0, 1, -2);
-    cameraRef.current = camera;
+    camera.position.set(0, 2, 8);
+    camera.lookAt(0, 0, 0);
 
     // Renderer
-    const renderer = new THREE.WebGLRenderer({
-      canvas: canvasRef.current,
-      antialias: true,
-      alpha: false
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     renderer.shadowMap.enabled = true;
-    rendererRef.current = renderer;
+    containerRef.current.appendChild(renderer.domElement);
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-    directionalLight.position.set(20, 15, 20);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    scene.add(directionalLight);
-
-    const pointLight = new THREE.PointLight(0x00ffff, 0.8);
-    pointLight.position.set(-15, 8, 10);
+    const pointLight = new THREE.PointLight(0x00e8ff, 1, 100);
+    pointLight.position.set(5, 5, 5);
+    pointLight.castShadow = true;
     scene.add(pointLight);
 
-    const accentLight = new THREE.PointLight(0xff2ec4, 0.6);
-    accentLight.position.set(15, 6, -10);
-    scene.add(accentLight);
+    const neonLight = new THREE.PointLight(0xff2ec4, 0.8, 80);
+    neonLight.position.set(-5, 3, 5);
+    scene.add(neonLight);
 
-    // Build full cockpit environment
-    cockpitEnvironmentRef.current = new CockpitEnvironment(scene);
-    cockpitEnvironmentRef.current.buildCockpit();
-    cockpitEnvironmentRef.current.buildSpaceEnvironment();
+    // ===== COCKPIT STRUCTURE =====
+    const cockpitGroup = new THREE.Group();
+    scene.add(cockpitGroup);
 
-    // Create platform department objects in space
-    const departments = [
-      { name: 'Autopilot Command', type: 'autopilot', pos: new THREE.Vector3(-30, 20, -50) },
-      { name: 'NED Mining', type: 'ned', pos: new THREE.Vector3(35, 15, -45) },
-      { name: 'VIPZ Prime', type: 'vipz', pos: new THREE.Vector3(-25, 30, 60) },
-      { name: 'Wallet Core', type: 'wallet', pos: new THREE.Vector3(40, 25, 50) },
-      { name: 'Identity', type: 'identity', pos: new THREE.Vector3(0, 35, -80) },
-      { name: 'Discovery', type: 'discovery', pos: new THREE.Vector3(-45, 10, 40) }
-    ];
+    // Floor
+    const floorGeometry = new THREE.PlaneGeometry(20, 20);
+    const floorMaterial = new THREE.MeshStandardMaterial({
+      color: 0x0a0f2a,
+      metalness: 0.8,
+      roughness: 0.3,
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -2;
+    cockpitGroup.add(floor);
 
-    departments.forEach(dept => {
-      const obj = cockpitEnvironmentRef.current.createDepartmentObject(dept.name, dept.type, dept.pos);
-      cockpitDataBindingRef.current = new CockpitDataBinding(scene, povControllerRef.current);
-      cockpitDataBindingRef.current.registerDepartmentObject(dept.type, obj);
-    });
+    // Control panels (left side)
+    createControlPanel(cockpitGroup, { x: -6, y: 0, z: 0 }, 'left');
+    
+    // Control panels (right side)
+    createControlPanel(cockpitGroup, { x: 6, y: 0, z: 0 }, 'right');
 
-    // Initialize controllers
-    povControllerRef.current = new BridgePOVController(camera, scene, renderer);
-    particleManagerRef.current = new BridgeParticleManager(scene);
-    // Initialize audio first (needed by alert system)
-    audioEngineRef.current = new AudioEngine(camera);
-    audioUIFeedbackRef.current = new AudioUIFeedback(audioEngineRef.current);
-    
-    alertSystemRef.current = new BridgeAlertSystem(
-      particleManagerRef.current,
-      audioEngineRef.current,
-      setAlerts
-    );
-    
-    // Initialize post-processing
-    postProcessingRef.current = new PostProcessingComposer(renderer, camera, scene);
-    
-    // Initialize station screens
-    stationScreensRef.current = new StationScreenRenderer(scene);
-    
-    // Initialize bridge audio integration
-    audioIntegrationRef.current = new BridgeAudioIntegration(
-      audioEngineRef.current,
-      audioUIFeedbackRef.current,
-      alertSystemRef.current
-    );
-    audioIntegrationRef.current.systemReady();
-    
-    // Start ambient audio loop
-    audioEngineRef.current.startAmbientLoop();
+    // Center console
+    createCenterConsole(cockpitGroup);
 
-    // Create interactive stations
-    const stations = createStations(scene);
-    
-    // Initialize Phase 4 systems
-    performanceTrackerRef.current = new BridgePerformanceTracker();
-    interactionControllerRef.current = new StationInteractionController(stations, camera, renderer);
-    interactionControllerRef.current.setPOVController(povControllerRef.current);
-    keyboardSchemeRef.current = new KeyboardControlScheme();
-    
-    // Setup interaction callbacks
-    interactionControllerRef.current.registerCallback('station:focused', (data) => {
-      setFocusedStation(data.station);
-      povControllerRef.current?.focusStation(data.mesh);
-      particleManagerRef.current?.focusStation(data.mesh, data.color);
-      stationScreensRef.current?.focusScreen(data.station);
-      audioIntegrationRef.current?.focusStation(data.station);
-    });
-    
-    interactionControllerRef.current.registerCallback('station:unfocused', () => {
-      setFocusedStation(null);
-      povControllerRef.current?.returnToCenter();
-      particleManagerRef.current?.unfocusStation();
-      stationScreensRef.current?.unfocusScreen();
-      audioIntegrationRef.current?.unfocusStation();
-    });
-    
-    // Setup keyboard controls
-    keyboardSchemeRef.current.registerCallback('unfocus', () => {
-      interactionControllerRef.current.unfocusStation();
-    });
-    keyboardSchemeRef.current.registerCallback('center', () => {
-      interactionControllerRef.current.unfocusStation();
-    });
-    
-    // Initialize notification binding
-    notificationBindingRef.current = new NotificationDataBinding((alertEvent) => {
-      alertSystemRef.current?.handleAlert(alertEvent);
-    });
-    notificationBindingRef.current.initialize();
+    // Holographic displays
+    createHolographicDisplay(cockpitGroup, { x: -3, y: 2, z: 1 });
+    createHolographicDisplay(cockpitGroup, { x: 3, y: 2, z: 1 });
 
-    // Initialize cockpit data binding
-    cockpitDataBindingRef.current = new CockpitDataBinding(scene, povControllerRef.current);
-    cockpitDataBindingRef.current.initialize().catch(err => console.error('Cockpit binding failed:', err));
-    
-    // Add screens to stations
-    stations.forEach(station => {
-      stationScreensRef.current.createStationScreen(
-        station.name,
-        new THREE.Vector3(station.position.x, station.position.y + 0.8, station.position.z)
-      );
-    });
-    
-    // Event handlers delegated to controllers
-    const onMouseClick = (event) => {
-      if (povControllerRef.current?.isAnimating) return;
-      interactionControllerRef.current.handleClick(event);
+    // ===== SPACE ENVIRONMENT =====
+    const spaceGroup = new THREE.Group();
+    scene.add(spaceGroup);
+
+    // Starfield
+    createStarfield(spaceGroup, 1000);
+
+    // Interactive planets representing departments
+    const planets = createDepartmentPlanets(spaceGroup);
+
+    // Asteroids/data clusters
+    createAsteroidField(spaceGroup);
+
+    // Space stations (workflows)
+    createSpaceStations(spaceGroup);
+
+    // Animation loop
+    let animationFrameId;
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+
+      // Rotate planets
+      planets.forEach((planet, idx) => {
+        planet.mesh.rotation.y += planet.speed;
+      });
+
+      // Pulse neon lights
+      const time = Date.now() * 0.001;
+      pointLight.intensity = 0.8 + Math.sin(time) * 0.3;
+      neonLight.intensity = 0.6 + Math.cos(time * 1.5) * 0.2;
+
+      renderer.render(scene, camera);
     };
-
-    const onMouseMove = (event) => {
-      interactionControllerRef.current.handleMouseMove(event);
-    };
-
-    const onKeyDown = (event) => {
-      keyboardSchemeRef.current.handleKeyDown(event);
-    };
-
-    const onKeyUp = (event) => {
-      keyboardSchemeRef.current.handleKeyUp(event);
-    };
-
-    window.addEventListener('click', onMouseClick);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
 
     // Handle window resize
-    const onWindowResize = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      
+    const handleResize = () => {
+      const width = containerRef.current.clientWidth;
+      const height = containerRef.current.clientHeight;
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
-      postProcessingRef.current.onWindowResize(width, height);
     };
 
-    window.addEventListener('resize', onWindowResize);
+    window.addEventListener('resize', handleResize);
 
-    // Animation loop
-    let frameCount = 0;
-    let fpsTime = 0;
-    let fps = 60;
+    // Raycasting for click interactions
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
 
-    const animate = () => {
-      requestAnimationFrame(animate);
+    const handleClick = (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
 
-      // Track performance
-      performanceTrackerRef.current.recordFrame();
-      if (frameCount % 60 === 0) {
-        setPerformanceStats(performanceTrackerRef.current.getStats());
+      // Check planet intersections
+      const planetMeshes = planets.map((p) => p.mesh);
+      const intersects = raycaster.intersectObjects(planetMeshes);
+
+      if (intersects.length > 0) {
+        const clickedPlanet = planets.find((p) => p.mesh === intersects[0].object);
+        if (clickedPlanet && onModuleSelect) {
+          onModuleSelect(clickedPlanet.module);
+        }
       }
-
-      // Update controllers
-      povControllerRef.current?.update();
-      particleManagerRef.current?.update();
-      
-      // Update particle count display
-      setParticleCount(particleManagerRef.current?.getParticleCount() || 0);
-
-      frameCount++;
-      const now = performance.now();
-      if (now - fpsTime >= 1000) {
-        fps = frameCount;
-        frameCount = 0;
-        fpsTime = now;
-      }
-
-      // Render with post-processing
-      postProcessingRef.current?.render();
     };
+
+    renderer.domElement.addEventListener('click', handleClick);
+
+    // Store refs
+    sceneRef.current = scene;
+    cameraRef.current = camera;
+    rendererRef.current = renderer;
 
     animate();
 
-    // Cleanup
+    setLoading(false);
+
     return () => {
-      window.removeEventListener('click', onMouseClick);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('resize', onWindowResize);
-      
-      // Cleanup cockpit systems
-      if (cockpitDataBindingRef.current) {
-        cockpitDataBindingRef.current.dispose();
-      }
-      if (cockpitEnvironmentRef.current) {
-        cockpitEnvironmentRef.current.dispose();
-      }
-      
-      // Cleanup Phase 4 systems
-      if (notificationBindingRef.current) {
-        notificationBindingRef.current.dispose();
-      }
-      
-      // Cleanup audio systems
-      if (audioIntegrationRef.current) {
-        audioIntegrationRef.current.dispose();
-      }
-      if (audioEngineRef.current) {
-        audioEngineRef.current.stopAmbientLoop();
-        audioEngineRef.current.dispose();
-      }
-      
-      // Cleanup visual systems
-      if (stationScreensRef.current) {
-        stationScreensRef.current.dispose();
-      }
-      if (postProcessingRef.current) {
-        postProcessingRef.current.dispose();
-      }
-      if (povControllerRef.current) {
-        povControllerRef.current.dispose?.();
-      }
-      if (particleManagerRef.current) {
-        particleManagerRef.current.dispose?.();
-      }
-      
-      // Cleanup renderer
-      renderer.dispose();
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', handleResize);
+      renderer.domElement.removeEventListener('click', handleClick);
     };
-  }, [focusedStation]);
+  };
 
-  return (
-    <div className="relative w-full h-screen">
-      <canvas ref={canvasRef} className="w-full h-full" />
-      <EnhancedBridgeHUD 
-        alerts={alerts}
-        focusedStation={focusedStation}
-        particleCount={particleCount}
-        performanceStats={performanceStats}
-      />
-      <HolographicCommsHub />
-      <BridgeSystemRefinements 
-        audioEngine={audioEngineRef.current}
-        postProcessing={postProcessingRef.current}
-      />
-      <BridgePerformanceMonitor 
-        audioEngine={audioEngineRef.current}
-      />
-    </div>
-  );
-}
-
-// Create the bridge environment (floor, walls, glow effects)
-function createBridgeEnvironment(scene) {
-  // Floor
-  const floorGeom = new THREE.PlaneGeometry(30, 30);
-  const floorMat = new THREE.MeshStandardMaterial({
-    color: 0x0a2540,
-    roughness: 0.8,
-    metalness: 0.2
-  });
-  const floor = new THREE.Mesh(floorGeom, floorMat);
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = 0;
-  floor.receiveShadow = true;
-  scene.add(floor);
-
-  // Nebula background sphere
-  const nebulaGeom = new THREE.SphereGeometry(100, 64, 64);
-  const nebulaMat = new THREE.MeshBasicMaterial({
-    color: 0x1a0033,
-    side: THREE.BackSide
-  });
-  const nebula = new THREE.Mesh(nebulaGeom, nebulaMat);
-  scene.add(nebula);
-
-  // Accent light pillars
-  for (let i = 0; i < 4; i++) {
-    const angle = (i / 4) * Math.PI * 2;
-    const x = Math.cos(angle) * 8;
-    const z = Math.sin(angle) * 8;
-    
-    const pillarGeom = new THREE.CylinderGeometry(0.3, 0.3, 4, 8);
-    const pillarMat = new THREE.MeshStandardMaterial({
-      color: 0x00ccff,
-      emissive: 0x0066ff,
-      emissiveIntensity: 0.5
-    });
-    const pillar = new THREE.Mesh(pillarGeom, pillarMat);
-    pillar.position.set(x, 2, z);
-    pillar.castShadow = true;
-    scene.add(pillar);
-  }
-}
-
-// Create interactive station meshes
-function createStations(scene) {
-  const stations = [
-    {
-      name: 'tactical',
-      position: { x: 0, y: 1, z: -2 },
-      color: 0xff6b6b,
-      label: 'TAC'
-    },
-    {
-      name: 'comms',
-      position: { x: -3, y: 1.2, z: 0 },
-      color: 0x6bcf7f,
-      label: 'COM'
-    },
-    {
-      name: 'log',
-      position: { x: 3, y: 1.3, z: 0 },
-      color: 0xffd93d,
-      label: 'LOG'
-    }
-  ];
-
-  return stations.map(station => {
-    const geom = new THREE.BoxGeometry(1.5, 1.5, 0.5);
-    const mat = new THREE.MeshStandardMaterial({
-      color: station.color,
-      emissive: station.color,
-      emissiveIntensity: 0.3,
+  const createControlPanel = (parent, position, side) => {
+    const panelGeometry = new THREE.BoxGeometry(3, 4, 0.5);
+    const panelMaterial = new THREE.MeshStandardMaterial({
+      color: side === 'left' ? 0x2a0a2a : 0x0a2a2a,
+      metalness: 0.9,
       roughness: 0.2,
-      metalness: 0.8
+      emissive: side === 'left' ? 0x7c3aed : 0x0d9488,
+      emissiveIntensity: 0.1,
     });
-    
-    const mesh = new THREE.Mesh(geom, mat);
-    mesh.position.copy(station.position);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    scene.add(mesh);
+    const panel = new THREE.Mesh(panelGeometry, panelMaterial);
+    panel.position.set(position.x, position.y, position.z);
+    parent.add(panel);
 
-    return {
-      ...station,
-      mesh
-    };
-  });
+    // Add buttons to panel
+    for (let i = 0; i < 6; i++) {
+      const buttonGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+      const buttonMaterial = new THREE.MeshStandardMaterial({
+        color: side === 'left' ? 0xb537f2 : 0x0d9488,
+        emissive: side === 'left' ? 0xb537f2 : 0x0d9488,
+        emissiveIntensity: 0.5,
+      });
+      const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
+      button.position.set(
+        position.x - 1.2 + (i % 3) * 1,
+        position.y + 1 - Math.floor(i / 3) * 1.5,
+        position.z + 0.3
+      );
+      parent.add(button);
+    }
+  };
+
+  const createCenterConsole = (parent) => {
+    const consoleGeometry = new THREE.BoxGeometry(4, 2, 2);
+    const consoleMaterial = new THREE.MeshStandardMaterial({
+      color: 0x050714,
+      metalness: 0.95,
+      roughness: 0.15,
+      emissive: 0x00e8ff,
+      emissiveIntensity: 0.15,
+    });
+    const console = new THREE.Mesh(consoleGeometry, consoleMaterial);
+    console.position.set(0, 0, -2);
+    parent.add(console);
+
+    // Top holographic area
+    const screenGeometry = new THREE.PlaneGeometry(3.5, 1.5);
+    const screenMaterial = new THREE.MeshStandardMaterial({
+      color: 0x00e8ff,
+      emissive: 0x00e8ff,
+      emissiveIntensity: 0.3,
+      metalness: 0.3,
+      roughness: 0.5,
+    });
+    const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+    screen.position.set(0, 0.8, -1.95);
+    parent.add(screen);
+  };
+
+  const createHolographicDisplay = (parent, position) => {
+    const displayGeometry = new THREE.PlaneGeometry(2, 3);
+    const displayMaterial = new THREE.MeshStandardMaterial({
+      color: 0xff2ec4,
+      emissive: 0xff2ec4,
+      emissiveIntensity: 0.2,
+      metalness: 0.2,
+      roughness: 0.7,
+      transparent: true,
+      opacity: 0.7,
+    });
+    const display = new THREE.Mesh(displayGeometry, displayMaterial);
+    display.position.set(position.x, position.y, position.z);
+    parent.add(display);
+
+    // Border frame
+    const frameGeometry = new THREE.EdgesGeometry(displayGeometry);
+    const frameMaterial = new THREE.LineBasicMaterial({
+      color: 0x00e8ff,
+      linewidth: 2,
+    });
+    const frame = new THREE.LineSegments(frameGeometry, frameMaterial);
+    frame.position.copy(display.position);
+    parent.add(frame);
+  };
+
+  const createStarfield = (parent, count) => {
+    const starsGeometry = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(count * 3);
+
+    for (let i = 0; i < count; i++) {
+      starPositions[i * 3] = (Math.random() - 0.5) * 400;
+      starPositions[i * 3 + 1] = (Math.random() - 0.5) * 400;
+      starPositions[i * 3 + 2] = (Math.random() - 0.5) * 400;
+    }
+
+    starsGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+
+    const starsMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.5,
+      sizeAttenuation: true,
+    });
+
+    const stars = new THREE.Points(starsGeometry, starsMaterial);
+    parent.add(stars);
+  };
+
+  const createDepartmentPlanets = (parent) => {
+    const departments = [
+      { name: 'AutoPilot', color: 0x10b981, x: -15, y: 5, z: -20 },
+      { name: 'Discovery', color: 0xf59e0b, x: 15, y: 5, z: -20 },
+      { name: 'Finance', color: 0x10b981, x: -8, y: -10, z: -30 },
+      { name: 'Control', color: 0xa855f7, x: 8, y: -10, z: -30 },
+      { name: 'Execution', color: 0x3b82f6, x: 0, y: 15, z: -25 },
+    ];
+
+    return departments.map((dept) => {
+      const geometry = new THREE.IcosahedronGeometry(2, 4);
+      const material = new THREE.MeshStandardMaterial({
+        color: dept.color,
+        emissive: dept.color,
+        emissiveIntensity: 0.3,
+        metalness: 0.6,
+        roughness: 0.4,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(dept.x, dept.y, dept.z);
+      mesh.castShadow = true;
+      parent.add(mesh);
+
+      return {
+        mesh,
+        module: dept.name,
+        speed: Math.random() * 0.005 + 0.002,
+      };
+    });
+  };
+
+  const createAsteroidField = (parent) => {
+    for (let i = 0; i < 30; i++) {
+      const geometry = new THREE.OctahedronGeometry(Math.random() * 0.8 + 0.3);
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x6b7280,
+        metalness: 0.7,
+        roughness: 0.5,
+      });
+      const asteroid = new THREE.Mesh(geometry, material);
+      asteroid.position.set(
+        (Math.random() - 0.5) * 100,
+        (Math.random() - 0.5) * 100,
+        (Math.random() - 0.5) * 100 - 50
+      );
+      asteroid.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      parent.add(asteroid);
+    }
+  };
+
+  const createSpaceStations = (parent) => {
+    for (let i = 0; i < 5; i++) {
+      const geometry = new THREE.CylinderGeometry(1, 1, 3, 8);
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x00e8ff,
+        emissive: 0x00e8ff,
+        emissiveIntensity: 0.2,
+        metalness: 0.9,
+        roughness: 0.1,
+      });
+      const station = new THREE.Mesh(geometry, material);
+      station.position.set(
+        (Math.random() - 0.5) * 80,
+        (Math.random() - 0.5) * 60,
+        (Math.random() - 0.5) * 80 - 40
+      );
+      parent.add(station);
+    }
+  };
+
+  const subscribeToData = async () => {
+    try {
+      const user = await base44.auth.me();
+      if (!user) return;
+
+      // Subscribe to real-time data
+      const unsubscribe = base44.entities.AITask?.subscribe?.((event) => {
+        setPlatformData((prev) => ({
+          ...prev,
+          lastTaskUpdate: new Date(),
+          taskEvent: event,
+        }));
+      });
+
+      return () => unsubscribe?.();
+    } catch (error) {
+      console.error('Failed to subscribe to platform data:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-slate-950">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-cyan-400 font-orbitron">INITIALIZING STARSHIP BRIDGE...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <div ref={containerRef} className="w-full h-full" />;
 }

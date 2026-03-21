@@ -1,119 +1,113 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Power, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useUserGoals, useCryptoWallets, useAITasks } from '@/hooks/useQueryHooks';
+import { Zap, Radio, Target, TrendingUp } from 'lucide-react';
 
-export default function CockpitControlPanel({ panelType, onAction }) {
-  const [status, setStatus] = useState('idle');
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
+export default function CockpitControlPanel() {
+  const { data: goals = [] } = useUserGoals();
+  const { data: wallets = [] } = useCryptoWallets();
+  const { data: tasks = [] } = useAITasks();
+  
+  const [autopilotMode, setAutopilotMode] = useState('continuous');
+  const [energyLevel, setEnergyLevel] = useState(75);
 
-  useEffect(() => {
-    loadData();
-  }, [panelType]);
+  const goal = goals[0] || {};
+  const totalBalance = wallets.reduce((sum, w) => sum + (w.balance?.total_balance_usd || 0), 0);
+  const activeTasks = tasks.filter(t => t.status === 'executing').length;
 
-  const loadData = async () => {
+  const handleAutopilotChange = async (mode) => {
+    setAutopilotMode(mode);
     try {
-      setLoading(true);
-      if (panelType === 'autopilot') {
-        const tasks = await base44.entities.AITask.filter({ status: 'queued' }, '-created_date', 5);
-        setData({ tasks, queueSize: tasks.length });
-      } else if (panelType === 'wallet') {
-        const txns = await base44.entities.CryptoTransaction.filter({}, '-timestamp', 5);
-        const balance = txns.reduce((sum, t) => sum + (t.value_usd || 0), 0);
-        setData({ balance, recentTransactions: txns });
-      } else if (panelType === 'navigation') {
-        setData({ status: 'ready' });
-      }
+      await base44.functions.invoke('unifiedOrchestrator', {
+        action: 'set_autopilot_mode',
+        mode
+      });
     } catch (error) {
-      console.error('Panel data load failed:', error);
-    } finally {
-      setLoading(false);
+      console.error('Failed to change autopilot mode:', error);
     }
-  };
-
-  const handleStartAutopilot = async () => {
-    setStatus('running');
-    try {
-      await base44.functions.invoke('autopilotScheduler', {});
-      onAction('autopilot_started');
-    } catch (error) {
-      setStatus('error');
-      console.error('Autopilot start failed:', error);
-    }
-  };
-
-  const handleWithdraw = async () => {
-    setStatus('processing');
-    try {
-      await base44.functions.invoke('withdrawalEngine', {});
-      onAction('withdrawal_initiated');
-    } catch (error) {
-      setStatus('error');
-    }
-  };
-
-  const renderContent = () => {
-    if (panelType === 'autopilot') {
-      return (
-        <div className="space-y-2 text-xs">
-          <div className="flex justify-between">
-            <span>Queue:</span>
-            <span className="text-cyber-cyan">{data?.queueSize || 0} tasks</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Status:</span>
-            <span className={status === 'running' ? 'text-green-400' : 'text-yellow-400'}>
-              {status.toUpperCase()}
-            </span>
-          </div>
-          <button
-            onClick={handleStartAutopilot}
-            disabled={status === 'running'}
-            className="w-full mt-2 px-2 py-1 bg-cyber-cyan/20 border border-cyber-cyan text-cyber-cyan text-xs rounded hover:bg-cyber-cyan/40 disabled:opacity-50"
-          >
-            {status === 'running' ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-            {status === 'running' ? 'PAUSE' : 'START'}
-          </button>
-        </div>
-      );
-    }
-
-    if (panelType === 'wallet') {
-      return (
-        <div className="space-y-2 text-xs">
-          <div className="flex justify-between">
-            <span>Balance:</span>
-            <span className="text-cyber-gold">${data?.balance?.toFixed(2) || '0.00'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Txns:</span>
-            <span className="text-cyber-gold">{data?.recentTransactions?.length || 0}</span>
-          </div>
-          <button
-            onClick={handleWithdraw}
-            className="w-full mt-2 px-2 py-1 bg-cyber-gold/20 border border-cyber-gold text-cyber-gold text-xs rounded hover:bg-cyber-gold/40"
-          >
-            <Power className="w-3 h-3 inline mr-1" />
-            WITHDRAW
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-2 text-xs text-muted-foreground">
-        <div>Navigation Ready</div>
-        <div>Available: 6 departments</div>
-      </div>
-    );
   };
 
   return (
-    <div className="glass-card p-2">
-      <div className="text-cyber-cyan font-orbitron text-xs mb-1">
-        {panelType.toUpperCase()}
+    <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent p-6 border-t border-cyan-400/20">
+      <div className="max-w-6xl mx-auto">
+        {/* Main Control Row */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {/* Autopilot Control */}
+          <div className="glass-card p-4 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Radio className="w-4 h-4 text-cyan-400" />
+              <span className="font-orbitron text-xs text-slate-400">AUTOPILOT</span>
+            </div>
+            <div className="space-y-2">
+              {['continuous', 'event-driven', 'manual'].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => handleAutopilotChange(mode)}
+                  className={`w-full px-2 py-1 text-xs rounded font-orbitron transition-all ${
+                    autopilotMode === mode
+                      ? 'bg-cyan-400/30 border border-cyan-400 text-cyan-400'
+                      : 'bg-slate-800/50 border border-slate-700 text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  {mode.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Energy/Wallet */}
+          <div className="glass-card p-4 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span className="font-orbitron text-xs text-slate-400">ENERGY CORE</span>
+            </div>
+            <div className="text-2xl font-bold text-amber-400 mb-2">${totalBalance.toFixed(0)}</div>
+            <div className="w-full bg-slate-800 rounded-full h-2">
+              <div
+                className="bg-gradient-to-r from-amber-400 to-amber-500 h-2 rounded-full"
+                style={{ width: `${Math.min(energyLevel, 100)}%` }}
+              />
+            </div>
+            <div className="text-xs text-slate-500 mt-1">Available capital</div>
+          </div>
+
+          {/* Task Queue */}
+          <div className="glass-card p-4 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="w-4 h-4 text-violet-400" />
+              <span className="font-orbitron text-xs text-slate-400">TASK QUEUE</span>
+            </div>
+            <div className="text-2xl font-bold text-violet-400 mb-2">{activeTasks}</div>
+            <div className="text-xs text-slate-500">Active executions</div>
+          </div>
+
+          {/* Daily Target */}
+          <div className="glass-card p-4 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <span className="font-orbitron text-xs text-slate-400">TARGET</span>
+            </div>
+            <div className="text-2xl font-bold text-emerald-400 mb-2">${goal.daily_target || 0}</div>
+            <div className="text-xs text-slate-500">Daily profit goal</div>
+          </div>
+        </div>
+
+        {/* System Status Bar */}
+        <div className="flex items-center gap-4 text-xs font-orbitron">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-slate-400">SYSTEMS OPERATIONAL</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span className="text-slate-400">LINK ACTIVE</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span className="text-slate-400">SCANNING...</span>
+          </div>
+        </div>
       </div>
-      {renderContent()}
     </div>
   );
 }

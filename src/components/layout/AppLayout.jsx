@@ -406,6 +406,7 @@ export default function AppLayout() {
 
       {/* ── Mobile Bottom Tab Bar ── */}
       <MobileTabBar currentPath={location.pathname} />
-    </div>
+      </div>
+    </CyberpunkCommandCenter>
   );
 }

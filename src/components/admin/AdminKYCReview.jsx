@@ -197,6 +197,9 @@ function KYCCard({ kyc, onUpdate }) {
             </div>
           )}
 
+          {/* Document Verification Tracker */}
+          <DocVerificationTracker kyc={kyc} onKycUpdated={() => qc.invalidateQueries({ queryKey: ['admin_kyc_list'] })} />
+
           {/* Admin Notes */}
           <div>
             <p className="text-xs font-medium text-white mb-1.5">Admin Notes / Message to User</p>

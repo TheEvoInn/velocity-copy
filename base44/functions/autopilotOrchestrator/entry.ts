@@ -244,22 +244,36 @@ Deno.serve(async (req) => {
           }
         }
 
-        // 4b. Ensure accounts for discovered opportunities
-        const platformsNeeded = [...new Set(opportunities.map(o => o && o.platform ? o.platform : 'upwork').filter(Boolean))];
+        // 4b. Queue opportunities for real execution
+        const opportunitiesForExecution = opportunities.filter(o => 
+          o && o.id && o.url && o.overall_score && o.overall_score > 50
+        );
 
-        for (const platform of platformsNeeded) {
-          if (!platform) continue;
+        for (const opp of opportunitiesForExecution.slice(0, 10)) {
           try {
-            const accountRes = await base44.asServiceRole.functions.invoke('autopilotOrchestrator', {
-              action: 'ensure_account',
-              platform
+            const queueRes = await base44.asServiceRole.functions.invoke('autopilotRealExecution', {
+              action: 'queue_task_for_execution',
+              opportunity: opp,
+              identity_id: cycleResults.identity_ready?.id
             }).catch(e => ({ data: { success: false, error: e.message } }));
-            if (accountRes?.data?.success) {
-              cycleResults.accounts_ensured++;
+            
+            if (queueRes?.data?.success) {
+              cycleResults.tasks_executed++;
             }
           } catch (e) {
-            console.error(`Error ensuring account for ${platform}:`, e.message);
+            console.error(`Error queueing opportunity ${opp?.id}:`, e.message);
           }
+        }
+
+        // 4c. Process execution queue
+        try {
+          const processRes = await base44.asServiceRole.functions.invoke('autopilotRealExecution', {
+            action: 'process_execution_queue'
+          }).catch(e => ({ data: { processed: 0 } }));
+          
+          cycleResults.tasks_executed += processRes?.data?.started_count || 0;
+        } catch (e) {
+          console.error('Error processing execution queue:', e.message);
         }
 
         // 5. Run monitoring cycle

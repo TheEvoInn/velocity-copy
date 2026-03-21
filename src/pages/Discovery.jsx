@@ -38,6 +38,7 @@ export default function Discovery() {
   const [filter, setFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active');
   const [scanning, setScanning] = useState(false);
+  const queryClient = useQueryClient();
 
   const filtered = opportunities.filter(o => {
     const catOk = filter === 'all' || o.category === filter;

@@ -7,26 +7,23 @@ import BackgroundTaskScheduler from '../components/execution/BackgroundTaskSched
 export default function BackgroundExecutionHub() {
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-purple-400" />
-            </div>
-            <div>
-              <h1 className="font-orbitron text-lg font-bold text-white tracking-wide">Background Execution Hub</h1>
-              <p className="text-xs text-slate-500">Automated task execution with risk-based filtering</p>
-            </div>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+          <Zap className="w-5 h-5 text-purple-400" />
         </div>
-        <div className="space-y-6">
+        <div>
+          <h1 className="font-orbitron text-lg font-bold text-white tracking-wide">Background Execution Hub</h1>
+          <p className="text-xs text-slate-500">Automated task execution with risk-based filtering</p>
+        </div>
+      </div>
 
+      <div className="space-y-6">
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Configuration */}
           <div className="lg:col-span-1">
             <TaskExecutionConfig />
           </div>
-
-          {/* Right: Scheduler */}
           <div className="lg:col-span-2">
             <BackgroundTaskScheduler />
           </div>
@@ -67,7 +64,6 @@ export default function BackgroundExecutionHub() {
           </Card>
         </div>
       </div>
-    </div>
     </div>
   );
 }

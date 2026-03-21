@@ -87,6 +87,8 @@ function KYCCard({ kyc, onUpdate, allIdentities }) {
       admin_status: 'additional_info',
       status: 'under_review',
       admin_request_note: adminNote,
+    }, {
+      onSuccess: () => setAdminNote('')
     });
   };
 

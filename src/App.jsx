@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import PlatformLayout from '@/components/layout/PlatformLayout';
 const { Pages, Layout, mainPage } = pagesConfig;
 const MainPage = Pages[mainPage] ?? null;
 
@@ -35,23 +36,23 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {Layout ? (
-        <Route element={<Layout />}>
-          <Route path="/" element={MainPage ? <MainPage /> : <PageNotFound />} />
-          {Object.entries(Pages).map(([path, Page]) => (
+      {/* Dashboard/Landing Page - No layout wrapper */}
+      <Route path="/" element={MainPage ? <MainPage /> : <PageNotFound />} />
+      
+      {/* Starship Bridge - Full immersive (no nav) */}
+      <Route path="/StarshipBridge" element={Pages.StarshipBridge ? <Pages.StarshipBridge /> : <PageNotFound />} />
+      
+      {/* All other pages - With platform layout and navigation */}
+      <Route element={<PlatformLayout />}>
+        {Object.entries(Pages)
+          .filter(([path]) => !['Dashboard', 'StarshipBridge'].includes(path))
+          .map(([path, Page]) => (
             <Route key={path} path={`/${path}`} element={<Page />} />
           ))}
-          <Route path="*" element={<PageNotFound />} />
-        </Route>
-      ) : (
-        <>
-          <Route path="/" element={MainPage ? <MainPage /> : <PageNotFound />} />
-          {Object.entries(Pages).map(([path, Page]) => (
-            <Route key={path} path={`/${path}`} element={<Page />} />
-          ))}
-          <Route path="*" element={<PageNotFound />} />
-        </>
-      )}
+      </Route>
+      
+      {/* Catch-all 404 */}
+      <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };

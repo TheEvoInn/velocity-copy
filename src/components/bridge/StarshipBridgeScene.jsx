@@ -132,6 +132,7 @@ export default function StarshipBridgeScene() {
     // Initialize Phase 4 systems
     performanceTrackerRef.current = new BridgePerformanceTracker();
     interactionControllerRef.current = new StationInteractionController(stations, camera, renderer);
+    interactionControllerRef.current.setPOVController(povControllerRef.current);
     keyboardSchemeRef.current = new KeyboardControlScheme();
     
     // Setup interaction callbacks

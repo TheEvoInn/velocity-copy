@@ -67,8 +67,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'update' && id && updates) {
-      const record = await base44.asServiceRole.entities.KYCVerification.update(id, updates);
-      return Response.json({ record });
+      try {
+        const record = await base44.asServiceRole.entities.KYCVerification.update(id, updates);
+        console.log(`[kycAdminService] update success for KYC ${id}`);
+        return Response.json({ record });
+      } catch (err) {
+        console.error(`[kycAdminService] update failed: ${err.message}`);
+        throw err;
+      }
     }
 
     if (action === 'get_access_log' && id) {

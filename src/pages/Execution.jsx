@@ -84,7 +84,6 @@ export default function Execution() {
   };
 
   // Calculate real earnings from completed tasks
-  const safeTasks = Array.isArray(tasks) ? tasks.filter(t => t && t.id) : [];
   const completedTasks = safeTasks.filter(t => t?.status === 'completed' && typeof t?.estimated_value === 'number');
   const aiEarnedToday = completedTasks
     .filter(t => t?.executed_by === 'ned_autopilot' || !t?.executed_by)

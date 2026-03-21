@@ -35,23 +35,19 @@ function KYCCard({ kyc, onUpdate }) {
   const color = STATUS_COLOR[kyc.admin_status || kyc.status] || '#64748b';
 
   const updateMutation = useMutation({
-    mutationFn: (updates) => base44.functions.invoke('kycAdminService', {
-      action: 'update',
-      id: kyc.id,
-      updates: {
-        ...updates,
-        reviewed_by: user?.email,
-        review_started_at: new Date().toISOString(),
-        access_log: [
-          ...(kyc.access_log || []),
-          {
-            accessed_at: new Date().toISOString(),
-            accessed_by: user?.email,
-            purpose: 'admin_review',
-            module: 'AdminKYCReview',
-          }
-        ]
-      }
+    mutationFn: (updates) => base44.entities.KYCVerification.update(kyc.id, {
+      ...updates,
+      reviewed_by: user?.email,
+      review_started_at: new Date().toISOString(),
+      access_log: [
+        ...(kyc.access_log || []),
+        {
+          accessed_at: new Date().toISOString(),
+          accessed_by: user?.email,
+          purpose: 'admin_review',
+          module: 'AdminKYCReview',
+        }
+      ]
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin_kyc_list'] });

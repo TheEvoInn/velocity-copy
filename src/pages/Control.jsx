@@ -253,6 +253,11 @@ export default function Control() {
         </div>
       )}
 
+      {/* WEBHOOKS TAB */}
+      {activeTab === 'Webhooks' && (
+        <WebhookDiagnostics />
+      )}
+
       {/* GOALS TAB */}
       {activeTab === 'Goals' && (
         <div className="space-y-4">

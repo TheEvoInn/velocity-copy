@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, AlertCircle, Clock, Lock, Shield, FileText, XCircle, MessageSquare, Info } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { CheckCircle2, AlertCircle, Clock, Lock, Shield, FileText, XCircle, MessageSquare, Info, RefreshCw, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 import KYCUpdateForm from './KYCUpdateForm';
 
 const STATUS_CONFIG = {
@@ -20,11 +21,45 @@ check_again_required: { icon: AlertCircle, color: 'text-purple-400',  bg: 'bg-pu
 
 export default function KYCStatusPanel({ onStartKYC }) {
   const [showUpdateForm, setShowUpdateForm] = useState(false);
-  const { data: kycRecord = null, isLoading } = useQuery({
+  const { data: kycRecord = null, isLoading, refetch: refetchKYC } = useQuery({
     queryKey: ['kyc_my'],
     queryFn: async () => {
       const res = await base44.functions.invoke('kycAdminService', { action: 'get_my_kyc' });
       return res.data?.record || null;
+    },
+  });
+
+  const { data: adminNotifications = [] } = useQuery({
+    queryKey: ['kyc_admin_notifications', kycRecord?.id],
+    queryFn: async () => {
+      if (!kycRecord?.id) return [];
+      const res = await base44.entities.Notification.filter({
+        related_entity_type: 'KYCVerification',
+        related_entity_id: kycRecord.id,
+        type: 'compliance_alert',
+      }, '-created_date', 10);
+      return res || [];
+    },
+    enabled: !!kycRecord?.id,
+  });
+
+  const checkAgainMutation = useMutation({
+    mutationFn: async () => {
+      return base44.functions.invoke('kycAdminService', { action: 'mark_check_again_acknowledged' });
+    },
+    onSuccess: () => {
+      toast.success('Check again request acknowledged. Please review the flagged fields.');
+      refetchKYC();
+    },
+  });
+
+  const reapplyMutation = useMutation({
+    mutationFn: async () => {
+      return base44.functions.invoke('kycAdminService', { action: 'reapply_kyc' });
+    },
+    onSuccess: () => {
+      toast.success('KYC reapplied. Your submission is back in the review queue.');
+      refetchKYC();
     },
   });
 
@@ -134,6 +169,42 @@ export default function KYCStatusPanel({ onStartKYC }) {
           </div>
         )}
 
+        {/* Admin Notifications */}
+        {adminNotifications.length > 0 && (
+          <div className="space-y-2">
+            {adminNotifications.slice(0, 2).map(notif => (
+              <div key={notif.id} className="bg-amber-950/40 border border-amber-800/50 rounded-lg p-3 flex gap-3">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-amber-300">{notif.title}</p>
+                  <p className="text-xs text-amber-200 mt-0.5">{notif.message}</p>
+                  {notif.action_type === 'document_upload_required' && (
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setShowUpdateForm(true)}
+                        className="h-7 text-xs bg-amber-600 hover:bg-amber-500 gap-1"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        Upload Documents
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => reapplyMutation.mutate()}
+                        disabled={reapplyMutation.isPending}
+                        className="h-7 text-xs bg-blue-600 hover:bg-blue-500 gap-1"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Reapply
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Details */}
         <div className="space-y-2 text-xs">
           <div className="flex justify-between">
@@ -189,13 +260,31 @@ export default function KYCStatusPanel({ onStartKYC }) {
         {/* Resubmit if denied/expired/additional info/check again */}
         {(statusKey === 'rejected' || statusKey === 'expired' || statusKey === 'additional_info' || statusKey === 'check_again_required') && (
           <div className="flex gap-2">
-            <Button onClick={() => setShowUpdateForm(true)} className="flex-1 text-xs bg-blue-600 hover:bg-blue-500 gap-1.5">
-              <FileText className="w-3 h-3" />
+            <Button 
+              onClick={() => setShowUpdateForm(true)} 
+              disabled={checkAgainMutation.isPending || reapplyMutation.isPending}
+              className="flex-1 text-xs bg-blue-600 hover:bg-blue-500 gap-1.5"
+            >
+              <Edit2 className="w-3 h-3" />
               {statusKey === 'check_again_required' ? 'Review & Update' : 'Update Information'}
             </Button>
-            {statusKey !== 'check_again_required' && (
-              <Button onClick={onStartKYC} variant="outline" className="flex-1 text-xs border-slate-600 text-slate-300">
-                New Submission
+            {statusKey === 'check_again_required' ? (
+              <Button 
+                onClick={() => checkAgainMutation.mutate()}
+                disabled={checkAgainMutation.isPending}
+                className="flex-1 text-xs bg-purple-600 hover:bg-purple-500 gap-1.5"
+              >
+                <RefreshCw className="w-3 h-3" />
+                {checkAgainMutation.isPending ? 'Processing...' : 'Acknowledge'}
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => reapplyMutation.mutate()}
+                disabled={reapplyMutation.isPending}
+                className="flex-1 text-xs bg-emerald-600 hover:bg-emerald-500 gap-1.5"
+              >
+                <RefreshCw className="w-3 h-3" />
+                {reapplyMutation.isPending ? 'Reapplying...' : 'Reapply'}
               </Button>
             )}
           </div>

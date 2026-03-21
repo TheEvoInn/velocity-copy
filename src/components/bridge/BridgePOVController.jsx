@@ -25,6 +25,15 @@ class BridgePOVController {
       fStop: 0,
       targetFStop: 0
     };
+
+    // Station Inspection mode
+    this.inspectionMode = false;
+    this.inspectionStation = null;
+    this.orbitCenter = new THREE.Vector3();
+    this.orbitRadius = 2.5;
+    this.orbitHeight = 1.2;
+    this.orbitTime = 0;
+    this.orbitDuration = 8000; // 8 second full orbit
   }
 
   focusStation(stationMesh) {
@@ -40,6 +49,30 @@ class BridgePOVController {
     
     this.targetFOV = 35;
     this.depthOfField.targetFStop = 8.0;
+  }
+
+  startInspectionMode(stationMesh) {
+    if (this.isAnimating || this.inspectionMode) return;
+    
+    this.inspectionMode = true;
+    this.inspectionStation = stationMesh;
+    this.orbitCenter = stationMesh.position.clone();
+    this.orbitTime = 0;
+    this.targetFOV = 45;
+    this.depthOfField.targetFStop = 6.0;
+    
+    // Initial zoom to station
+    this.isAnimating = true;
+    this.animationStart = Date.now();
+    this.targetPosition = this.orbitCenter.clone().add(new THREE.Vector3(this.orbitRadius, this.orbitHeight, 0));
+  }
+
+  exitInspectionMode() {
+    if (!this.inspectionMode) return;
+    
+    this.inspectionMode = false;
+    this.inspectionStation = null;
+    this.returnToCenter();
   }
 
   returnToCenter() {
@@ -60,6 +93,31 @@ class BridgePOVController {
   }
 
   update() {
+    // Station Inspection orbit mode
+    if (this.inspectionMode && this.inspectionStation) {
+      this.orbitTime = (this.orbitTime + 16) % this.orbitDuration;
+      const orbitProgress = this.orbitTime / this.orbitDuration;
+      const angle = orbitProgress * Math.PI * 2;
+
+      // Circular orbit around station
+      const orbitX = Math.cos(angle) * this.orbitRadius;
+      const orbitZ = Math.sin(angle) * this.orbitRadius;
+      
+      this.camera.position.x = this.orbitCenter.x + orbitX;
+      this.camera.position.y = this.orbitCenter.y + this.orbitHeight;
+      this.camera.position.z = this.orbitCenter.z + orbitZ;
+
+      // Look at station center with slight upward bias for screen visibility
+      const lookTarget = this.orbitCenter.clone().add(new THREE.Vector3(0, 0.3, 0));
+      this.camera.lookAt(lookTarget);
+
+      this.currentFOV = this.targetFOV;
+      this.camera.fov = this.currentFOV;
+      this.camera.updateProjectionMatrix();
+      this.depthOfField.fStop = this.depthOfField.targetFStop;
+      return;
+    }
+
     if (!this.isAnimating) return;
     
     const elapsed = Date.now() - this.animationStart;
@@ -107,9 +165,12 @@ class BridgePOVController {
       isAnimating: this.isAnimating,
       currentFOV: this.currentFOV,
       position: this.camera.position.clone(),
-      depthOfField: { ...this.depthOfField }
+      depthOfField: { ...this.depthOfField },
+      inspectionMode: this.inspectionMode,
+      inspectionStation: this.inspectionStation?.name || null
     };
   }
+
 }
 
 export default BridgePOVController;

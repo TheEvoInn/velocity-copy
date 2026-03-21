@@ -86,9 +86,9 @@ export default function Dashboard() {
     }
   }, [hasOnboarded]);
   const today = new Date().toDateString();
-  const completedToday = opportunities.filter(o => o.status === 'completed' && new Date(o.updated_date).toDateString() === today).length;
-  const failedTasks = tasks.filter(t => t.status === 'failed').length;
-  const reviewTasks = tasks.filter(t => t.status === 'needs_review').length;
+  const completedToday = opportunities.filter(o => o.id && o.status === 'completed' && o.updated_date && new Date(o.updated_date).toDateString() === today).length;
+  const failedTasks = tasks.filter(t => t.id && t.status === 'failed').length;
+  const reviewTasks = tasks.filter(t => t.id && t.status === 'needs_review').length;
 
   // Per-department stat summaries
   const deptStats = {
@@ -276,7 +276,7 @@ export default function Dashboard() {
               </Link>
             </div>
             <div className="space-y-2">
-              {tasks.slice(0, 5).map(task => (
+              {activeTasks.slice(0, 5).map(task => (
                 <div key={task.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/30">
                   <div className={`w-2 h-2 rounded-full shrink-0 ${
                     task.status === 'completed' ? 'bg-emerald-500' :
@@ -287,13 +287,13 @@ export default function Dashboard() {
                     <p className="text-xs text-white font-medium truncate">{task.platform || task.opportunity_type || 'Task'}</p>
                     <p className="text-xs text-slate-500 capitalize">{task.status}</p>
                   </div>
-                  {task.estimated_value > 0 && (
+                  {task.estimated_value && task.estimated_value > 0 && (
                     <span className="text-xs text-emerald-400 font-medium">${task.estimated_value}</span>
                   )}
                 </div>
               ))}
-              {tasks.length === 0 && (
-                <p className="text-xs text-slate-500 text-center py-4">No tasks in queue.</p>
+              {activeTasks.length === 0 && (
+                <p className="text-xs text-slate-500 text-center py-4">No active tasks in queue.</p>
               )}
             </div>
           </div>

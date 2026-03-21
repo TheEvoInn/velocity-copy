@@ -15,12 +15,10 @@ Deno.serve(async (req) => {
     // Allow regular users to fetch their own KYC record
     if (action === 'get_my_kyc') {
       const userEmail = user.email;
-      let records = await base44.asServiceRole.entities.KYCVerification.filter({ created_by: userEmail }, '-created_date', 1);
-      if (!records.length) {
-        records = await base44.asServiceRole.entities.KYCVerification.filter({ email_verified: userEmail }, '-created_date', 1);
-      }
-      console.log(`[kycAdminService] get_my_kyc for ${userEmail}: ${records.length} record(s)`);
-      return Response.json({ record: records[0] || null });
+      const all = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
+      const record = all.find(r => r.created_by === userEmail || r.email_verified === userEmail) || null;
+      console.log(`[kycAdminService] get_my_kyc for ${userEmail}: found=${!!record}`);
+      return Response.json({ record });
     }
 
     // All other actions require admin

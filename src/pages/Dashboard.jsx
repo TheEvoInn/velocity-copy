@@ -5,9 +5,15 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { useDepartmentSync } from '@/hooks/useDepartmentSync';
-import { useAutoInvalidateCache } from '@/lib/cacheInvalidationHook';
-import { useRealtimeEventBus } from '@/lib/realtimeEventBus';
+import {
+  useUserGoalsV2,
+  useOpportunitiesV2,
+  useTasksV2,
+  useTransactionsV2,
+  useActivityLogsV2,
+  useAIIdentitiesV2,
+  useWorkflowsV2
+} from '@/lib/velocityHooks';
 import { Zap, Plus, AlertTriangle, Clock, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -30,16 +36,23 @@ import AIInsightsPanel from '@/components/command-center/AIInsightsPanel';
 
 
 export default function Dashboard() {
-  // ACTUAL FIX: Real-time event bus subscription
-  useRealtimeEventBus();
-  // ACTUAL FIX: Cache invalidation
-  useAutoInvalidateCache();
+  const { goals: userGoals } = useUserGoalsV2();
+  const { opportunities } = useOpportunitiesV2();
+  const { tasks } = useTasksV2();
+  const { transactions } = useTransactionsV2();
+  const { logs: activityLogs } = useActivityLogsV2(20);
+  const { identities } = useAIIdentitiesV2();
+  const { workflows } = useWorkflowsV2();
   
-  const {
-    userGoals, opportunities, transactions, tasks, identities, activityLogs,
-    todayEarned, totalEarned, walletBalance, activeOpps, activeTasks, activeIdentity,
-    invalidateAll,
-  } = useDepartmentSync();
+  // Calculate derived metrics
+  const todayEarned = transactions
+    .filter(t => new Date(t.timestamp || 0).toDateString() === new Date().toDateString())
+    .reduce((s, t) => s + (t.value_usd || 0), 0);
+  const totalEarned = userGoals.total_earned || 0;
+  const walletBalance = userGoals.wallet_balance || 0;
+  const activeOpps = opportunities.filter(o => ['new', 'reviewing', 'queued', 'executing'].includes(o.status));
+  const activeTasks = tasks.filter(t => ['queued', 'processing', 'navigating', 'filling', 'submitting'].includes(t.status));
+  const activeIdentity = identities.find(i => i.is_active);
   const queryClient = useQueryClient();
   useRealtimeNotifications();
 
@@ -79,28 +92,30 @@ export default function Dashboard() {
     await scanMutation.mutateAsync();
   };
 
-  const hasOnboarded = userGoals.id || userGoals.onboarded;
-  // Auto-show onboarding for new users once goals data has loaded (not loading = no record = first visit)
+  const invalidateAll = () => {
+    queryClient.invalidateQueries();
+  };
+
+  const hasOnboarded = userGoals?.id || userGoals?.onboarded;
+  // Auto-show onboarding for new users
   const [showOnboarding, setShowOnboarding] = useState(false);
   React.useEffect(() => {
-    if (!hasOnboarded && userGoals !== undefined) {
+    if (!hasOnboarded && Object.keys(userGoals).length === 0) {
       const timer = setTimeout(() => setShowOnboarding(true), 800);
       return () => clearTimeout(timer);
     }
-  }, [hasOnboarded]);
+  }, [hasOnboarded, userGoals]);
   const today = new Date().toDateString();
-  const safeOpps = Array.isArray(opportunities) ? opportunities : [];
-  const safeTasks = Array.isArray(tasks) ? tasks : [];
-  const completedToday = safeOpps.filter(o => o?.id && o?.status === 'completed' && o?.updated_date && new Date(o.updated_date).toDateString() === today).length;
-  const failedTasks = safeTasks.filter(t => t?.id && t?.status === 'failed').length;
-  const reviewTasks = safeTasks.filter(t => t?.id && t?.status === 'needs_review').length;
+  const completedToday = opportunities.filter(o => o.status === 'completed' && new Date(o.updated_date || 0).toDateString() === today).length;
+  const failedTasks = tasks.filter(t => t.status === 'failed').length;
+  const reviewTasks = tasks.filter(t => t.status === 'needs_review').length;
 
   // Per-department stat summaries
   const deptStats = {
-    discovery: { main: activeOpps.length, label: 'active opps', sub: `${opportunities.length} total found` },
-    execution: { main: activeTasks.length, label: 'running tasks', sub: `${completedToday} completed today` },
-    finance: { main: `$${todayEarned.toFixed(0)}`, label: 'earned today', sub: `$${walletBalance.toFixed(0)} wallet` },
-    control: { main: identities.length, label: 'identities', sub: activeIdentity ? `Active: ${activeIdentity.name}` : 'None active' },
+    discovery: { main: activeOpps.length, label: 'active opps', sub: `${opportunities.length} total found`, color: '#f59e0b' },
+    execution: { main: activeTasks.length, label: 'running tasks', sub: `${completedToday} completed today`, color: '#3b82f6' },
+    finance: { main: `$${todayEarned.toFixed(0)}`, label: 'earned today', sub: `$${walletBalance.toFixed(0)} wallet`, color: '#10b981' },
+    control: { main: identities.length, label: 'identities', sub: activeIdentity ? `Active: ${activeIdentity.name}` : 'None active', color: '#a855f7' },
   };
 
   return (

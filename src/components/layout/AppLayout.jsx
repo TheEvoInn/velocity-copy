@@ -8,6 +8,7 @@ import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
 import NotificationBell from '../notifications/NotificationBell';
 import StarfieldCanvas from './StarfieldCanvas';
 import GalaxyOrbs from './GalaxyOrbs';
+import CyberpunkCommandCenter from './CyberpunkCommandCenter';
 import { useAuth } from '@/lib/AuthContext';
 import { useRealtimeEventBus } from '@/lib/realtimeEventBus';
 

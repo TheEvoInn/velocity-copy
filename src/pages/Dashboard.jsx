@@ -19,7 +19,7 @@ import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import N8nMcpPanel from '@/components/n8n/N8nMcpPanel';
 import SystemAuditChecker from '@/components/audit/SystemAuditChecker';
 import GalaxyCommandHUD from '@/components/command-center/GalaxyCommandHUD';
-import PlanetaryNav from '@/components/command-center/PlanetaryNav';
+import PlanetaryNavWithDeepSpace from '@/components/command-center/PlanetaryNavWithDeepSpace';
 import DepartmentActivityRings from '@/components/command-center/DepartmentActivityRings';
 import RealtimeOpportunitiesViewer from '@/components/command-center/RealtimeOpportunitiesViewer';
 import ExecutionPipelineMonitor from '@/components/command-center/ExecutionPipelineMonitor';

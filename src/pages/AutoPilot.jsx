@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useUserGoals, useAITasksByStatus, useCryptoTransactions, useInvalidateQueries } from '@/hooks/useQueryHooks';
 import { Bot, Play, RefreshCw, FileText, Power, Zap, Radio, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -34,33 +35,12 @@ export default function AutoPilot() {
   const [isForceRunning, setIsForceRunning] = useState(false);
   const [lastRunResult, setLastRunResult] = useState(null);
   const qc = useQueryClient();
+  const { invalidateAll } = useInvalidateQueries();
 
-  const { data: userGoalsList = [] } = useQuery({
-    queryKey: ['userGoals'],
-    queryFn: () => base44.entities.UserGoals.list(),
-    initialData: [],
-  });
-
-  const { data: aiTasks = [], refetch: refetchTasks } = useQuery({
-    queryKey: ['aiTasks'],
-    queryFn: async () => {
-      const user = await base44.auth.me();
-      if (!user?.email) return [];
-      return base44.entities.AITask.filter({ created_by: user.email }, '-created_date', 50);
-    },
-    initialData: [],
-    refetchInterval: 15000,
-  });
-
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['transactions'],
-    queryFn: async () => {
-      const user = await base44.auth.me();
-      if (!user?.email) return [];
-      return base44.entities.Transaction.filter({ created_by: user.email }, '-created_date', 100);
-    },
-    initialData: [],
-  });
+  // Standardized query hooks
+  const { data: userGoalsList = [], isLoading: goalsLoading } = useUserGoals();
+  const { data: aiTasks = [], isLoading: tasksLoading, refetch: refetchTasks } = useAITasksByStatus('completed');
+  const { data: transactions = [], isLoading: txLoading } = useCryptoTransactions();
 
   // Platform state via orchestrator
   const { data: platformState, refetch: refetchState } = useQuery({
@@ -85,7 +65,7 @@ export default function AutoPilot() {
     mutationFn: async (enabled) => {
       await base44.functions.invoke('unifiedOrchestrator', { action: 'toggle_autopilot', enabled });
     },
-    onSuccess: () => { refetchState(); qc.invalidateQueries({ queryKey: ['userGoals'] }); },
+    onSuccess: () => { refetchState(); invalidateAll(); },
   });
 
   const runManualCycle = async () => {
@@ -95,8 +75,7 @@ export default function AutoPilot() {
       const res = await base44.functions.invoke('unifiedOrchestrator', { action: 'full_cycle' });
       setLastRunResult(res?.data);
       await refetchTasks();
-      qc.invalidateQueries({ queryKey: ['transactions'] });
-      qc.invalidateQueries({ queryKey: ['userGoals'] });
+      invalidateAll();
       refetchState();
     } finally {
       setIsManualRunning(false);
@@ -110,8 +89,7 @@ export default function AutoPilot() {
       const res = await base44.functions.invoke('unifiedOrchestrator', { action: 'force_run' });
       setLastRunResult(res?.data);
       await refetchTasks();
-      qc.invalidateQueries({ queryKey: ['transactions'] });
-      qc.invalidateQueries({ queryKey: ['userGoals'] });
+      invalidateAll();
       refetchState();
     } finally {
       setIsForceRunning(false);
@@ -122,7 +100,7 @@ export default function AutoPilot() {
     setIsScanRunning(true);
     try {
       await base44.functions.invoke('unifiedOrchestrator', { action: 'scan_opportunities' });
-      qc.invalidateQueries({ queryKey: ['opportunities'] });
+      invalidateAll();
     } finally {
       setIsScanRunning(false);
     }
@@ -319,11 +297,11 @@ export default function AutoPilot() {
         )}
 
         {activeTab === 'targets' && (
-          <ProfitTargetPanel goals={goals} onUpdate={() => qc.invalidateQueries({ queryKey: ['userGoals'] })} />
+          <ProfitTargetPanel goals={goals} onUpdate={() => invalidateAll()} />
         )}
 
         {activeTab === 'risk' && (
-          <RiskManagementPanel goals={goals} onUpdate={() => qc.invalidateQueries({ queryKey: ['userGoals'] })} />
+          <RiskManagementPanel goals={goals} onUpdate={() => invalidateAll()} />
         )}
 
         {activeTab === 'rules' && (

@@ -167,8 +167,8 @@ export default function TaskReaderHub() {
               <Card className="p-6 bg-gradient-to-r from-violet-600/10 to-purple-600/10 border-violet-500/30">
                 <h2 className="text-xl font-semibold text-white mb-2">3rd-Party Task Reader</h2>
                 <p className="text-slate-300">
-                  Submit external website URLs for intelligent analysis. Automatic CAPTCHA detection and solving,
-                  form field extraction, credential injection, and workflow generation.
+                  Submit external website URLs for intelligent AI analysis. Automatic CAPTCHA detection and solving,
+                  form field extraction, credential injection, and intelligent workflow generation.
                 </p>
               </Card>
               
@@ -178,6 +178,24 @@ export default function TaskReaderHub() {
               )}
               
               <TaskReaderInterface onAnalysisComplete={setLastTaskAnalysis} />
+            </div>
+          )}
+
+          {activeTab === 'workflows' && (
+            <div className="space-y-6">
+              <Card className="p-6 bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border-blue-500/30">
+                <h2 className="text-xl font-semibold text-white mb-2">Automated Workflow Engine</h2>
+                <p className="text-slate-300">
+                  Real-time analysis orchestration with intelligent follow-up workflows. Auto-triggers CAPTCHA solving,
+                  form filling, credential injection, manual reviews, and error recovery based on AI analysis.
+                </p>
+              </Card>
+              
+              <AnalysisWorkflowMonitor 
+                recentTasks={recentAnalysisTasks}
+                stats={workflowStats}
+                onRefresh={loadWorkflowStats}
+              />
             </div>
           )}
 

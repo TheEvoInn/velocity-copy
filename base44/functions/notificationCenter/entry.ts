@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
 
     // ── RULE TRIGGERED NOTIFICATION ─────────────────────────────────────────
     if (action === 'rule_triggered') {
-      const { rule_id, rule_name, opportunity_id, opportunity_title, execution_status } = await req.json().catch(() => ({}));
+      const { rule_id, rule_name, opportunity_id, opportunity_title, execution_status } = body;
 
       if (!rule_id || !rule_name) {
         return Response.json({ error: 'rule_id and rule_name required' }, { status: 400 });

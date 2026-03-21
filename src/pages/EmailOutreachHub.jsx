@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Zap } from 'lucide-react';
+import { Mail, Zap, LayoutTemplate } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import EmailDraftGenerator from '../components/outreach/EmailDraftGenerator';
 import EmailReviewQueue from '../components/outreach/EmailReviewQueue';
 import AutopilotEmailScheduler from '../components/outreach/AutopilotEmailScheduler';
+import TemplateBuilder from '../components/outreach/TemplateBuilder';
 
 export default function EmailOutreachHub() {
   const [selectedOpp, setSelectedOpp] = useState(null);

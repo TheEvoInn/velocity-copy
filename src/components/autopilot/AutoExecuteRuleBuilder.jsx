@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, CheckCircle2, AlertCircle, Zap } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertCircle, Zap, Library } from 'lucide-react';
 import { toast } from 'sonner';
+import AutoExecuteTemplateLibrary from './AutoExecuteTemplateLibrary';
 
 const OPPORTUNITY_TYPES = ['job', 'grant', 'contest', 'giveaway', 'survey', 'arbitrage', 'freelance', 'resale'];
 const OPERATORS = ['>', '>=', '<', '<=', '==', '!='];
@@ -22,6 +23,7 @@ export default function AutoExecuteRuleBuilder() {
   const queryClient = useQueryClient();
   const [rules, setRules] = useState([]);
   const [editingRule, setEditingRule] = useState(null);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [formData, setFormData] = useState({
     rule_name: '',
     opportunity_type: '',
@@ -131,6 +133,24 @@ export default function AutoExecuteRuleBuilder() {
 
   return (
     <div className="space-y-4">
+      {/* Templates Toggle */}
+      <Button 
+        onClick={() => setShowTemplates(!showTemplates)}
+        variant="outline" 
+        className="gap-1.5 h-8 text-xs border-violet-500/40 text-violet-400 w-full justify-center"
+      >
+        <Library className="w-3.5 h-3.5" /> Browse Pre-Configured Templates
+      </Button>
+
+      {showTemplates && (
+        <div className="border border-violet-500/30 rounded-lg p-4 bg-violet-500/5">
+          <AutoExecuteTemplateLibrary onTemplateApplied={() => {
+            setShowTemplates(false);
+            queryClient.invalidateQueries({ queryKey: ['autoExecuteRules'] });
+          }} />
+        </div>
+      )}
+
       {/* Rule Builder Form */}
       <Card className="bg-slate-900/50 border-slate-700 rounded-2xl">
         <CardHeader className="pb-3">

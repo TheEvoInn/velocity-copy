@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
-  Zap, LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal,
+  Zap, LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal, ShoppingCart,
   MessageSquare, ChevronRight, X, Menu, Shield, Settings
 } from 'lucide-react';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
@@ -58,6 +58,18 @@ const DEPARTMENTS = [
     activeBorder: 'border-emerald-400/60',
     textActive: 'text-emerald-300',
     planet: '💎',
+  },
+  {
+    path: '/DigitalResellers',
+    icon: ShoppingCart,
+    label: 'Resellers',
+    subtitle: 'Storefronts & Revenue',
+    color: '#ec4899',
+    glow: 'rgba(236,72,153,0.5)',
+    gradient: 'from-pink-500/20 to-rose-600/10',
+    activeBorder: 'border-pink-400/60',
+    textActive: 'text-pink-300',
+    planet: '🛍️',
   },
   {
     path: '/Control',

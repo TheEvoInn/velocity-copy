@@ -195,7 +195,7 @@ export default function StarshipBridgeScene() {
 
     // Initialize cockpit data binding
     cockpitDataBindingRef.current = new CockpitDataBinding(scene, povControllerRef.current);
-    await cockpitDataBindingRef.current.initialize();
+    cockpitDataBindingRef.current.initialize().catch(err => console.error('Cockpit binding failed:', err));
     
     // Add screens to stations
     stations.forEach(station => {

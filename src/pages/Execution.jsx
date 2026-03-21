@@ -19,6 +19,7 @@ import InstantTaskPanel from '@/components/execution/InstantTaskPanel';
 import AICreativeStudio from '@/components/creative/AICreativeStudio';
 import BrowserbaseExecutionWorker from '@/components/execution/BrowserbaseExecutionWorker';
 import AutopilotIdentitySelector from '@/components/autopilot/AutopilotIdentitySelector';
+import LiveExecutionMonitor from '@/components/execution/LiveExecutionMonitor';
 
 const STATUS_CONFIG = {
   queued:     { color: 'text-amber-400',   bg: 'bg-amber-500/15 border-amber-500/25',   label: 'Queued' },
@@ -142,6 +143,11 @@ export default function Execution() {
           <AutopilotPanel goals={userGoals} />
         </div>
       )}
+
+      {/* Live Execution Monitor */}
+      <div className="mb-5">
+        <LiveExecutionMonitor />
+      </div>
 
       {/* Browserbase Execution Worker */}
       <div className="mb-5">

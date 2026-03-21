@@ -5,13 +5,14 @@
  */
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users, CheckCircle2, Clock, XCircle, Bot, Shield,
-  Search, ChevronDown, ChevronUp, RefreshCw
+  Search, ChevronDown, ChevronUp, RefreshCw, Wrench
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 const STATUS_BADGE = {
   complete:    { color: '#10b981', label: 'Complete' },

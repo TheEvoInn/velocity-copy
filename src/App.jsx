@@ -1,154 +1,76 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { pagesConfig } from './pages.config'
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import TaskReaderHub from './pages/TaskReaderHub';
 
-import AppLayout from './components/layout/AppLayout';
+const { Pages, Layout, mainPage } = pagesConfig;
+const mainPageKey = mainPage ?? Object.keys(Pages)[0];
+const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 
-// Core pages
-import Dashboard from './pages/Dashboard';
-import Chat from './pages/Chat';
-
-// Four departments
-import Discovery from './pages/Discovery';
-import Execution from './pages/Execution';
-import Finance from './pages/Finance';
-import Control from './pages/Control';
-
-// Supporting pages (accessible via department links)
-import Opportunities from './pages/Opportunities';
-import Strategies from './pages/Strategies';
-import WalletPage from './pages/WalletPage';
-import ActivityPage from './pages/ActivityPage';
-import AutoPilot from './pages/AutoPilot';
-import AutopilotLogs from './pages/AutopilotLogs';
-import AccountManager from './pages/AccountManager';
-import PrizeDashboard from './pages/PrizeDashboard';
-import IdentityManager from './pages/IdentityManager';
-import AIIdentityStudio from './pages/AIIdentityStudio';
-import SystemDocumentation from './pages/SystemDocumentation';
-import SecurityDashboard from './pages/SecurityDashboard';
-import SystemAuditDashboard from './pages/SystemAuditDashboard';
-import KYCManagement from './pages/KYCManagement';
-import DataPersistenceAudit from './pages/DataPersistenceAudit';
-import PlatformAuditDashboard from './pages/PlatformAuditDashboard';
-import ExchangeConnectivity from './pages/ExchangeConnectivity';
-import AdminControlPanel from './pages/AdminControlPanel';
-import BackgroundExecutionHub from './pages/BackgroundExecutionHub.jsx';
-import EmailOutreachHub from './pages/EmailOutreachHub';
-import UserAccessPage from './pages/UserAccessPage';
-import TaskQueueApproval from './pages/TaskQueueApproval.jsx';
-import FinancialDashboard from './pages/FinancialDashboard';
-import TemplatesLibrary from './pages/TemplatesLibrary.jsx';
-import DigitalCommerce from './pages/DigitalCommerce';
-import CryptoAutomation from './pages/CryptoAutomation';
-import EmailMarketing from './pages/EmailMarketing';
-import PageCustomizer from './pages/PageCustomizer';
-import GlobalTaskOrchestrator from './pages/GlobalTaskOrchestrator';
-import CrossSystemAutomation from './pages/CrossSystemAutomation';
-import IdentityWalletView from './pages/IdentityWalletView';
-import NotificationsDashboard from './pages/NotificationsDashboard';
-import WorkflowBuilder from './pages/WorkflowBuilder';
-import WebhookConfiguration from './pages/WebhookConfiguration';
-import WebhookListener from './pages/WebhookListener';
-import WorkflowArchitect from './pages/WorkflowArchitect';
-import CentralEventLog from './pages/CentralEventLog';
-import VelocitySystemDashboard from './pages/VelocitySystemDashboard';
-import TaskOrchestrator from './pages/TaskOrchestrator';
-import TaskReader from './pages/TaskReader';
+const LayoutWrapper = ({ children, currentPageName }) => Layout ?
+  <Layout currentPageName={currentPageName}>{children}</Layout>
+  : <>{children}</>;
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
+  // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-slate-950">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
-          <span className="text-xs text-slate-500">Initializing Profit Engine...</span>
-        </div>
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
       </div>
     );
   }
 
+  // Handle authentication errors
   if (authError) {
-    if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
-    if (authError.type === 'auth_required') { navigateToLogin(); return null; }
+    if (authError.type === 'user_not_registered') {
+      return <UserNotRegisteredError />;
+    } else if (authError.type === 'auth_required') {
+      // Redirect to login automatically
+      navigateToLogin();
+      return null;
+    }
   }
 
+  // Render the main app
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/Dashboard" replace />} />
-      {/* 4 Core Departments */}
-      <Route path="/Discovery" element={<Discovery />} />
-      <Route path="/Execution" element={<Execution />} />
-      <Route path="/Finance" element={<Finance />} />
-      <Route path="/Control" element={<Control />} />
-      {/* Unified AI Systems */}
-      <Route path="/DigitalCommerce" element={<DigitalCommerce />} />
-      <Route path="/CryptoAutomation" element={<CryptoAutomation />} />
-      <Route element={<AppLayout />}>
-        {/* Command Center */}
-        <Route path="/Dashboard" element={<Dashboard />} />
-        <Route path="/Chat" element={<Chat />} />
-
-        {/* Four Departments */}
-        <Route path="/Discovery" element={<Discovery />} />
-        <Route path="/Execution" element={<Execution />} />
-        <Route path="/Finance" element={<Finance />} />
-        <Route path="/Control" element={<Control />} />
-
-        {/* Supporting Pages */}
-        <Route path="/Opportunities" element={<Opportunities />} />
-        <Route path="/Strategies" element={<Strategies />} />
-        <Route path="/WalletPage" element={<WalletPage />} />
-        <Route path="/ActivityPage" element={<ActivityPage />} />
-        <Route path="/AutoPilot" element={<AutoPilot />} />
-        <Route path="/AutopilotLogs" element={<AutopilotLogs />} />
-        <Route path="/IdentityManager" element={<IdentityManager />} />
-        <Route path="/AIIdentityStudio" element={<AIIdentityStudio />} />
-        <Route path="/AccountManager" element={<AccountManager />} />
-        <Route path="/PrizeDashboard" element={<PrizeDashboard />} />
-        <Route path="/SystemDocumentation" element={<SystemDocumentation />} />
-        <Route path="/SecurityDashboard" element={<SecurityDashboard />} />
-        <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
-        <Route path="/KYCManagement" element={<KYCManagement />} />
-        <Route path="/DataPersistenceAudit" element={<DataPersistenceAudit />} />
-        <Route path="/PlatformAuditDashboard" element={<PlatformAuditDashboard />} />
-        <Route path="/ExchangeConnectivity" element={<ExchangeConnectivity />} />
-        <Route path="/AdminControlPanel" element={<AdminControlPanel />} />
-        <Route path="/BackgroundExecutionHub" element={<BackgroundExecutionHub />} />
-        <Route path="/EmailOutreachHub" element={<EmailOutreachHub />} />
-        <Route path="/UserAccessPage" element={<UserAccessPage />} />
-        <Route path="/TaskQueueApproval" element={<TaskQueueApproval />} />
-        <Route path="/FinancialDashboard" element={<FinancialDashboard />} />
-        <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
-        <Route path="/DigitalCommerce" element={<DigitalCommerce />} />
-        <Route path="/CryptoAutomation" element={<CryptoAutomation />} />
-        <Route path="/PageCustomizer" element={<PageCustomizer />} />
-        <Route path="/EmailMarketing" element={<EmailMarketing />} />
-        <Route path="/GlobalTaskOrchestrator" element={<GlobalTaskOrchestrator />} />
-        <Route path="/CrossSystemAutomation" element={<CrossSystemAutomation />} />
-        <Route path="/IdentityWalletView" element={<IdentityWalletView />} />
-        <Route path="/NotificationsDashboard" element={<NotificationsDashboard />} />
-        <Route path="/WorkflowBuilder" element={<WorkflowBuilder />} />
-        <Route path="/WebhookConfiguration" element={<WebhookConfiguration />} />
-        <Route path="/WebhookListener" element={<WebhookListener />} />
-        <Route path="/WorkflowArchitect" element={<WorkflowArchitect />} />
-        <Route path="/CentralEventLog" element={<CentralEventLog />} />
-        <Route path="/VelocitySystemDashboard" element={<VelocitySystemDashboard />} />
-        <Route path="/TaskOrchestrator" element={<TaskOrchestrator />} />
-        <Route path="/TaskReader" element={<TaskReader />} />
-      </Route>
+      <Route path="/" element={
+        <LayoutWrapper currentPageName={mainPageKey}>
+          <MainPage />
+        </LayoutWrapper>
+      } />
+      <Route path="/TaskReaderHub" element={
+        <LayoutWrapper currentPageName="TaskReaderHub">
+          <TaskReaderHub />
+        </LayoutWrapper>
+      } />
+      {Object.entries(Pages).map(([path, Page]) => (
+        <Route
+          key={path}
+          path={`/${path}`}
+          element={
+            <LayoutWrapper currentPageName={path}>
+              <Page />
+            </LayoutWrapper>
+          }
+        />
+      ))}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };
 
+
 function App() {
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
@@ -158,7 +80,7 @@ function App() {
         <Toaster />
       </QueryClientProvider>
     </AuthProvider>
-  );
+  )
 }
 
-export default App;
+export default App

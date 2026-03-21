@@ -186,8 +186,10 @@ Deno.serve(async (req) => {
         });
         const jobData = jobRes?.data || jobRes;
         const jobsFound = jobData?.total_fetched || 0;
-        scanSummary.push({ source: 'rapidapi_jobs', found: jobsFound, saved: jobData?.saved || 0 });
-        console.log(`[RapidAPI] Fetched ${jobsFound} real jobs`);
+        const jobsSaved = jobData?.saved || 0;
+        allOpps.push(...(jobData?.opportunities || []));
+        scanSummary.push({ source: 'rapidapi_jobs', found: jobsFound, saved: jobsSaved });
+        console.log(`[RapidAPI] Fetched ${jobsFound} real jobs, saved ${jobsSaved}`);
       } catch (e) {
         console.error('[RapidAPI] Error:', e.message);
         scanSummary.push({ source: 'rapidapi_jobs', error: e.message });
@@ -225,31 +227,33 @@ Deno.serve(async (req) => {
         console.log(`[Scan] Skipped non-digital: ${opp.title}`);
         continue;
       }
-      const existing = await base44.asServiceRole.entities.Opportunity.filter({ url: opp.url });
-      if (existing.length > 0) continue;
+      try {
+        const existing = await base44.asServiceRole.entities.Opportunity.filter({ url: opp.url });
+        if (existing.length > 0) continue;
 
-      await base44.asServiceRole.entities.Opportunity.create({
-        title: opp.title,
-        description: opp.description || '',
-        url: opp.url,
-        category: opp.category || 'other',
-        opportunity_type: opp.opportunity_type || opp.type || 'other',
-        platform: opp.platform || '',
-        profit_estimate_low: opp.profit_low || opp.profit_estimate_low || 0,
-        profit_estimate_high: opp.profit_high || opp.profit_estimate_high || 0,
-        time_sensitivity: opp.time_sensitivity || 'days',
-        deadline: opp.deadline || null,
-        status: 'new',
-        auto_execute: false,
-        source: opp.source || 'scan',
-        overall_score: 65,
-      });
-      totalSaved++;
+        await base44.asServiceRole.entities.Opportunity.create({
+          title: opp.title,
+          description: opp.description || '',
+          url: opp.url,
+          category: opp.category || 'other',
+          opportunity_type: opp.opportunity_type || opp.type || 'other',
+          platform: opp.platform || '',
+          profit_estimate_low: opp.profit_low || opp.profit_estimate_low || 0,
+          profit_estimate_high: opp.profit_high || opp.profit_estimate_high || 0,
+          time_sensitivity: opp.time_sensitivity || 'days',
+          deadline: opp.deadline || null,
+          status: 'new',
+          auto_execute: false,
+          source: opp.source || 'scan',
+          overall_score: 65,
+        });
+        totalSaved++;
+      } catch (e) {
+        console.error(`[Scan] Failed to save ${opp.title}:`, e.message);
+      }
     }
 
-    const totalFromRapidApi = scanSummary.find(s => s.source === 'rapidapi_jobs')?.saved || 0;
-    const totalFromUpwork = scanSummary.find(s => s.source === 'upwork_api')?.saved || 0;
-    const grandTotal = totalSaved + totalFromRapidApi + totalFromUpwork;
+    const grandTotal = totalSaved;
 
     await base44.asServiceRole.entities.ActivityLog.create({
       action_type: 'scan',

@@ -2,13 +2,41 @@
  * Task Reader Page
  * 3rd-Party Task Reading System - Browser-level intelligence for external automation
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Globe, Brain, Zap, Shield, CheckCircle2, Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { base44 } from '@/api/base44Client';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Globe, Brain, Zap, Shield, CheckCircle2, Info, AlertCircle, Activity } from 'lucide-react';
+import { toast } from 'sonner';
 import TaskReaderInterface from '@/components/task-reader/TaskReaderInterface';
 
 export default function TaskReader() {
+  const [showAudit, setShowAudit] = useState(false);
+  const [auditReport, setAuditReport] = useState(null);
+
+  // Audit mutation
+  const auditMutation = useMutation({
+    mutationFn: async () => {
+      const res = await base44.functions.invoke('taskReaderAudit', {
+        action: 'audit_system'
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setAuditReport(data);
+      if (data.health_status === 'healthy') {
+        toast.success('System audit passed - all systems healthy');
+      } else {
+        toast.warning('System audit found issues - review recommendations');
+      }
+    },
+    onError: (err) => {
+      toast.error('Audit failed: ' + err.message);
+    }
+  });
+
   return (
     <div className="min-h-screen galaxy-bg p-4 md:p-6">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -24,6 +52,61 @@ export default function TaskReader() {
             </div>
           </div>
         </div>
+
+        {/* System Status & Audit */}
+        <div className="flex items-center justify-between">
+          <div />
+          <Button
+            onClick={() => auditMutation.mutate()}
+            disabled={auditMutation.isPending}
+            variant="outline"
+            className="gap-2"
+          >
+            <Activity className="w-4 h-4" />
+            {auditMutation.isPending ? 'Auditing...' : 'Run System Audit'}
+          </Button>
+        </div>
+
+        {/* Audit Report */}
+        {auditReport && (
+          <Card className={`p-4 border ${auditReport.health_status === 'healthy' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <p className="text-xs text-slate-400">Total Checks</p>
+                <p className="text-2xl font-bold text-white">{auditReport.summary.total_checks}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">Passed</p>
+                <p className="text-2xl font-bold text-emerald-400">{auditReport.summary.passed}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">Warnings</p>
+                <p className="text-2xl font-bold text-amber-400">{auditReport.summary.warnings}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">Issues</p>
+                <p className={`text-2xl font-bold ${auditReport.summary.issues > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                  {auditReport.summary.issues}
+                </p>
+              </div>
+            </div>
+
+            {/* Recommendations */}
+            {auditReport.audit_report.recommendations.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-700">
+                <h4 className="text-xs font-semibold text-slate-300 mb-2">Recommendations</h4>
+                <ul className="space-y-1 text-xs text-slate-300">
+                  {auditReport.audit_report.recommendations.map((rec, idx) => (
+                    <li key={idx} className="flex gap-2">
+                      <span className="text-cyan-400">→</span>
+                      {rec}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* Capabilities Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">

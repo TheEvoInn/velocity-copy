@@ -251,7 +251,7 @@ function KYCCard({ kyc, onUpdate }) {
 }
 
 export default function AdminKYCReview() {
-  const [filter, setFilter] = useState('pending');
+  const [filter, setFilter] = useState('all');
   const qc = useQueryClient();
 
   const { data: kycs = [], isLoading, error, refetch } = useQuery({

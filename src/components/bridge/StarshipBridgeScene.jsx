@@ -18,6 +18,9 @@ export default function StarshipBridgeScene() {
   const particleManagerRef = useRef(null);
   const alertSystemRef = useRef(null);
   
+  const postProcessingRef = useRef(null);
+  const stationScreensRef = useRef(null);
+  
   const [focusedStation, setFocusedStation] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [particleCount, setParticleCount] = useState(700);

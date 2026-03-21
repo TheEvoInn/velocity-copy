@@ -181,18 +181,21 @@ Deno.serve(async (req) => {
     if (sources.includes('rapidapi') && Deno.env.get('RAPIDAPI_KEY')) {
       try {
         const jobRes = await base44.asServiceRole.functions.invoke('realJobSearch', {
+          action: 'search',
           query: 'remote freelance writing development design marketing',
           sources: ['jsearch', 'freelancer'],
         });
         const jobData = jobRes?.data || jobRes;
-        const jobsFound = jobData?.total_fetched || 0;
-        const jobsSaved = jobData?.saved || 0;
-        allOpps.push(...(jobData?.opportunities || []));
+        const jobsFound = Array.isArray(jobData?.opportunities) ? jobData.opportunities.length : 0;
+        const jobsSaved = typeof jobData?.saved === 'number' ? jobData.saved : jobsFound;
+        if (Array.isArray(jobData?.opportunities)) {
+          allOpps.push(...jobData.opportunities);
+        }
         scanSummary.push({ source: 'rapidapi_jobs', found: jobsFound, saved: jobsSaved });
         console.log(`[RapidAPI] Fetched ${jobsFound} real jobs, saved ${jobsSaved}`);
       } catch (e) {
         console.error('[RapidAPI] Error:', e.message);
-        scanSummary.push({ source: 'rapidapi_jobs', error: e.message });
+        scanSummary.push({ source: 'rapidapi_jobs', error: e.message, found: 0 });
       }
     }
 
@@ -220,8 +223,8 @@ Deno.serve(async (req) => {
     };
 
     let totalSaved = 0;
-    for (const opp of allOpps) {
-      if (!opp.title || !opp.url) continue;
+    for (const opp of (Array.isArray(allOpps) ? allOpps : [])) {
+      if (!opp || !opp.title || !opp.url) continue;
       // Skip non-digital opportunities
       if (!isDigitalOnly(opp)) {
         console.log(`[Scan] Skipped non-digital: ${opp.title}`);
@@ -229,17 +232,17 @@ Deno.serve(async (req) => {
       }
       try {
         const existing = await base44.asServiceRole.entities.Opportunity.filter({ url: opp.url });
-        if (existing.length > 0) continue;
+        if (Array.isArray(existing) && existing.length > 0) continue;
 
-        await base44.asServiceRole.entities.Opportunity.create({
+        const created = await base44.asServiceRole.entities.Opportunity.create({
           title: opp.title,
           description: opp.description || '',
           url: opp.url,
           category: opp.category || 'other',
           opportunity_type: opp.opportunity_type || opp.type || 'other',
-          platform: opp.platform || '',
-          profit_estimate_low: opp.profit_low || opp.profit_estimate_low || 0,
-          profit_estimate_high: opp.profit_high || opp.profit_estimate_high || 0,
+          platform: opp.platform || 'direct',
+          profit_estimate_low: typeof opp.profit_low === 'number' ? opp.profit_low : (typeof opp.profit_estimate_low === 'number' ? opp.profit_estimate_low : 0),
+          profit_estimate_high: typeof opp.profit_high === 'number' ? opp.profit_high : (typeof opp.profit_estimate_high === 'number' ? opp.profit_estimate_high : 0),
           time_sensitivity: opp.time_sensitivity || 'days',
           deadline: opp.deadline || null,
           status: 'new',
@@ -248,8 +251,15 @@ Deno.serve(async (req) => {
           overall_score: 65,
         });
         totalSaved++;
+        // Emit cross-platform event for real-time notifications
+        await base44.asServiceRole.entities.ActivityLog.create({
+          action_type: 'opportunity_discovered',
+          message: `🎯 New opportunity found: ${opp.title} (${opp.platform}) — $${typeof opp.profit_high === 'number' ? opp.profit_high : typeof opp.profit_estimate_high === 'number' ? opp.profit_estimate_high : 0}`,
+          severity: 'success',
+          metadata: { opportunity_id: created?.id, platform: opp.platform, source: opp.source }
+        }).catch(() => {});
       } catch (e) {
-        console.error(`[Scan] Failed to save ${opp.title}:`, e.message);
+        console.error(`[Scan] Failed to save ${opp?.title}:`, e.message);
       }
     }
 

@@ -41,38 +41,44 @@ export default function Discovery() {
   const [statusFilter, setStatusFilter] = useState('active');
   const [scanning, setScanning] = useState(false);
 
-  const filtered = opportunities.filter(o => {
-    const catOk = filter === 'all' || o.category === filter;
-    const statOk = statusFilter === 'all' || (statusFilter === 'active' ? ['new', 'queued', 'reviewing', 'executing'].includes(o.status) : o.status === statusFilter);
+  const filtered = (Array.isArray(opportunities) ? opportunities : []).filter(o => {
+    if (!o || !o.id) return false;
+    const catOk = filter === 'all' || o?.category === filter;
+    const statOk = statusFilter === 'all' || (statusFilter === 'active' ? ['new', 'queued', 'reviewing', 'executing'].includes(o?.status) : o?.status === statusFilter);
     return catOk && statOk;
   });
 
+  const safeOpps = Array.isArray(opportunities) ? opportunities : [];
   const stats = {
-    total: opportunities.length,
-    active: activeOpps.length,
-    completed: opportunities.filter(o => o.status === 'completed').length,
-    queued: opportunities.filter(o => o.status === 'queued').length,
+    total: safeOpps.length,
+    active: Array.isArray(activeOpps) ? activeOpps.length : 0,
+    completed: safeOpps.filter(o => o?.status === 'completed').length,
+    queued: safeOpps.filter(o => o?.status === 'queued').length,
   };
 
   const handleSendToExecution = async (opp) => {
-    if (!opp.id) return;
-    const identity = identities.find(i => i.is_active) || identities[0];
-    await base44.entities.TaskExecutionQueue.create({
-      opportunity_id: opp.id,
-      url: opp.url || '',
-      opportunity_type: opp.opportunity_type || 'other',
-      platform: opp.platform || '',
-      identity_id: identity?.id || '',
-      identity_name: identity?.name || '',
-      status: 'queued',
-      priority: opp.overall_score || 50,
-      estimated_value: opp.profit_estimate_high || 0,
-      queue_timestamp: new Date().toISOString(),
-    });
-    await base44.entities.Opportunity.update(opp.id, { status: 'queued' });
-    DeptBus.emit(DEPT_EVENTS.TASK_QUEUED, { opportunity: opp, identity });
-    queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-    queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
+    if (!opp?.id) return;
+    const identity = Array.isArray(identities) ? (identities.find(i => i?.is_active) || identities[0]) : null;
+    try {
+      const task = await base44.entities.TaskExecutionQueue.create({
+        opportunity_id: opp.id,
+        url: opp?.url || '',
+        opportunity_type: opp?.opportunity_type || 'other',
+        platform: opp?.platform || 'unknown',
+        identity_id: identity?.id || '',
+        identity_name: identity?.name || '',
+        status: 'queued',
+        priority: typeof opp?.overall_score === 'number' ? opp.overall_score : 50,
+        estimated_value: typeof opp?.profit_estimate_high === 'number' ? opp.profit_estimate_high : 0,
+        queue_timestamp: new Date().toISOString(),
+      });
+      await base44.entities.Opportunity.update(opp.id, { status: 'queued' }).catch(() => {});
+      DeptBus.emit(DEPT_EVENTS.TASK_QUEUED, { opportunity: opp, identity, task_id: task?.id });
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
+    } catch (err) {
+      console.error('Failed to send to execution:', err.message);
+    }
   };
 
   const handleDismiss = async (opp) => {

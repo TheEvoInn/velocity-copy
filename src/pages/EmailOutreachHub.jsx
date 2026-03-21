@@ -8,8 +8,12 @@ import EmailReviewQueue from '../components/outreach/EmailReviewQueue';
 import AutopilotEmailScheduler from '../components/outreach/AutopilotEmailScheduler';
 import TemplateBuilder from '../components/outreach/TemplateBuilder';
 
+const TABS = ['Compose', 'Template Builder'];
+
 export default function EmailOutreachHub() {
   const [selectedOpp, setSelectedOpp] = useState(null);
+  const [activeTab, setActiveTab] = useState('Compose');
+  const [injectedDraft, setInjectedDraft] = useState(null);
 
   // Fetch approved opportunities for drafting
   const { data: opportunities = [] } = useQuery({

@@ -17,6 +17,7 @@ import OpportunityDetail from '@/components/opportunity/OpportunityDetail';
 import RealTimeAlertSystem from '@/components/scanning/RealTimeAlertSystem';
 import OpportunityAnalysisPanel from '@/components/scanning/OpportunityAnalysisPanel';
 import RealJobScanPanel from '@/components/discovery/RealJobScanPanel';
+import GlobalOpportunityDiscovery from '@/components/discovery/GlobalOpportunityDiscovery';
 
 const STATUS_COLORS = {
   new: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
@@ -192,6 +193,11 @@ export default function Discovery() {
         <RealJobScanPanel onComplete={() => {
           queryClient.invalidateQueries({ queryKey: ['opportunities'] });
         }} />
+      </div>
+
+      {/* Global Opportunity Discovery */}
+      <div className="mb-5">
+        <GlobalOpportunityDiscovery />
       </div>
 
       {/* Deep Analysis Panel */}

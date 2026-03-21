@@ -311,18 +311,8 @@ Deno.serve(async (req) => {
           console.error('Error in queue processing:', e.message);
         }
 
-        // 5. Run monitoring cycle
-        const monitorRes = await base44.asServiceRole.functions.invoke('automatedPrizeMonitoring', {
-          action: 'run_monitoring_cycle'
-        });
-        if (monitorRes.data?.cycle_completed) {
-          cycleResults.earnings_generated += monitorRes.data?.results?.auto_claims_executed || 0;
-        }
-
-        // 6. Run account health check
-        await base44.asServiceRole.functions.invoke('accountHealthMonitor', {
-          action: 'check_all_account_health'
-        });
+        // 5. Log success
+        cycleResults.earnings_generated = 0; // Will be populated by monitoring
 
       } catch (error) {
         cycleResults.errors.push(error.message);

@@ -339,6 +339,7 @@ function KYCReviewCard({ record, onAction }) {
             {statusKey === 'submitted' && (
               <Button
                 onClick={() => onAction(record.id, 'under_review', {})}
+                disabled={actionMutation.isPending}
                 variant="outline"
                 className="text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10 col-span-2"
               >
@@ -350,6 +351,7 @@ function KYCReviewCard({ record, onAction }) {
             {['submitted', 'under_review', 'flagged', 'additional_info'].includes(statusKey) && (
               <Button
                 onClick={() => onAction(record.id, 'approve', { note: noteText })}
+                disabled={actionMutation.isPending}
                 className="text-xs bg-emerald-600 hover:bg-emerald-500"
               >
                 <CheckCircle2 className="w-3 h-3 mr-1" /> Approve
@@ -361,7 +363,7 @@ function KYCReviewCard({ record, onAction }) {
               actionMode === 'deny' ? (
                 <Button
                   onClick={() => { onAction(record.id, 'deny', { note: noteText }); setActionMode(null); setNoteText(''); }}
-                  disabled={!noteText.trim()}
+                  disabled={!noteText.trim() || actionMutation.isPending}
                   className="text-xs bg-red-600 hover:bg-red-500"
                 >
                   <XCircle className="w-3 h-3 mr-1" /> Confirm Denial
@@ -369,6 +371,7 @@ function KYCReviewCard({ record, onAction }) {
               ) : (
                 <Button
                   onClick={() => setActionMode('deny')}
+                  disabled={actionMutation.isPending}
                   variant="outline"
                   className="text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
                 >
@@ -382,7 +385,7 @@ function KYCReviewCard({ record, onAction }) {
               actionMode === 'request' ? (
                 <Button
                   onClick={() => { onAction(record.id, 'request_info', { note: noteText }); setActionMode(null); setNoteText(''); }}
-                  disabled={!noteText.trim()}
+                  disabled={!noteText.trim() || actionMutation.isPending}
                   className="text-xs bg-yellow-600 hover:bg-yellow-500"
                 >
                   <MessageSquare className="w-3 h-3 mr-1" /> Send Request
@@ -390,6 +393,7 @@ function KYCReviewCard({ record, onAction }) {
               ) : (
                 <Button
                   onClick={() => setActionMode('request')}
+                  disabled={actionMutation.isPending}
                   variant="outline"
                   className="text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10"
                 >
@@ -399,31 +403,32 @@ function KYCReviewCard({ record, onAction }) {
             )}
 
             {/* Flag as Suspicious */}
-             {['submitted', 'under_review'].includes(statusKey) && (
-               actionMode === 'flag' ? (
-                 <Button
-                   onClick={() => { onAction(record.id, 'flag', { note: noteText }); setActionMode(null); setNoteText(''); }}
-                   disabled={!noteText.trim()}
-                   className="text-xs bg-orange-600 hover:bg-orange-500"
-                 >
-                   <Flag className="w-3 h-3 mr-1" /> Confirm Flag
-                 </Button>
-               ) : (
-                 <Button
-                   onClick={() => setActionMode('flag')}
-                   variant="outline"
-                   className="text-xs border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
-                 >
-                   <Flag className="w-3 h-3 mr-1" /> Flag Suspicious
-                 </Button>
-               )
-             )}
+            {['submitted', 'under_review'].includes(statusKey) && (
+              actionMode === 'flag' ? (
+                <Button
+                  onClick={() => { onAction(record.id, 'flag', { note: noteText }); setActionMode(null); setNoteText(''); }}
+                  disabled={!noteText.trim() || actionMutation.isPending}
+                  className="text-xs bg-orange-600 hover:bg-orange-500"
+                >
+                  <Flag className="w-3 h-3 mr-1" /> Confirm Flag
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => setActionMode('flag')}
+                  disabled={actionMutation.isPending}
+                  variant="outline"
+                  className="text-xs border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                >
+                  <Flag className="w-3 h-3 mr-1" /> Flag Suspicious
+                </Button>
+              )
+            )}
 
              {/* Submit for User */}
              {actionMode === 'upload' ? (
                <Button
                  onClick={handleSubmitDocuments}
-                 disabled={Object.keys(uploadedDocs).length === 0}
+                 disabled={Object.keys(uploadedDocs).length === 0 || actionMutation.isPending}
                  className="text-xs bg-blue-600 hover:bg-blue-500 col-span-2"
                >
                  <CheckCircle2 className="w-3 h-3 mr-1" /> Submit Documents
@@ -431,6 +436,7 @@ function KYCReviewCard({ record, onAction }) {
              ) : (
                <Button
                  onClick={() => setActionMode('upload')}
+                 disabled={actionMutation.isPending}
                  variant="outline"
                  className="text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10 col-span-2"
                >
@@ -442,6 +448,7 @@ function KYCReviewCard({ record, onAction }) {
              {actionMode === 'check_again' ? (
                <Button
                  onClick={handleCheckAgain}
+                 disabled={actionMutation.isPending}
                  className="text-xs bg-purple-600 hover:bg-purple-500 col-span-2"
                >
                  <MessageSquare className="w-3 h-3 mr-1" /> Send Check Again Request
@@ -450,6 +457,7 @@ function KYCReviewCard({ record, onAction }) {
                ['submitted', 'under_review'].includes(statusKey) && (
                  <Button
                    onClick={() => setActionMode('check_again')}
+                   disabled={actionMutation.isPending}
                    variant="outline"
                    className="text-xs border-purple-500/30 text-purple-400 hover:bg-purple-500/10 col-span-2"
                  >

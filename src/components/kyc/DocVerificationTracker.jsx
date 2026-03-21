@@ -68,10 +68,12 @@ export default function DocVerificationTracker({ kyc, onKycUpdated }) {
         }
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin_kyc_list'] });
+      qc.invalidateQueries({ queryKey: ['kyc-admin-all'] });
+      qc.invalidateQueries({ queryKey: ['kyc_my'] });
+      qc.invalidateQueries({ queryKey: ['kyc_admin_notifications'] });
       onKycUpdated?.();
     },
-    onError: err => toast.error(err.message),
+    onError: (err) => toast.error(`Error: ${err.message || 'Failed to update document status'}`),
   });
 
   const handleDocAction = (docKey, approved) => {

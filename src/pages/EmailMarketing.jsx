@@ -13,15 +13,37 @@ export default function EmailMarketing() {
   const [selectedSequence, setSelectedSequence] = useState(null);
   const [showBuilder, setShowBuilder] = useState(false);
 
+  const [user, setUser] = React.useState(null);
+
+  React.useEffect(() => {
+    base44.auth.me().then(u => setUser(u)).catch(() => {});
+  }, []);
+
   const { data: sequences, isLoading } = useQuery({
-    queryKey: ['emailSequences'],
-    queryFn: () => base44.entities.EmailSequence.list(),
+    queryKey: ['emailSequences', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return [];
+      return await base44.entities.EmailSequence.filter(
+        { created_by: user.email },
+        '-updated_date',
+        50
+      );
+    },
+    enabled: !!user?.email,
     initialData: []
   });
 
   const { data: leads } = useQuery({
-    queryKey: ['emailLeads'],
-    queryFn: () => base44.entities.EmailCampaignLead.list(),
+    queryKey: ['emailLeads', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return [];
+      return await base44.entities.EmailCampaignLead.filter(
+        { created_by: user.email },
+        '-enrollment_date',
+        200
+      );
+    },
+    enabled: !!user?.email,
     initialData: []
   });
 

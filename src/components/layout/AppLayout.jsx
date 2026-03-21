@@ -9,6 +9,7 @@ import NotificationBell from '../notifications/NotificationBell';
 import StarfieldCanvas from './StarfieldCanvas';
 import GalaxyOrbs from './GalaxyOrbs';
 import { useAuth } from '@/lib/AuthContext';
+import { useRealtimeEventBus } from '@/lib/realtimeEventBus';
 
 const DEPARTMENTS = [
   {
@@ -262,6 +263,9 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
 
 // ─── Main Layout ──────────────────────────────────────────────────────────────
 export default function AppLayout() {
+  // ACTUAL FIX: Global real-time event subscription (runs on all pages)
+  useRealtimeEventBus();
+  
   const location = useLocation();
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);

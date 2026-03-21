@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { action, notification_type, related_entity_type, related_entity_id, title, message, severity, action_type, action_data } = await req.json();
+    const { action, notification_type, related_entity_type, related_entity_id, title, message, severity, action_type, action_data, notification_id } = await req.json();
 
     // ── CREATE NOTIFICATION ──────────────────────────────────────────────────
     if (action === 'create_notification') {
@@ -86,7 +86,6 @@ Deno.serve(async (req) => {
 
     // ── MARK AS READ ────────────────────────────────────────────────────────
     if (action === 'mark_read') {
-      const { notification_id } = await req.json().catch(() => ({}));
       if (!notification_id) return Response.json({ error: 'notification_id required' }, { status: 400 });
 
       const updated = await base44.asServiceRole.entities.Notification.update(notification_id, {
@@ -105,7 +104,6 @@ Deno.serve(async (req) => {
 
     // ── DISMISS NOTIFICATION ────────────────────────────────────────────────
     if (action === 'dismiss') {
-      const { notification_id } = await req.json().catch(() => ({}));
       if (!notification_id) return Response.json({ error: 'notification_id required' }, { status: 400 });
 
       const updated = await base44.asServiceRole.entities.Notification.update(notification_id, {

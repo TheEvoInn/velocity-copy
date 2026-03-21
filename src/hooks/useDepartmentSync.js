@@ -106,19 +106,25 @@ export function useDepartmentSync() {
   const today = new Date().toDateString();
   
   // Real transaction data only
-  const incomeTxs = transactions.filter(t => t.type === 'income' && t.created_date);
-  const todayEarned = incomeTxs.filter(t => new Date(t.created_date).toDateString() === today).reduce((s, t) => s + (t.net_amount ?? t.amount ?? 0), 0);
-  const totalEarned = incomeTxs.reduce((s, t) => s + (t.net_amount ?? t.amount ?? 0), 0);
+  const safeTxs = Array.isArray(transactions) ? transactions : [];
+  const incomeTxs = safeTxs.filter(t => t && t.type === 'income' && t.created_date);
+  const todayEarned = incomeTxs.filter(t => {
+    try { return new Date(t.created_date).toDateString() === today; } catch { return false; }
+  }).reduce((s, t) => s + (typeof t?.net_amount === 'number' ? t.net_amount : (typeof t?.amount === 'number' ? t.amount : 0)), 0);
+  const totalEarned = incomeTxs.reduce((s, t) => s + (typeof t?.net_amount === 'number' ? t.net_amount : (typeof t?.amount === 'number' ? t.amount : 0)), 0);
   
   // Wallet balance: use stored balance if > 0, otherwise calculate from earnings
   const walletBalance = userGoals.wallet_balance && userGoals.wallet_balance > 0 ? userGoals.wallet_balance : totalEarned;
   
   // Real opportunity & task data only
-  const activeOpps = opportunities.filter(o => o.id && ['new', 'queued', 'reviewing', 'executing'].includes(o.status));
-  const activeTasks = tasks.filter(t => t.id && ['queued', 'processing', 'navigating', 'filling', 'submitting'].includes(t.status));
+  const safeOpps = Array.isArray(opportunities) ? opportunities : [];
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const activeOpps = safeOpps.filter(o => o && o.id && ['new', 'queued', 'reviewing', 'executing'].includes(o?.status));
+  const activeTasks = safeTasks.filter(t => t && t.id && ['queued', 'processing', 'navigating', 'filling', 'submitting'].includes(t?.status));
   
   // Active identity (prefer explicitly active, fallback to first)
-  const activeIdentity = identities.find(i => i.is_active && i.id) || (identities.length > 0 ? identities[0] : null);
+  const safeIds = Array.isArray(identities) ? identities : [];
+  const activeIdentity = safeIds.find(i => i && i.is_active && i.id) || (safeIds.length > 0 ? safeIds[0] : null);
 
   const invalidateAll = () => {
     ['userGoals', 'opportunities', 'transactions', 'taskQueue', 'taskQueueManager', 'aiIdentities', 'activityLogs'].forEach(k => {

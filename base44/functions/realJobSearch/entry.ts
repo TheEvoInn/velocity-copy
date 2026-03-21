@@ -103,28 +103,33 @@ Deno.serve(async (req) => {
 
     // Deduplicate by URL and save to Opportunity entity
     let saved = 0;
-    for (const job of results.jobs) {
-      if (!job.url || !job.title) continue;
-      const existing = await base44.asServiceRole.entities.Opportunity.filter({ url: job.url });
-      if (existing.length > 0) continue;
+    const jobsToSave = Array.isArray(results.jobs) ? results.jobs : [];
+    for (const job of jobsToSave) {
+      if (!job || !job.url || !job.title) continue;
+      try {
+        const existing = await base44.asServiceRole.entities.Opportunity.filter({ url: job.url }).catch(() => []);
+        if (Array.isArray(existing) && existing.length > 0) continue;
 
-      await base44.asServiceRole.entities.Opportunity.create({
-        title: job.title,
-        description: job.description,
-        url: job.url,
-        category: job.category,
-        opportunity_type: job.opportunity_type,
-        platform: job.platform,
-        profit_estimate_low: job.profit_estimate_low || 0,
-        profit_estimate_high: job.profit_estimate_high || 0,
-        time_sensitivity: job.time_sensitivity || 'days',
-        status: 'new',
-        auto_execute: false, // Real jobs require manual application initiation
-        source: job.source,
-        tags: job.tags || [],
-        overall_score: Math.min(95, 55 + (job.profit_estimate_high > 500 ? 20 : 10)),
-      });
-      saved++;
+        await base44.asServiceRole.entities.Opportunity.create({
+          title: job.title,
+          description: job.description || '',
+          url: job.url,
+          category: job.category || 'freelance',
+          opportunity_type: job.opportunity_type || 'job',
+          platform: job.platform || 'direct',
+          profit_estimate_low: typeof job.profit_estimate_low === 'number' ? job.profit_estimate_low : 0,
+          profit_estimate_high: typeof job.profit_estimate_high === 'number' ? job.profit_estimate_high : 0,
+          time_sensitivity: job.time_sensitivity || 'days',
+          status: 'new',
+          auto_execute: false,
+          source: job.source || 'real_job_search',
+          tags: Array.isArray(job.tags) ? job.tags : [],
+          overall_score: Math.min(95, 55 + (typeof job.profit_estimate_high === 'number' && job.profit_estimate_high > 500 ? 20 : 10)),
+        });
+        saved++;
+      } catch (e) {
+        console.error(`Failed to save job ${job?.title}:`, e.message);
+      }
     }
 
     await base44.asServiceRole.entities.ActivityLog.create({

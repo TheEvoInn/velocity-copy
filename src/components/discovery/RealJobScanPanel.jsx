@@ -23,13 +23,19 @@ export default function RealJobScanPanel({ onComplete }) {
   };
 
   const runScan = async () => {
-    if (!selected.length) return;
+    if (!Array.isArray(selected) || !selected.length) return;
     setLoading(true);
     setResult(null);
-    const res = await base44.functions.invoke('scanOpportunities', { sources: selected });
-    setResult(res.data);
-    setLoading(false);
-    if (onComplete) onComplete();
+    try {
+      const res = await base44.functions.invoke('scanOpportunities', { sources: selected });
+      setResult(res?.data || null);
+      if (typeof onComplete === 'function') onComplete();
+    } catch (e) {
+      console.error('Scan failed:', e.message);
+      setResult({ error: e.message, grand_total_saved: 0 });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -71,19 +77,19 @@ export default function RealJobScanPanel({ onComplete }) {
 
       {result && (
         <div className="space-y-2">
-          <div className={`p-3 rounded-lg text-xs ${result.grand_total_saved > 0 ? 'bg-emerald-950/40 border border-emerald-500/20' : 'bg-slate-800/50 border border-slate-700'}`}>
-            <p className={`font-semibold ${result.grand_total_saved > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
-              {result.grand_total_saved > 0
+          <div className={`p-3 rounded-lg text-xs ${typeof result?.grand_total_saved === 'number' && result.grand_total_saved > 0 ? 'bg-emerald-950/40 border border-emerald-500/20' : 'bg-slate-800/50 border border-slate-700'}`}>
+            <p className={`font-semibold ${typeof result?.grand_total_saved === 'number' && result.grand_total_saved > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
+              {typeof result?.grand_total_saved === 'number' && result.grand_total_saved > 0
                 ? `✅ ${result.grand_total_saved} new real opportunities found`
-                : 'Scan complete — no new opportunities found'}
+                : result?.error ? `⚠️ ${result.error}` : 'Scan complete — no new opportunities found'}
             </p>
           </div>
-          {result.sources?.map((s, i) => (
+          {Array.isArray(result?.sources) && result.sources.map((s, i) => (
             <div key={i} className="flex items-center justify-between px-2 py-1 bg-slate-800/30 rounded text-xs">
-              <span className="text-slate-400">{s.source}</span>
-              {s.error
-                ? <span className="flex items-center gap-1 text-red-400"><AlertTriangle className="w-3 h-3" />{s.error.slice(0, 40)}</span>
-                : <Badge variant="outline" className="text-xs">{s.found || s.saved || 0} found</Badge>
+              <span className="text-slate-400">{s?.source || 'Unknown'}</span>
+              {s?.error
+                ? <span className="flex items-center gap-1 text-red-400"><AlertTriangle className="w-3 h-3" />{String(s.error).slice(0, 40)}</span>
+                : <Badge variant="outline" className="text-xs">{typeof s?.found === 'number' ? s.found : (typeof s?.saved === 'number' ? s.saved : 0)} found</Badge>
               }
             </div>
           ))}

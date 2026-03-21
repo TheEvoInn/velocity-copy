@@ -370,7 +370,7 @@ export default function AdminKYCReview() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-8 text-slate-500 text-sm">No KYC records in this category.</div>
         ) : (
-          filtered.map(kyc => <KYCCard key={kyc.id} kyc={kyc} />)
+          filtered.map(kyc => <KYCCard key={kyc.id} kyc={kyc} allIdentities={allIdentities} />)
         )}
       </div>
     </div>

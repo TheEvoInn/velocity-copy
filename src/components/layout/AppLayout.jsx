@@ -129,7 +129,7 @@ function NavItem({ dept, isActive }) {
       to={dept.path}
       className={`
         planet-nav relative flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium
-        border transition-all duration-300
+        border transition-all duration-300 pointer-events-auto z-30
         ${isActive
           ? `bg-gradient-to-r ${dept.gradient} ${dept.activeBorder} ${dept.textActive}`
           : 'border-transparent text-slate-400 hover:text-white hover:border-white/10 hover:bg-white/5'

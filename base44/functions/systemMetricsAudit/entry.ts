@@ -159,15 +159,16 @@ async function getGlobalHealth(base44, user) {
       completedTasks > 0 && health.autopilot.success_rate > 50 ? 'healthy' :
       tasksArray.length > 0 ? 'warning' : 'critical';
 
-    // NED health
+    // NED health - No crypto yet, mark as initializing
     const crypto = await base44.entities.CryptoTransaction.filter(
       { created_by: user.email }
     ).catch(() => []);
     const cryptoArray = Array.isArray(crypto) ? crypto : [];
     health.ned.transactions = cryptoArray.length;
     const successTx = cryptoArray.filter(t => t.status === 'completed').length;
-    health.ned.success_rate = cryptoArray.length > 0 ? ((successTx / cryptoArray.length) * 100).toFixed(1) : 0;
-    health.ned.status = health.ned.success_rate > 80 ? 'healthy' : health.ned.success_rate > 50 ? 'warning' : 'critical';
+    const nedSuccessRate = cryptoArray.length > 0 ? ((successTx / cryptoArray.length) * 100) : 0;
+    health.ned.success_rate = parseFloat(nedSuccessRate.toFixed(1));
+    health.ned.status = cryptoArray.length === 0 ? 'initializing' : health.ned.success_rate > 50 ? 'healthy' : 'warning';
 
     // VIPZ health
     const pages = await base44.entities.DigitalStorefront.filter(

@@ -209,9 +209,8 @@ export default function DocVerificationTracker({ kyc, onKycUpdated }) {
                   )}
                   {status !== 'pending' && (
                     <button
-                      onClick={() => handleDocAction(doc.key, status === 'approved' ? undefined : undefined)}
-                      className="p-1 rounded text-slate-600 hover:text-slate-400 text-[9px]"
                       title="Reset"
+                      className="p-1 rounded text-slate-600 hover:text-slate-400 text-[9px]"
                       onClick={() => {
                         const newApprovals = { ...(kyc.doc_approvals || {}) };
                         delete newApprovals[doc.key];

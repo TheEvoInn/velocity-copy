@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { X, Plus, AlertCircle, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -92,7 +92,7 @@ export default function AccountLinker({ identity, onClose, onSuccess }) {
     }
   };
 
-  const handleUserOverride = async () => {
+  const handleUserOverride = useCallback(async () => {
     const requiredFields = currentType.fields;
     const missingFields = requiredFields.filter(f => !userAccountData[f]?.toString().trim());
     
@@ -116,11 +116,14 @@ export default function AccountLinker({ identity, onClose, onSuccess }) {
         setUserAccountData({});
         toast.success('Account linked successfully');
         onSuccess?.();
+      } else {
+        toast.error(res.data?.message || 'Failed to link account');
       }
     } catch (error) {
+      console.error('Account link error:', error);
       toast.error(error.message || 'Failed to link account');
     }
-  };
+  }, [selectedPlatform, selectedAccountType, userAccountData, currentType.fields, identity.id, refetch, onSuccess]);
 
   const accountsForIdentity = linkedAccounts?.filter(a => a.identity_id === identity.id) || [];
 

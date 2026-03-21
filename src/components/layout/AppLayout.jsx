@@ -309,7 +309,7 @@ export default function AppLayout() {
   );
 
   return (
-    <div className="min-h-screen text-white relative" style={{ background: 'var(--galaxy-deep)' }}>
+    <div className="min-h-screen text-white relative pointer-events-none" style={{ background: 'var(--galaxy-deep)' }}>
       <StarfieldCanvas />
       <GalaxyOrbs />
 

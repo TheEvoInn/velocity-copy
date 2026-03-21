@@ -58,6 +58,7 @@ export default function RealTimeAlertSystem() {
   }
 
   if (error) {
+    const errorMsg = error?.message || 'Unable to fetch alerts. Please try again.';
     return (
       <Card className="bg-slate-900/50 border-slate-700">
         <CardHeader className="pb-3">
@@ -66,11 +67,14 @@ export default function RealTimeAlertSystem() {
             Alert System Error
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-xs text-red-400 mb-3">Failed to load alerts</p>
-          <Button size="sm" variant="outline" onClick={() => refetch()} className="text-xs">
+        <CardContent className="space-y-3">
+          <div>
+            <p className="text-xs text-red-400 font-medium">Failed to load alerts</p>
+            <p className="text-xs text-slate-500 mt-1">{errorMsg}</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => refetch()} className="text-xs w-full">
             <RefreshCw className="w-3 h-3 mr-1" />
-            Retry
+            Try Again
           </Button>
         </CardContent>
       </Card>

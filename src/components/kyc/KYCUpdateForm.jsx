@@ -20,6 +20,10 @@ export default function KYCUpdateForm({ kycRecord, onClose }) {
     government_id_expiry: kycRecord.government_id_expiry || '',
   });
 
+  // Check if admin requested specific fields to be rechecked
+  const checkAgainFields = kycRecord.check_again_fields || [];
+  const isCheckAgainMode = kycRecord.admin_status === 'check_again_required';
+
   const [files, setFiles] = useState({
     id_front: null,
     id_back: null,
@@ -77,6 +81,11 @@ export default function KYCUpdateForm({ kycRecord, onClose }) {
       selfie_url: files.selfie || kycRecord.selfie_url,
     };
 
+    // Clear check_again flag when user resubmits
+    if (isCheckAgainMode) {
+      updates.check_again_fields = [];
+    }
+
     updateMutation.mutate(updates);
   };
 
@@ -93,6 +102,25 @@ export default function KYCUpdateForm({ kycRecord, onClose }) {
 
         {/* Content */}
         <div className="p-4 space-y-4">
+          {/* Check Again Notice */}
+          {isCheckAgainMode && (
+            <div className="bg-purple-950/40 border border-purple-800/40 rounded-lg p-3">
+              <p className="text-xs font-semibold text-purple-300 mb-1">Admin Review Request</p>
+              <p className="text-xs text-purple-200">
+                An administrator has asked you to review and correct the following information:
+              </p>
+              <div className="mt-2 space-y-1">
+                {checkAgainFields.map(field => (
+                  <p key={field} className="text-xs text-purple-300 font-medium">
+                    • {field.replace(/_/g, ' ').toUpperCase()}
+                  </p>
+                ))}
+              </div>
+              {kycRecord.admin_request_note && (
+                <p className="text-xs text-purple-200 mt-2 italic">"{kycRecord.admin_request_note}"</p>
+              )}
+            </div>
+          )}
           {/* Personal Info */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Full Legal Name *</label>

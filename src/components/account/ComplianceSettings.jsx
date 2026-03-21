@@ -154,6 +154,9 @@ export default function ComplianceSettings() {
           <div>• Verify you own the accounts you're using</div>
         </CardContent>
       </Card>
+
+      {/* KYC Webhook Integration */}
+      <KYCWebhookSettings />
     </div>
   );
 }

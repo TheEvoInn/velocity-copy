@@ -69,6 +69,11 @@ export default function KYCStatusPanel({ onStartKYC }) {
     },
   });
 
+  const handleUpdateFormClose = () => {
+    setShowUpdateForm(false);
+    refetchKYC();
+  };
+
   if (isLoading) {
     return (
       <Card className="bg-slate-900 border-slate-800">
@@ -112,7 +117,7 @@ export default function KYCStatusPanel({ onStartKYC }) {
   }
 
   if (showUpdateForm) {
-    return <KYCUpdateForm kycRecord={kycRecord} onClose={() => setShowUpdateForm(false)} />;
+    return <KYCUpdateForm kycRecord={kycRecord} onClose={handleUpdateFormClose} />;
   }
 
   const statusKey = kycRecord.admin_status || kycRecord.status || 'pending';
@@ -148,6 +153,7 @@ export default function KYCStatusPanel({ onStartKYC }) {
               {statusKey === 'rejected' && (kycRecord.admin_denial_reason || kycRecord.rejection_reason || 'Your submission was denied.')}
               {statusKey === 'additional_info' && (kycRecord.admin_request_note || 'The reviewer has requested additional documentation.')}
               {statusKey === 'expired' && 'Your verification has expired. Please resubmit.'}
+              {statusKey === 'check_again_required' && (kycRecord.admin_request_note || 'Please review the flagged fields and resubmit.')}
             </p>
           </div>
         </div>
@@ -193,12 +199,12 @@ export default function KYCStatusPanel({ onStartKYC }) {
                         className="h-7 text-xs bg-amber-600 hover:bg-amber-500 gap-1"
                       >
                         <Edit2 className="w-3 h-3" />
-                        Upload Documents
+                        {reapplyMutation.isPending ? 'Uploading...' : 'Upload Documents'}
                       </Button>
                       <Button
                         size="sm"
                         onClick={() => reapplyMutation.mutate()}
-                        disabled={reapplyMutation.isPending}
+                        disabled={reapplyMutation.isPending || checkAgainMutation.isPending}
                         className="h-7 text-xs bg-blue-600 hover:bg-blue-500 gap-1"
                       >
                         <RefreshCw className="w-3 h-3" />
@@ -220,7 +226,7 @@ export default function KYCStatusPanel({ onStartKYC }) {
           </div>
           <div className="flex justify-between">
             <span className="text-slate-400">Submitted:</span>
-            <span className="text-slate-300">{new Date(kycRecord.created_date).toLocaleDateString()}</span>
+            <span className="text-slate-300">{kycRecord.created_date ? new Date(kycRecord.created_date).toLocaleDateString() : 'Unknown'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-400">Type:</span>

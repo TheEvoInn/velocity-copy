@@ -1,94 +1,61 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+/**
+ * Hook to fetch, manage, and subscribe to real-time notifications
+ */
 export function useNotifications() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
 
-  // Fetch notifications
-  const { data: notifications = [], isLoading } = useQuery({
+  // Fetch all notifications for current user
+  const { data: notifications = [], refetch, isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      const res = await base44.entities.Notification.filter(
-        { is_dismissed: false },
-        '-created_date',
-        100
-      );
-      return res;
+      const notifs = await base44.entities.Notification.list('-priority_index', 100);
+      return notifs.sort((a, b) => {
+        // Unread first, then by priority
+        if (a.is_read !== b.is_read) return a.is_read ? 1 : -1;
+        return (b.priority_index || 0) - (a.priority_index || 0);
+      });
     },
-    refetchInterval: 5000 // Poll every 5 seconds
+    refetchInterval: 30000, // Refresh every 30s
   });
 
-  // Real-time subscription
+  // Mark notification as read
+  const markAsReadMutation = useMutation({
+    mutationFn: (notifId) =>
+      base44.entities.Notification.update(notifId, { is_read: true, read_at: new Date().toISOString() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+
+  // Dismiss notification
+  const dismissMutation = useMutation({
+    mutationFn: (notifId) =>
+      base44.entities.Notification.update(notifId, { is_dismissed: true, dismissed_at: new Date().toISOString() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+
+  // Subscribe to real-time notification updates
   useEffect(() => {
     const unsubscribe = base44.entities.Notification.subscribe((event) => {
       if (event.type === 'create' || event.type === 'update') {
-        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        refetch();
       }
     });
+
     return unsubscribe;
-  }, [queryClient]);
+  }, [refetch]);
 
-  // Mark as read mutation
-  const markAsReadMutation = useMutation({
-    mutationFn: async (notificationId) => {
-      return await base44.entities.Notification.update(notificationId, {
-        is_read: true,
-        read_at: new Date().toISOString()
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    }
-  });
-
-  // Dismiss mutation
-  const dismissMutation = useMutation({
-    mutationFn: async (notificationId) => {
-      return await base44.entities.Notification.update(notificationId, {
-        is_dismissed: true,
-        dismissed_at: new Date().toISOString()
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    }
-  });
-
-  // Create notification helper (for internal use)
-  const createNotification = useCallback(async (notification) => {
-    return await base44.entities.Notification.create(notification);
-  }, []);
-
-  // Get unread count
-  const unreadCount = notifications.filter(n => !n.is_read && !n.is_dismissed).length;
-
-  // Get by severity
-  const getBySeverity = useCallback((severity) => {
-    return notifications.filter(n => n.severity === severity && !n.is_dismissed);
-  }, [notifications]);
-
-  // Get by type
-  const getByType = useCallback((type) => {
-    return notifications.filter(n => n.type === type && !n.is_dismissed);
-  }, [notifications]);
+  const unreadCount = notifications.filter((n) => !n.is_read && !n.is_dismissed).length;
+  const visibleNotifications = notifications.filter((n) => !n.is_dismissed);
 
   return {
-    notifications,
-    isLoading,
+    notifications: visibleNotifications,
     unreadCount,
-    markAsRead: (id) => markAsReadMutation.mutate(id),
-    dismiss: (id) => dismissMutation.mutate(id),
-    dismissAll: async () => {
-      for (const notif of notifications.filter(n => !n.is_dismissed)) {
-        await dismissMutation.mutateAsync(notif.id);
-      }
-    },
-    createNotification,
-    getBySeverity,
-    getByType,
-    critical: notifications.filter(n => n.severity === 'critical' && !n.is_dismissed),
-    urgent: notifications.filter(n => n.severity === 'urgent' && !n.is_dismissed),
-    warnings: notifications.filter(n => n.severity === 'warning' && !n.is_dismissed)
+    isLoading,
+    markAsRead: (notifId) => markAsReadMutation.mutate(notifId),
+    dismiss: (notifId) => dismissMutation.mutate(notifId),
+    refetch,
   };
 }

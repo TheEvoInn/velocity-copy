@@ -335,7 +335,7 @@ export default function AppLayout() {
 
           {/* Desktop nav */}
           <div className="hidden md:block w-px h-6 bg-gradient-to-b from-transparent via-violet-500/40 to-transparent mx-1" />
-          <nav className="hidden md:flex items-center gap-1 flex-1">
+          <nav className="hidden md:flex items-center gap-1 flex-1 relative z-30 pointer-events-auto">
             {DEPARTMENTS.map(dept => {
               const isActive = location.pathname === dept.path ||
                 (dept.path !== '/Dashboard' && location.pathname.startsWith(dept.path));

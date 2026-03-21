@@ -1,6 +1,6 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
-// Autonomously create accounts on third-party platforms
+// Multi-step automated account creation wizard with onboarding
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -159,44 +159,104 @@ Return JSON:
       });
     }
 
-    // ── account_onboarding ──────────────────────────────────────────────────────
-    if (action === 'account_onboarding') {
-      const body2 = await req.json().catch(() => ({}));
-      const { account_id, profile_data } = body2;
+    // ── multi_step_onboarding ───────────────────────────────────────────────────
+    if (action === 'multi_step_onboarding') {
+      const { account_id, step, step_data } = body;
 
-      if (!account_id) return Response.json({ error: 'account_id required' }, { status: 400 });
+      if (!account_id || !step) {
+        return Response.json({ error: 'account_id and step required' }, { status: 400 });
+      }
 
       const account = (await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id }).catch(() => [])) || [];
       const safeAccount = Array.isArray(account) ? account : [];
-      if (!safeAccount.length || !safeAccount[0]) return Response.json({ error: 'Account not found' }, { status: 404 });
+      if (!safeAccount.length || !safeAccount[0]) {
+        return Response.json({ error: 'Account not found' }, { status: 404 });
+      }
 
       const acct = safeAccount[0];
+      const identity = (await base44.asServiceRole.entities.AIIdentity.filter({ id: acct.identity_id }).catch(() => [])) || [];
+      const safeIdentity = Array.isArray(identity) && identity.length ? identity[0] : null;
 
-      // Simulate onboarding completion
+      // Initialize onboarding steps if not present
+      if (!acct.onboarding_steps) {
+        acct.onboarding_steps = generateOnboardingSteps(acct.platform, safeIdentity);
+      }
+
+      // Update current step
+      const steps = acct.onboarding_steps || [];
+      const stepIndex = steps.findIndex(s => s.step_id === step);
+      
+      if (stepIndex === -1) {
+        return Response.json({ error: 'Step not found' }, { status: 404 });
+      }
+
+      steps[stepIndex].status = 'completed';
+      steps[stepIndex].completed_at = new Date().toISOString();
+      steps[stepIndex].data = step_data || {};
+
+      const completedSteps = steps.filter(s => s.status === 'completed').length;
+      const progressPercent = Math.round((completedSteps / steps.length) * 100);
+
       const updated = await base44.asServiceRole.entities.LinkedAccountCreation.update(account_id, {
-        account_status: 'active',
-        onboarding_completed: true,
-        profile_completeness: 85,
-        verification_status: 'verified',
-        last_used: new Date().toISOString()
-      });
-
-      // Log onboarding
-      await base44.asServiceRole.entities.ActivityLog.create({
-        action_type: 'system',
-        message: `✅ Onboarding complete: ${acct.platform} account fully activated`,
-        severity: 'success',
-        metadata: {
-          account_id,
-          platform: acct.platform,
-          identity_id: acct.identity_id
-        }
+        onboarding_steps: steps,
+        profile_completeness: progressPercent,
+        activation_status: progressPercent === 100 ? 'active' : 'onboarding',
+        last_onboarding_step: step,
+        last_onboarding_update: new Date().toISOString()
       });
 
       return Response.json({
         success: true,
         account: updated,
-        message: 'Account fully onboarded and ready for use'
+        progress: {
+          current_step: stepIndex + 1,
+          total_steps: steps.length,
+          percent_complete: progressPercent,
+          steps_completed: completedSteps
+        },
+        next_step: stepIndex + 1 < steps.length ? steps[stepIndex + 1] : null,
+        is_complete: progressPercent === 100
+      });
+    }
+
+    // ── get_onboarding_status ──────────────────────────────────────────────────
+    if (action === 'get_onboarding_status') {
+      const { account_id } = body;
+
+      if (!account_id) return Response.json({ error: 'account_id required' }, { status: 400 });
+
+      const account = (await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id }).catch(() => [])) || [];
+      const safeAccount = Array.isArray(account) ? account : [];
+      if (!safeAccount.length || !safeAccount[0]) {
+        return Response.json({ error: 'Account not found' }, { status: 404 });
+      }
+
+      const acct = safeAccount[0];
+      const identity = (await base44.asServiceRole.entities.AIIdentity.filter({ id: acct.identity_id }).catch(() => [])) || [];
+      const safeIdentity = Array.isArray(identity) && identity.length ? identity[0] : null;
+
+      if (!acct.onboarding_steps) {
+        acct.onboarding_steps = generateOnboardingSteps(acct.platform, safeIdentity);
+      }
+
+      const steps = acct.onboarding_steps;
+      const completedSteps = steps.filter(s => s.status === 'completed').length;
+      const progressPercent = Math.round((completedSteps / steps.length) * 100);
+
+      return Response.json({
+        success: true,
+        account_id,
+        platform: acct.platform,
+        activation_status: acct.activation_status || 'pending',
+        progress: {
+          percent_complete: progressPercent,
+          current_step: completedSteps + 1,
+          total_steps: steps.length,
+          steps_completed: completedSteps
+        },
+        steps,
+        is_complete: progressPercent === 100,
+        profile_completeness: acct.profile_completeness || 0
       });
     }
 
@@ -262,6 +322,129 @@ Return JSON:
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {
+    console.error('Account creation engine error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+
+// Helper: Generate platform-specific onboarding steps
+function generateOnboardingSteps(platform, identity) {
+  const baseSteps = [
+    {
+      step_id: 'profile_setup',
+      title: 'Profile Setup',
+      description: 'Configure basic profile information',
+      category: 'profile',
+      status: 'pending',
+      required: true,
+      checklist: [
+        'Add profile photo',
+        'Fill in bio/headline',
+        'Add professional summary'
+      ]
+    },
+    {
+      step_id: 'identity_verification',
+      title: 'Identity Verification',
+      description: 'Verify email and identity',
+      category: 'verification',
+      status: 'pending',
+      required: true,
+      checklist: [
+        'Verify email address',
+        'Add phone number',
+        'Complete identity check'
+      ]
+    },
+    {
+      step_id: 'skills_experience',
+      title: 'Skills & Experience',
+      description: 'Add your skills and work history',
+      category: 'profile',
+      status: 'pending',
+      required: identity?.skills?.length > 0,
+      checklist: [
+        'Add professional skills',
+        'Add work experience',
+        'Upload portfolio samples'
+      ]
+    },
+    {
+      step_id: 'payment_setup',
+      title: 'Payment Settings',
+      description: 'Configure payment and payout methods',
+      category: 'financial',
+      status: 'pending',
+      required: true,
+      checklist: [
+        'Add payment method',
+        'Configure payout account',
+        'Set up tax information'
+      ]
+    },
+    {
+      step_id: 'preferences',
+      title: 'Preferences',
+      description: 'Set platform preferences and settings',
+      category: 'settings',
+      status: 'pending',
+      required: false,
+      checklist: [
+        'Set availability/hours',
+        'Configure notifications',
+        'Set rate/pricing'
+      ]
+    }
+  ];
+
+  // Add platform-specific steps
+  const platformSteps = {
+    upwork: [
+      {
+        step_id: 'proposals_setup',
+        title: 'Proposals & Cover Letter',
+        description: 'Create professional proposal templates',
+        category: 'profile',
+        status: 'pending',
+        required: true,
+        checklist: [
+          'Write default cover letter',
+          'Create proposal templates',
+          'Set proposal rate'
+        ]
+      }
+    ],
+    fiverr: [
+      {
+        step_id: 'gigs_setup',
+        title: 'Create Gigs',
+        description: 'Create your service offerings',
+        category: 'profile',
+        status: 'pending',
+        required: true,
+        checklist: [
+          'Create at least 1 gig',
+          'Add gig description',
+          'Set pricing tiers'
+        ]
+      }
+    ],
+    github: [
+      {
+        step_id: 'repositories_setup',
+        title: 'Repository Setup',
+        description: 'Create showcase repositories',
+        category: 'profile',
+        status: 'pending',
+        required: false,
+        checklist: [
+          'Create public repositories',
+          'Add project README files',
+          'Configure profile README'
+        ]
+      }
+    ]
+  };
+
+  return [...baseSteps, ...(platformSteps[platform] || [])];
+}

@@ -18,6 +18,7 @@ import NotificationPermissionBanner from '@/components/notifications/Notificatio
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import N8nMcpPanel from '@/components/n8n/N8nMcpPanel';
 import SystemAuditChecker from '@/components/audit/SystemAuditChecker';
+import { Workflow } from 'lucide-react';
 
 const DEPT_CARDS = [
   {
@@ -316,6 +317,18 @@ export default function Dashboard() {
             </h3>
             <ActivityFeed logs={activityLogs} />
           </div>
+          <Link to="/GlobalTaskOrchestrator">
+            <div className="glass-card rounded-2xl p-4 hover:border-cyan-500/50 transition-colors cursor-pointer">
+              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2 font-orbitron tracking-wide">
+                <Workflow className="w-4 h-4 text-cyan-400" />
+                Task Orchestration
+              </h3>
+              <p className="text-xs text-slate-400 mb-3">Create cross-department task dependencies</p>
+              <Button size="sm" className="w-full bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-500/30 text-xs">
+                Manage Rules
+              </Button>
+            </div>
+          </Link>
           <N8nMcpPanel />
         </div>
       </div>

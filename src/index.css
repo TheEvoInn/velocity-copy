@@ -461,12 +461,12 @@
 }
 
 /* ─── Override shadcn defaults for galaxy theme ───────────────────────────── */
-.bg-background  { background-color: var(--galaxy-deep) !important; }
+.bg-background  { background-color: transparent !important; }
 .bg-slate-950   { background-color: #050714 !important; }
-.bg-slate-900   { background-color: #0a0e21 !important; }
-.bg-slate-800   { background-color: #0f1535 !important; }
-.border-slate-800 { border-color: rgba(124,58,237,0.15) !important; }
-.border-slate-700 { border-color: rgba(124,58,237,0.22) !important; }
+.bg-slate-900   { background-color: #0a0f2a !important; }
+.bg-slate-800   { background-color: #1a1a2e !important; }
+.border-slate-800 { border-color: rgba(0, 232, 255, 0.15) !important; }
+.border-slate-700 { border-color: rgba(0, 232, 255, 0.25) !important; }
 
 /* Cards auto-get glass styling */
 .bg-slate-900.border.border-slate-800,

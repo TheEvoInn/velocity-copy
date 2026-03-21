@@ -15,9 +15,11 @@ import AdminKYCReview from '@/components/admin/AdminKYCReview';
 import AdminActivityMonitor from '@/components/admin/AdminActivityMonitor';
 import AdminErrorCenter from '@/components/admin/AdminErrorCenter';
 import AdminNotifications from '@/components/admin/AdminNotifications';
+import { Activity as ActivityIcon } from 'lucide-react';
 
 const TABS = [
   { id: 'health',    label: 'Platform Health',  icon: Zap,         color: '#06b6d4' },
+  { id: 'webhooks',  label: 'Webhooks',         icon: ActivityIcon, color: '#06b6d4' },
   { id: 'users',     label: 'User Management',  icon: Users,       color: '#8b5cf6' },
   { id: 'kyc',       label: 'KYC Review',       icon: FileCheck,   color: '#f59e0b' },
   { id: 'activity',  label: 'Activity Logs',    icon: Activity,    color: '#10b981' },
@@ -102,6 +104,7 @@ export default function AdminControlPanel() {
       {/* Tab Content */}
       <div>
         {activeTab === 'health'   && <AdminHealthDashboard />}
+        {activeTab === 'webhooks' && <div className="text-slate-300"><Link to="/WebhookListener" className="text-cyan-400 hover:underline flex items-center gap-2"><ChevronRight className="w-4 h-4" />Go to Webhook Listener</Link></div>}
         {activeTab === 'users'    && <AdminUserManagement />}
         {activeTab === 'kyc'      && <AdminKYCReview />}
         {activeTab === 'activity' && <AdminActivityMonitor />}

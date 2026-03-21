@@ -97,9 +97,11 @@ export const AuthProvider = ({ children }) => {
       
       // Initialize platform with autopilot ON
       try {
-        await base44.functions.invoke('platformInitializer', {});
+        const initRes = await base44.functions.invoke('platformInitializer', {});
+        console.log('Platform initialized:', initRes?.data?.success ? 'success' : 'check logs');
       } catch (initError) {
-        console.error('Platform initialization error:', initError);
+        console.warn('Platform init attempted (non-blocking):', initError?.message);
+        // Platform init failure is non-critical - allow app to continue
       }
       
       setIsLoadingAuth(false);

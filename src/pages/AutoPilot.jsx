@@ -14,12 +14,14 @@ import ProfitTargetPanel from '../components/autopilot/ProfitTargetPanel';
 import AITaskFeed from '../components/autopilot/AITaskFeed';
 import DualStreamCard from '../components/autopilot/DualStreamCard';
 import AutopilotActivationDiagnostics from '../components/autopilot/AutopilotActivationDiagnostics';
+import AutoExecuteRuleBuilder from '../components/autopilot/AutoExecuteRuleBuilder';
 
 const TABS = [
   { key: 'hud', label: 'Mission HUD', icon: '🛰️' },
   { key: 'identities', label: 'Identity Routines', icon: '🤖' },
   { key: 'targets', label: 'Profit Targets', icon: '🎯' },
   { key: 'risk', label: 'Risk Controls', icon: '🛡️' },
+  { key: 'rules', label: 'Auto-Execute Rules', icon: '⚙️' },
   { key: 'feed', label: 'Task Feed', icon: '⚡' },
   { key: 'diagnostics', label: 'System Health', icon: '🔧' },
   { key: 'templates', label: 'Templates', icon: '📚', link: '/TemplatesLibrary' },
@@ -322,6 +324,16 @@ export default function AutoPilot() {
 
         {activeTab === 'risk' && (
           <RiskManagementPanel goals={goals} onUpdate={() => qc.invalidateQueries({ queryKey: ['userGoals'] })} />
+        )}
+
+        {activeTab === 'rules' && (
+          <div>
+            <div className="mb-4">
+              <h2 className="font-orbitron text-sm font-bold text-white tracking-wide">AUTO-EXECUTE RULES</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Create rules to automatically trigger task creation when opportunity conditions are met</p>
+            </div>
+            <AutoExecuteRuleBuilder />
+          </div>
         )}
 
         {activeTab === 'feed' && (

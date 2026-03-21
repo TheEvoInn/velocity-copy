@@ -215,7 +215,7 @@ async function generateSequenceEmails(sequenceType, offerType, productId, produc
       {
         sequence_number: 1,
         subject: `You're missing out on {{product_name}}`,
-        preview_text: 'Here's what {{first_name}} needs to know...',
+        preview_text: 'Here is what {{first_name}} needs to know...',
         delay_days: 0,
         cta_text: 'Learn More',
         body: `<h1>Hi {{first_name}},</h1><p>Thanks for your interest in {{product_name}}. Most people don't realize the biggest mistake they're making...</p><p>That's where {{product_name}} comes in. It solves this exact problem.</p>`

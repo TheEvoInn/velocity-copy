@@ -30,7 +30,7 @@ export default function AutopilotIdentitySelector({ opportunities = [], onTasksQ
             action: 'recommend_identity',
             opportunity: opp
           });
-          recs[opp.id] = res.data;
+          recs[opp.id] = res?.data || null;
         } catch (err) {
           console.error(`Failed to get recommendation for ${opp.id}:`, err);
           recs[opp.id] = null;
@@ -57,7 +57,7 @@ export default function AutopilotIdentitySelector({ opportunities = [], onTasksQ
         identity_id: rec.recommended_identity_id
       });
 
-      return { opp, rec, task: res.data };
+      return { opp, rec, task: res?.data || null };
     },
     onSuccess: (result) => {
       setProcessedCount(prev => prev + 1);

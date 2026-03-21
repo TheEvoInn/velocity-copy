@@ -15,8 +15,13 @@ export function useDepartmentSync() {
   const { data: goals = [] }        = useQuery({ 
     queryKey: ['userGoals'], 
     queryFn: async () => {
-      const result = await base44.entities.UserGoals.list();
-      return result.slice(0, 1); // User has max 1 UserGoals record
+      try {
+        const result = await base44.entities.UserGoals.list();
+        return Array.isArray(result) ? result.slice(0, 1) : [];
+      } catch (err) {
+        console.error('Failed to fetch user goals:', err);
+        return [];
+      }
     },
     initialData: [], 
     refetchInterval: 30000 
@@ -24,35 +29,75 @@ export function useDepartmentSync() {
   
   const { data: opportunities = [] } = useQuery({ 
     queryKey: ['opportunities'], 
-    queryFn: () => base44.entities.Opportunity.list('-created_date', 200),
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.Opportunity.list('-created_date', 200);
+        return Array.isArray(result) ? result : [];
+      } catch (err) {
+        console.error('Failed to fetch opportunities:', err);
+        return [];
+      }
+    },
     initialData: [], 
     refetchInterval: 10000 
   });
   
   const { data: transactions = [] }  = useQuery({ 
     queryKey: ['transactions'],  
-    queryFn: () => base44.entities.Transaction.list('-created_date', 200),
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.Transaction.list('-created_date', 200);
+        return Array.isArray(result) ? result : [];
+      } catch (err) {
+        console.error('Failed to fetch transactions:', err);
+        return [];
+      }
+    },
     initialData: [], 
     refetchInterval: 10000 
   });
   
   const { data: tasks = [] }         = useQuery({ 
     queryKey: ['taskQueue', 'taskQueueManager'], 
-    queryFn: () => base44.entities.TaskExecutionQueue.list('-created_date', 100),
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.TaskExecutionQueue.list('-created_date', 100);
+        return Array.isArray(result) ? result : [];
+      } catch (err) {
+        console.error('Failed to fetch tasks:', err);
+        return [];
+      }
+    },
     initialData: [], 
     refetchInterval: 8000 
   });
   
   const { data: identities = [] }    = useQuery({ 
     queryKey: ['aiIdentities'],  
-    queryFn: () => base44.entities.AIIdentity.list(),
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.AIIdentity.list();
+        return Array.isArray(result) ? result : [];
+      } catch (err) {
+        console.error('Failed to fetch identities:', err);
+        return [];
+      }
+    },
     initialData: [], 
     refetchInterval: 30000 
   });
   
   const { data: activityLogs = [] }  = useQuery({ 
     queryKey: ['activityLogs'], 
-    queryFn: () => base44.entities.ActivityLog.list('-created_date', 50),
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.ActivityLog.list('-created_date', 50);
+        return Array.isArray(result) ? result : [];
+      } catch (err) {
+        console.error('Failed to fetch activity logs:', err);
+        return [];
+      }
+    },
     initialData: [], 
     refetchInterval: 15000 
   });

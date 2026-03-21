@@ -7,7 +7,8 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { action, notification_type, related_entity_type, related_entity_id, title, message, severity, action_type, action_data, notification_id } = await req.json();
+    const body = await req.json();
+    const { action, notification_type, related_entity_type, related_entity_id, title, message, severity, action_type, action_data, notification_id, filter_type, filter_severity, limit = 100 } = body;
 
     // ── CREATE NOTIFICATION ──────────────────────────────────────────────────
     if (action === 'create_notification') {

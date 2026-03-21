@@ -6,9 +6,6 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import TaskReaderHub from './pages/TaskReaderHub';
-import WebhookConfiguration from './pages/WebhookConfiguration';
-
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : null;
@@ -49,16 +46,6 @@ const AuthenticatedApp = () => {
             <MainPage />
           </LayoutWrapper>
         ) : <PageNotFound />
-      } />
-      <Route path="/TaskReaderHub" element={
-        <LayoutWrapper currentPageName="TaskReaderHub">
-          <TaskReaderHub />
-        </LayoutWrapper>
-      } />
-      <Route path="/WebhookConfiguration" element={
-        <LayoutWrapper currentPageName="WebhookConfiguration">
-          <WebhookConfiguration />
-        </LayoutWrapper>
       } />
       {Object.entries(Pages).map(([path, Page]) => (
         <Route

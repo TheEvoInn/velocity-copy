@@ -17,6 +17,7 @@ import TransactionForm from '@/components/wallet/TransactionForm';
 import NotificationPermissionBanner from '@/components/notifications/NotificationPermissionBanner';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import N8nMcpPanel from '@/components/n8n/N8nMcpPanel';
+import SystemAuditChecker from '@/components/audit/SystemAuditChecker';
 
 const DEPT_CARDS = [
   {
@@ -307,6 +308,7 @@ export default function Dashboard() {
             totalEarned={totalEarned}
             walletBalance={walletBalance}
           />
+          <SystemAuditChecker />
           <div className="glass-card rounded-2xl p-4">
             <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2 font-orbitron tracking-wide">
               <span className="text-base">✦</span>

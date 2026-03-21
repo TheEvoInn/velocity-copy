@@ -147,13 +147,13 @@ async function executeInstantTask(base44, payload, log) {
     // Step 2: Snapshot the page
     log('analyze', 'Reading page structure and form fields...');
     const snapshotResult = await getPageSnapshot(sessionId);
-    const snapshot = snapshotResult?.result || snapshotResult || { title: 'Unknown', fields: [] };
+    const snapshot = snapshotResult?.result || snapshotResult || { title: 'Unknown', url, fields: [] };
 
-    if (!snapshot.title || !snapshot.fields) {
+    if (!snapshot.title || !Array.isArray(snapshot.fields)) {
       throw new Error('Failed to capture page snapshot');
     }
 
-    log('snapshot_done', `Page: "${snapshot.title}" — ${(snapshot.fields || []).length} fields detected`);
+    log('snapshot_done', `Page: "${snapshot.title}" — ${snapshot.fields.length} fields detected`);
 
     // Step 3: AI decides what to fill
     log('ai_plan', 'AI generating fill instructions...');
@@ -164,23 +164,23 @@ async function executeInstantTask(base44, payload, log) {
     ], 1000);
 
     let fillPlan = null;
-     try { fillPlan = JSON.parse(aiResponse || '{}'); } catch (_) { fillPlan = {}; }
+    try { fillPlan = JSON.parse(aiResponse || '{}'); } catch (_) { fillPlan = { instructions: [] }; }
 
-     if (!fillPlan || typeof fillPlan !== 'object' || !fillPlan.instructions) {
-       log('ai_fallback', 'Using fallback instruction generation');
-     }
+    if (!fillPlan || typeof fillPlan !== 'object' || !Array.isArray(fillPlan.instructions) || fillPlan.instructions.length === 0) {
+      log('ai_fallback', 'Using fallback instruction generation');
+    }
     const instructions = fillPlan?.instructions || buildFallbackInstructions(task_type, snapshot, context, identity);
     const deliverable = fillPlan?.deliverable || '';
 
-    log('fill_start', `Executing ${instructions.length} field instructions...`);
-    const fillResult = await fillAndSubmit(sessionId, instructions);
+    log('fill_start', `Executing ${Array.isArray(instructions) ? instructions.length : 0} field instructions...`);
+    const fillResult = await fillAndSubmit(sessionId, Array.isArray(instructions) ? instructions : []);
     const fill = fillResult?.result || fillResult || { finalUrl: url, finalTitle: 'Unknown', bodyText: '' };
 
-    if (!fill.finalUrl) {
+    if (!fill.finalUrl || typeof fill.finalUrl !== 'string') {
       throw new Error('Failed to complete form submission');
     }
 
-    log('fill_done', `Page after fill: "${fill.finalTitle}" at ${fill.finalUrl}`);
+    log('fill_done', `Page after fill: "${fill.finalTitle || 'Unknown'}" at ${fill.finalUrl}`);
 
     // Step 4: Detect success
     const successSignals = ['thank', 'success', 'submitted', 'confirmation', 'received', 'complete'];
@@ -274,10 +274,10 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const action = body.action || body.task_type;
+    const action = body.action || 'run_instant_task';
     const payload = body.payload || body;
 
-    if (action === 'run_instant_task' || action === 'execute' || body.task_type) {
+    if (action === 'run_instant_task') {
       const execLog = [];
       const log = (step, detail) => {
         execLog.push({ timestamp: new Date().toISOString(), step, detail });

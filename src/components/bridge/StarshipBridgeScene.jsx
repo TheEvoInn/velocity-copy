@@ -200,6 +200,8 @@ export default function StarshipBridgeScene() {
       window.removeEventListener('click', onMouseClick);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', onWindowResize);
+      postProcessingRef.current.dispose();
+      stationScreensRef.current.dispose();
       renderer.dispose();
     };
   }, [focusedStation]);

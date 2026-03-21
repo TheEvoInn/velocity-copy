@@ -145,6 +145,7 @@ export default function StarshipBridgeScene() {
         setFocusedStation(null);
         povControllerRef.current.returnToCenter();
         particleManagerRef.current.unfocusStation();
+        stationScreensRef.current.unfocusScreen();
       }
     };
 

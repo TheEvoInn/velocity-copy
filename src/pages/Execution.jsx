@@ -47,27 +47,49 @@ export default function Execution() {
   };
 
   const handleRetry = async (task) => {
-    await base44.entities.TaskExecutionQueue.update(task.id, {
-      status: 'queued',
-      retry_count: (task.retry_count || 0) + 1,
-      last_retry_at: new Date().toISOString(),
-    });
-    queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
-    queryClient.invalidateQueries({ queryKey: ['taskQueueManager'] });
+    try {
+      await base44.functions.invoke('agentWorker', {
+        action: 'execute_task',
+        payload: {
+          task_id: task.id,
+          opportunity_id: task.opportunity_id,
+          url: task.url,
+          identity_id: task.identity_id,
+          platform: task.platform
+        }
+      });
+      queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
+      queryClient.invalidateQueries({ queryKey: ['taskQueueManager'] });
+    } catch (e) {
+      console.error('Retry failed:', e);
+    }
   };
 
   const handleCancel = async (task) => {
-    await base44.entities.TaskExecutionQueue.update(task.id, { status: 'cancelled' });
-    if (task.opportunity_id) {
-      await base44.entities.Opportunity.update(task.opportunity_id, { status: 'dismissed' });
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+    try {
+      await base44.entities.TaskExecutionQueue.update(task.id, { 
+        status: 'cancelled',
+        completion_timestamp: new Date().toISOString()
+      });
+      if (task.opportunity_id) {
+        await base44.entities.Opportunity.update(task.opportunity_id, { status: 'dismissed' });
+        queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
+      queryClient.invalidateQueries({ queryKey: ['taskQueueManager'] });
+    } catch (e) {
+      console.error('Cancel failed:', e);
     }
-    queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
-    queryClient.invalidateQueries({ queryKey: ['taskQueueManager'] });
   };
 
-  const aiEarnedToday = 0;
-  const userEarnedToday = todayEarned;
+  // Calculate real earnings from completed tasks
+  const completedTasks = tasks.filter(t => t.status === 'completed' && t.estimated_value);
+  const aiEarnedToday = completedTasks
+    .filter(t => t.executed_by === 'ned_autopilot' || !t.executed_by)
+    .reduce((sum, t) => sum + (t.estimated_value || 0), 0);
+  const userEarnedToday = tasks
+    .filter(t => t.status === 'completed' && t.executed_by === 'user')
+    .reduce((sum, t) => sum + (t.estimated_value || 0), 0);
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">

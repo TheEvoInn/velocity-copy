@@ -14,10 +14,24 @@ Deno.serve(async (req) => {
     const { action, id, updates } = body;
 
     if (action === 'list') {
-      // Use filter({}) with service role to bypass RLS — list() does not work under service role
-      const records = await base44.asServiceRole.entities.KYCVerification.filter({}, '-created_date', 200);
-      console.log(`[kycAdminService] filter returned ${records?.length} records`);
-      return Response.json({ records: records || [] });
+      // Fetch all statuses in a targeted way to avoid CPU timeout
+      const [submitted, under_review, approved, rejected, flagged] = await Promise.all([
+        base44.asServiceRole.entities.KYCVerification.filter({ status: 'submitted' }, '-created_date', 100),
+        base44.asServiceRole.entities.KYCVerification.filter({ admin_status: 'under_review' }, '-created_date', 50),
+        base44.asServiceRole.entities.KYCVerification.filter({ status: 'approved' }, '-created_date', 50),
+        base44.asServiceRole.entities.KYCVerification.filter({ status: 'rejected' }, '-created_date', 50),
+        base44.asServiceRole.entities.KYCVerification.filter({ admin_status: 'flagged' }, '-created_date', 50),
+      ]);
+      // Merge and deduplicate by id
+      const seen = new Set();
+      const records = [...submitted, ...under_review, ...approved, ...rejected, ...flagged].filter(r => {
+        if (seen.has(r.id)) return false;
+        seen.add(r.id);
+        return true;
+      });
+      records.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+      console.log(`[kycAdminService] fetched ${records.length} total KYC records`);
+      return Response.json({ records });
     }
 
     if (action === 'update' && id && updates) {

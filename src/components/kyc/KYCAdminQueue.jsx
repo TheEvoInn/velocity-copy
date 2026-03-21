@@ -23,9 +23,10 @@ function KYCReviewCard({ record, onAction }) {
   const [expanded, setExpanded] = useState(false);
   const [showSensitive, setShowSensitive] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [actionMode, setActionMode] = useState(null); // 'deny' | 'request' | 'flag' | 'upload'
+  const [actionMode, setActionMode] = useState(null); // 'deny' | 'request' | 'flag' | 'upload' | 'check_again'
   const [uploadingDocs, setUploadingDocs] = useState({});
   const [uploadedDocs, setUploadedDocs] = useState({});
+  const [selectedFields, setSelectedFields] = useState({});
   const [formData, setFormData] = useState({
     full_legal_name: record.full_legal_name || '',
     date_of_birth: record.date_of_birth || '',
@@ -44,6 +45,22 @@ function KYCReviewCard({ record, onAction }) {
     id_back: React.useRef(null),
     selfie: React.useRef(null),
   };
+
+  const CHECKABLE_FIELDS = [
+    { key: 'full_legal_name', label: 'Full Legal Name' },
+    { key: 'date_of_birth', label: 'Date of Birth' },
+    { key: 'phone_number', label: 'Phone Number' },
+    { key: 'residential_address', label: 'Residential Address' },
+    { key: 'city', label: 'City' },
+    { key: 'state', label: 'State' },
+    { key: 'postal_code', label: 'Postal Code' },
+    { key: 'country', label: 'Country' },
+    { key: 'government_id_type', label: 'Government ID Type' },
+    { key: 'government_id_expiry', label: 'ID Expiry Date' },
+    { key: 'id_front', label: 'ID Document (Front)' },
+    { key: 'id_back', label: 'ID Document (Back)' },
+    { key: 'selfie', label: 'Selfie/Liveness' },
+  ];
 
   const statusKey = record.admin_status || record.status || 'submitted';
   const style = STATUS_STYLES[statusKey] || STATUS_STYLES.submitted;
@@ -79,6 +96,19 @@ function KYCReviewCard({ record, onAction }) {
     onAction(record.id, 'submit_docs', { docUpdates: updates });
     setActionMode(null);
     setUploadedDocs({});
+  };
+
+  const handleCheckAgain = async () => {
+    const selected = Object.keys(selectedFields).filter(k => selectedFields[k]);
+    if (selected.length === 0) {
+      toast.error('Please select at least one field to recheck.');
+      return;
+    }
+
+    onAction(record.id, 'check_again', { fields: selected, note: noteText });
+    setActionMode(null);
+    setSelectedFields({});
+    setNoteText('');
   };
 
   return (
@@ -259,8 +289,34 @@ function KYCReviewCard({ record, onAction }) {
             </div>
           )}
 
+          {/* Check Again Fields Selection */}
+          {actionMode === 'check_again' && (
+            <div className="bg-purple-950/30 border border-purple-800/30 rounded-lg p-3 space-y-3">
+              <p className="text-xs font-semibold text-purple-300">Select Fields to Recheck</p>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                {CHECKABLE_FIELDS.map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedFields[key] || false}
+                      onChange={(e) => setSelectedFields((p) => ({ ...p, [key]: e.target.checked }))}
+                      className="w-3 h-3 accent-purple-500"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <textarea
+                className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-white text-xs resize-none h-16 focus:outline-none focus:border-purple-500"
+                placeholder="Optional message to user about what to correct..."
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+              />
+            </div>
+          )}
+
           {/* Note Input */}
-          {actionMode && (
+          {actionMode && actionMode !== 'check_again' && (
             <div className="space-y-2">
               <textarea
                 className="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white text-xs resize-none h-20 focus:outline-none focus:border-blue-500"
@@ -379,6 +435,26 @@ function KYCReviewCard({ record, onAction }) {
                  <Upload className="w-3 h-3 mr-1" /> Submit for User
                </Button>
              )}
+
+             {/* Check Again */}
+             {actionMode === 'check_again' ? (
+               <Button
+                 onClick={handleCheckAgain}
+                 className="text-xs bg-purple-600 hover:bg-purple-500 col-span-2"
+               >
+                 <MessageSquare className="w-3 h-3 mr-1" /> Send Check Again Request
+               </Button>
+             ) : (
+               ['submitted', 'under_review'].includes(statusKey) && (
+                 <Button
+                   onClick={() => setActionMode('check_again')}
+                   variant="outline"
+                   className="text-xs border-purple-500/30 text-purple-400 hover:bg-purple-500/10 col-span-2"
+                 >
+                   <MessageSquare className="w-3 h-3 mr-1" /> Check Again
+                 </Button>
+               )
+             )}
           </div>
 
           {actionMode && (
@@ -407,6 +483,7 @@ export default function KYCAdminQueue() {
 
   const actionMutation = useMutation({
     mutationFn: async ({ id, action, note, docUpdates }) => {
+      const fields = docUpdates?.fields || [];
       const now = new Date().toISOString();
       const updates = { admin_notes: note || undefined };
 
@@ -443,6 +520,13 @@ export default function KYCAdminQueue() {
           admin_status: 'submitted',
           admin_notes: 'Documents uploaded by admin'
         });
+      } else if (action === 'check_again') {
+        Object.assign(updates, {
+          status: 'submitted',
+          admin_status: 'check_again_required',
+          admin_request_note: note || 'Please review and correct the selected fields.',
+          check_again_fields: docUpdates?.fields || [],
+        });
       }
 
       // Append to access log via service role
@@ -467,14 +551,15 @@ export default function KYCAdminQueue() {
         request_info: '📋 Additional info requested',
         flag: '🚩 Submission flagged',
         submit_docs: '📤 Documents submitted for user',
+        check_again: '🔄 User requested to check again',
       };
       toast.success(messages[action] || 'Updated');
     },
     onError: (err) => toast.error(`Error: ${err.message}`),
   });
 
-  const handleAction = (id, action, { note, docUpdates } = {}) => {
-    actionMutation.mutate({ id, action, note, docUpdates });
+  const handleAction = (id, action, { note, docUpdates, fields } = {}) => {
+    actionMutation.mutate({ id, action, note, docUpdates: { ...docUpdates, fields } });
   };
 
   const filtered = allKYC.filter(r => {

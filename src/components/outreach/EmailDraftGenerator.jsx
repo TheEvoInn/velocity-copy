@@ -8,12 +8,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Mail, Sparkles, Send, Loader } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function EmailDraftGenerator({ opportunity, onDraftGenerated }) {
+export default function EmailDraftGenerator({ opportunity, onDraftGenerated, injectedDraft }) {
   const [recipientEmail, setRecipientEmail] = useState('');
   const [draftStyle, setDraftStyle] = useState('professional');
   const [scheduledTime, setScheduledTime] = useState('');
-  const [generatedDraft, setGeneratedDraft] = useState(null);
+  const [generatedDraft, setGeneratedDraft] = useState(injectedDraft || null);
   const queryClient = useQueryClient();
+
+  // When a template is injected from the builder, pre-populate the draft
+  React.useEffect(() => {
+    if (injectedDraft) setGeneratedDraft(injectedDraft);
+  }, [injectedDraft]);
 
   // Generate draft mutation
   const generateDraftMutation = useMutation({

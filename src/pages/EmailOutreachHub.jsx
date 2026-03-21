@@ -122,7 +122,9 @@ export default function EmailOutreachHub() {
           </div>
         </div>
 
-        {/* Full-width Review Queue */}
+        )} {/* end Compose tab */}
+
+        {/* Full-width Review Queue (always visible) */}
         <div>
           <EmailReviewQueue />
         </div>

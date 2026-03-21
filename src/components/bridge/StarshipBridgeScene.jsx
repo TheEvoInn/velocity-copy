@@ -87,9 +87,13 @@ export default function StarshipBridgeScene() {
     // Initialize controllers
     povControllerRef.current = new BridgePOVController(camera, scene, renderer);
     particleManagerRef.current = new BridgeParticleManager(scene);
+    // Initialize audio first (needed by alert system)
+    audioEngineRef.current = new AudioEngine(camera);
+    audioUIFeedbackRef.current = new AudioUIFeedback(audioEngineRef.current);
+    
     alertSystemRef.current = new BridgeAlertSystem(
       particleManagerRef.current,
-      null, // AudioEngine added in Phase 3
+      audioEngineRef.current,
       setAlerts
     );
     
@@ -99,9 +103,7 @@ export default function StarshipBridgeScene() {
     // Initialize station screens
     stationScreensRef.current = new StationScreenRenderer(scene);
     
-    // Initialize audio systems
-    audioEngineRef.current = new AudioEngine(camera);
-    audioUIFeedbackRef.current = new AudioUIFeedback(audioEngineRef.current);
+    // Initialize bridge audio integration
     audioIntegrationRef.current = new BridgeAudioIntegration(
       audioEngineRef.current,
       audioUIFeedbackRef.current,

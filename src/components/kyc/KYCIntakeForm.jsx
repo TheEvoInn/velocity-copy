@@ -34,8 +34,23 @@ export default function KYCIntakeForm({ onSubmitSuccess }) {
 
   const submitKYC = useMutation({
     mutationFn: async () => {
+      // Upload documents first
+      const uploadFile = async (file) => {
+        if (!file) return null;
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        return file_url;
+      };
+      const [id_document_front_url, id_document_back_url, selfie_url] = await Promise.all([
+        uploadFile(documents.id_front),
+        uploadFile(documents.id_back),
+        uploadFile(documents.selfie),
+      ]);
+
       const kyc = await base44.entities.KYCVerification.create({
         ...formData,
+        id_document_front_url,
+        id_document_back_url,
+        selfie_url,
         status: 'submitted',
         admin_status: 'submitted',
         verification_type: 'standard',

@@ -14,10 +14,15 @@ export default function BrowserbaseExecutionWorker() {
   const { data: tasks = [], refetch, isLoading } = useQuery({
     queryKey: ['queued_tasks'],
     queryFn: async () => {
-      const res = await base44.entities.TaskExecutionQueue.filter({
-        status: 'queued',
-      }, '-priority', 10);
-      return res || [];
+      try {
+        const res = await base44.entities.TaskExecutionQueue.filter({
+          status: 'queued',
+        }, '-priority', 10);
+        return Array.isArray(res) ? res : [];
+      } catch (err) {
+        console.error('Failed to fetch tasks:', err);
+        return [];
+      }
     },
     refetchInterval: 15000,
   });
@@ -26,6 +31,8 @@ export default function BrowserbaseExecutionWorker() {
   const executeMutation = useMutation({
     mutationFn: async (taskId) => {
       const task = tasks.find(t => t.id === taskId) || selectedTask;
+      if (!task) throw new Error('Task not found');
+      
       const res = await base44.functions.invoke('agentWorker', {
         action: 'execute_task',
         payload: {
@@ -36,7 +43,7 @@ export default function BrowserbaseExecutionWorker() {
           platform: task?.platform,
         }
       });
-      return res.data;
+      return res?.data || null;
     },
     onSuccess: (data) => {
       refetch();
@@ -58,7 +65,7 @@ export default function BrowserbaseExecutionWorker() {
       const res = await base44.functions.invoke('agentWorker', {
         action: 'execute_next_task',
       });
-      return res.data;
+      return res?.data || null;
     },
     onSuccess: (data) => {
       refetch();

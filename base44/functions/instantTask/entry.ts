@@ -147,7 +147,11 @@ async function executeInstantTask(base44, payload, log) {
     // Step 2: Snapshot the page
     log('analyze', 'Reading page structure and form fields...');
     const snapshotResult = await getPageSnapshot(sessionId);
-    const snapshot = snapshotResult?.result || snapshotResult;
+    const snapshot = snapshotResult?.result || snapshotResult || { title: 'Unknown', fields: [] };
+
+    if (!snapshot.title || !snapshot.fields) {
+      throw new Error('Failed to capture page snapshot');
+    }
 
     log('snapshot_done', `Page: "${snapshot.title}" — ${(snapshot.fields || []).length} fields detected`);
 
@@ -160,17 +164,21 @@ async function executeInstantTask(base44, payload, log) {
     ], 1000);
 
     let fillPlan = null;
-    try { fillPlan = JSON.parse(aiResponse || '{}'); } catch (_) { /* use fallback */ }
+     try { fillPlan = JSON.parse(aiResponse || '{}'); } catch (_) { fillPlan = {}; }
 
-    if (!fillPlan || !fillPlan.instructions) {
-      log('ai_fallback', 'Using fallback instruction generation');
-    }
+     if (!fillPlan || typeof fillPlan !== 'object' || !fillPlan.instructions) {
+       log('ai_fallback', 'Using fallback instruction generation');
+     }
     const instructions = fillPlan?.instructions || buildFallbackInstructions(task_type, snapshot, context, identity);
     const deliverable = fillPlan?.deliverable || '';
 
     log('fill_start', `Executing ${instructions.length} field instructions...`);
     const fillResult = await fillAndSubmit(sessionId, instructions);
-    const fill = fillResult?.result || fillResult;
+    const fill = fillResult?.result || fillResult || { finalUrl: url, finalTitle: 'Unknown', bodyText: '' };
+
+    if (!fill.finalUrl) {
+      throw new Error('Failed to complete form submission');
+    }
 
     log('fill_done', `Page after fill: "${fill.finalTitle}" at ${fill.finalUrl}`);
 
@@ -266,9 +274,10 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { action, payload } = body;
+    const action = body.action || body.task_type;
+    const payload = body.payload || body;
 
-    if (action === 'run_instant_task') {
+    if (action === 'run_instant_task' || action === 'execute' || body.task_type) {
       const execLog = [];
       const log = (step, detail) => {
         execLog.push({ timestamp: new Date().toISOString(), step, detail });

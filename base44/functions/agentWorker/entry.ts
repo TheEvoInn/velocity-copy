@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 import OpenAI from 'npm:openai@4.47.1';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 /**
  * Agent Worker v3.0 — Real Execution Engine
@@ -158,11 +159,13 @@ async function executeTask(base44, payload) {
 
     // Mark task as processing
     if (task_id) {
+      // Clear previous logs for fresh retry
+      const clearedLog = execLog.slice(-1);
       await base44.asServiceRole.entities.TaskExecutionQueue.update(task_id, {
         status: 'processing',
         start_timestamp: new Date().toISOString(),
         identity_name: identity.name,
-        execution_log: execLog
+        execution_log: clearedLog
       });
     }
 
@@ -249,13 +252,16 @@ async function executeTask(base44, payload) {
 
     // Update opportunity (if we have one)
     if (opp && opportunity_id) {
-      await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
-        status: executionResult.success ? 'submitted' : 'reviewing',
-        submission_timestamp: new Date().toISOString(),
-        submission_confirmed: executionResult.success && !executionResult.needs_manual_action,
-        confirmation_number: `EXEC-${(task_id || opportunity_id || '').slice(0, 8).toUpperCase()}`,
-        notes: executionResult.message
-      }).catch(() => {});
+     await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
+       status: executionResult.success ? 'submitted' : 'reviewing',
+       submission_timestamp: new Date().toISOString(),
+       submission_confirmed: executionResult.success && !executionResult.needs_manual_action,
+       confirmation_number: `EXEC-${(task_id || opportunity_id || '').slice(0, 8).toUpperCase()}`,
+       notes: executionResult.message
+     }).catch((e) => console.error('Opp update failed:', e.message));
+    } else if (!opp && opportunity_id) {
+     // Log missing opportunity but continue
+     log('opp_update_skipped', 'warning', 'Opportunity ID provided but record not found');
     }
 
     // Save deliverable to AIWorkLog
@@ -325,7 +331,7 @@ async function executeTask(base44, payload) {
        await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
          status: 'failed',
          notes: error.message
-       }).catch(() => {});
+       }).catch((e) => console.error('Opp fail update failed:', e.message));
      }
     await base44.asServiceRole.entities.ActivityLog.create({
       action_type: 'alert',

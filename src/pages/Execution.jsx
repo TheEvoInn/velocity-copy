@@ -85,11 +85,12 @@ export default function Execution() {
   };
 
   // Calculate real earnings from completed tasks
-  const completedTasks = tasks.filter(t => t.status === 'completed' && t.estimated_value);
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const completedTasks = safeTasks.filter(t => t.status === 'completed' && typeof t.estimated_value === 'number');
   const aiEarnedToday = completedTasks
     .filter(t => t.executed_by === 'ned_autopilot' || !t.executed_by)
     .reduce((sum, t) => sum + (t.estimated_value || 0), 0);
-  const userEarnedToday = tasks
+  const userEarnedToday = safeTasks
     .filter(t => t.status === 'completed' && t.executed_by === 'user')
     .reduce((sum, t) => sum + (t.estimated_value || 0), 0);
 
@@ -158,7 +159,7 @@ export default function Execution() {
       {/* Autopilot Identity Selector */}
       <div className="mb-5">
         <AutopilotIdentitySelector
-          opportunities={opportunities?.filter(o => o.status === 'new' || o.status === 'reviewing').slice(0, 5) || []}
+          opportunities={Array.isArray(opportunities) ? opportunities.filter(o => o.status === 'new' || o.status === 'reviewing').slice(0, 5) : []}
           onTasksQueued={() => queryClient.invalidateQueries({ queryKey: ['taskQueue', 'opportunities'] })}
           autoExecute={userGoals?.autopilot_enabled}
         />

@@ -393,7 +393,7 @@ export default function KYCIntakeForm({ onSubmitSuccess }) {
                 disabled={submitKYC.isPending}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500"
               >
-                {submitKYC.isPending ? 'Submitting...' : 'Submit for Verification'}
+                {submitKYC.isPending ? (uploadProgress || 'Submitting...') : 'Submit for Verification'}
               </Button>
             </div>
           </CardContent>

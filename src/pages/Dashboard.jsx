@@ -25,52 +25,7 @@ import RealtimeOpportunitiesViewer from '@/components/command-center/RealtimeOpp
 import ExecutionPipelineMonitor from '@/components/command-center/ExecutionPipelineMonitor';
 import AIInsightsPanel from '@/components/command-center/AIInsightsPanel';
 
-const DEPT_CARDS = [
-  {
-    path: '/Discovery',
-    icon: Telescope,
-    label: 'Observatory',
-    subtitle: 'Intelligence & Scanning',
-    color: '#f59e0b',
-    textColor: 'text-amber-400',
-    glow: 'rgba(245,158,11,0.4)',
-    planet: '🔭',
-    statsKey: 'discovery',
-  },
-  {
-    path: '/Execution',
-    icon: Cpu,
-    label: 'Command Deck',
-    subtitle: 'Automation & Tasks',
-    color: '#3b82f6',
-    textColor: 'text-blue-400',
-    glow: 'rgba(59,130,246,0.4)',
-    planet: '🚀',
-    statsKey: 'execution',
-  },
-  {
-    path: '/Finance',
-    icon: Landmark,
-    label: 'Treasury Station',
-    subtitle: 'Wallet & Compliance',
-    color: '#10b981',
-    textColor: 'text-emerald-400',
-    glow: 'rgba(16,185,129,0.4)',
-    planet: '💎',
-    statsKey: 'finance',
-  },
-  {
-    path: '/Control',
-    icon: SlidersHorizontal,
-    label: 'Core Hub',
-    subtitle: 'Identities & Settings',
-    color: '#a855f7',
-    textColor: 'text-purple-400',
-    glow: 'rgba(168,85,247,0.4)',
-    planet: '⚙️',
-    statsKey: 'control',
-  },
-];
+
 
 export default function Dashboard() {
   const {

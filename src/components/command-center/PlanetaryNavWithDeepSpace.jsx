@@ -96,8 +96,8 @@ export default function PlanetaryNavWithDeepSpace({ stats = {} }) {
               </div>
             </div>
           </Link>
-          ))}
-          </div>
-          );
-          }
-            }
+        </div>
+      ))}
+    </div>
+  );
+}

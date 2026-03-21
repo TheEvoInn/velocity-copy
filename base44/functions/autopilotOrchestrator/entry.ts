@@ -204,19 +204,39 @@ Deno.serve(async (req) => {
       };
 
       try {
-        // 1. Pre-flight check
-        const preflightRes = await base44.asServiceRole.functions.invoke('autopilotOrchestrator', {
-          action: 'pre_flight_check'
-        });
-        cycleResults.preflight = preflightRes.data;
+         // 1. Pre-flight check (inline, no recursive call)
+         const identities = (await base44.asServiceRole.entities.AIIdentity.list().catch(() => [])) || [];
+         const safeIds = Array.isArray(identities) ? identities : [];
 
-        if (!cycleResults.preflight.ready_to_autopilot) {
-          // 2. Ensure identity
-          const identityRes = await base44.asServiceRole.functions.invoke('autopilotOrchestrator', {
-            action: 'ensure_identity'
-          });
-          cycleResults.identity_ready = identityRes.data?.identity;
-        }
+         const activeIdentity = safeIds.find(i => i && i.is_active);
+         const hasAccounts = (await base44.asServiceRole.entities.LinkedAccountCreation.list().catch(() => [])).length > 0;
+
+         cycleResults.preflight = {
+           identities: safeIds.length > 0,
+           active_identity: !!activeIdentity,
+           accounts: hasAccounts,
+           ready_to_autopilot: safeIds.length > 0 && !!activeIdentity
+         };
+
+         // 2. If no active identity, create one
+         if (!cycleResults.preflight.ready_to_autopilot) {
+           let newIdentity = activeIdentity;
+           if (!newIdentity && safeIds.length > 0) {
+             newIdentity = await base44.asServiceRole.entities.AIIdentity.update(safeIds[0].id, { is_active: true }).catch(() => safeIds[0]);
+           } else if (!newIdentity) {
+             newIdentity = await base44.asServiceRole.entities.AIIdentity.create({
+               name: 'Default Autopilot',
+               role_label: 'Freelancer',
+               email: user?.email || 'autopilot@system',
+               is_active: true,
+               skills: ['general', 'problem-solving'],
+               bio: 'Autonomous agent'
+             }).catch(() => null);
+           }
+           cycleResults.identity_ready = newIdentity;
+         } else {
+           cycleResults.identity_ready = activeIdentity;
+         }
 
         // 3. Run opportunity scanning
         const scanRes = await base44.asServiceRole.functions.invoke('scanOpportunities', {

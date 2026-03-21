@@ -1,11 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
-
 /**
  * System Metrics Audit
  * Real-time metrics collection across all departments for Deep Space monitoring
  */
+
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
   try {

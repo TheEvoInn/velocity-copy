@@ -1,8 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { notifyHighValueOpportunity, notifyTaskFailure, notifyAutopilotAction } from '@/services/notificationService';
 
-const WALLET_INCREASE_THRESHOLD = 50;   // notify if a single income tx >= $50
-const OPPORTUNITY_VALUE_THRESHOLD = 100; // notify if completed opp value >= $100
+const WALLET_INCREASE_THRESHOLD = 50;
+const OPPORTUNITY_VALUE_THRESHOLD = 100;
 
 function requestPermission() {
   if ('Notification' in window && Notification.permission === 'default') {
@@ -10,7 +11,7 @@ function requestPermission() {
   }
 }
 
-function sendNotification(title, body, icon = '💰') {
+function sendBrowserNotification(title, body, icon = '💰') {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
     new Notification(title, {
@@ -20,13 +21,14 @@ function sendNotification(title, body, icon = '💰') {
       tag: `profit-engine-${Date.now()}`,
     });
   } catch (e) {
-    // Silently fail if notifications blocked
+    console.error('Failed to send browser notification:', e);
   }
 }
 
 export function useRealtimeNotifications() {
   const seenTxIds = useRef(new Set());
   const seenOppIds = useRef(new Set());
+  const seenTaskIds = useRef(new Set());
   const initialized = useRef(false);
 
   const requestPermissionIfNeeded = useCallback(() => {
@@ -43,13 +45,12 @@ export function useRealtimeNotifications() {
       if (!tx || seenTxIds.current.has(event.id)) return;
       seenTxIds.current.add(event.id);
 
-      // Skip seed/initialization phase (first 3 seconds)
       if (!initialized.current) return;
 
       if (tx.type === 'income') {
         const amount = tx.net_amount ?? tx.amount ?? 0;
         if (amount >= WALLET_INCREASE_THRESHOLD) {
-          sendNotification(
+          sendBrowserNotification(
             '💸 Income Received!',
             `+$${amount.toFixed(2)} added to your wallet${tx.platform ? ` from ${tx.platform}` : ''}${tx.description ? ` — ${tx.description}` : ''}`
           );
@@ -57,20 +58,33 @@ export function useRealtimeNotifications() {
       }
     });
 
-    // --- Opportunity subscription ---
+    // --- Opportunity subscription for high-value detection ---
     const unsubOpp = base44.entities.Opportunity.subscribe((event) => {
-      if (event.type !== 'update') return;
+      if (event.type !== 'update' && event.type !== 'create') return;
       const opp = event.data;
       if (!opp || seenOppIds.current.has(event.id)) return;
 
-      // Only fire once per opp completion
+      if (!initialized.current) return;
+
+      // High-value opportunity detected
+      const value = ((opp.profit_estimate_low ?? 0) + (opp.profit_estimate_high ?? 0)) / 2;
+      if (value >= 300 && opp.status === 'new') {
+        seenOppIds.current.add(event.id);
+        notifyHighValueOpportunity({
+          opportunityId: event.id,
+          title: opp.title,
+          platform: opp.platform,
+          estimatedValue: Math.round(value),
+          category: opp.category,
+          timeUntilDeadline: opp.deadline ? new Date(opp.deadline).toLocaleDateString() : null,
+        });
+      }
+
+      // Completed opportunity
       if (opp.status === 'completed') {
         seenOppIds.current.add(event.id);
-        if (!initialized.current) return;
-
-        const value = ((opp.profit_estimate_low ?? 0) + (opp.profit_estimate_high ?? 0)) / 2;
         if (value >= OPPORTUNITY_VALUE_THRESHOLD || opp.submission_confirmed) {
-          sendNotification(
+          sendBrowserNotification(
             '🎯 Opportunity Completed!',
             `"${opp.title}" finished${value > 0 ? ` — Est. $${value.toFixed(0)} profit` : ''}${opp.platform ? ` via ${opp.platform}` : ''}`
           );
@@ -78,7 +92,28 @@ export function useRealtimeNotifications() {
       }
     });
 
-    // Mark as initialized after short delay to avoid startup noise
+    // --- Task failure subscription ---
+    const unsubTask = base44.entities.TaskExecutionQueue.subscribe((event) => {
+      if (event.type !== 'update') return;
+      const task = event.data;
+      if (!task || seenTaskIds.current.has(event.id)) return;
+
+      if (!initialized.current) return;
+
+      if (task.status === 'failed' || task.status === 'needs_review') {
+        seenTaskIds.current.add(event.id);
+        notifyTaskFailure({
+          taskId: event.id,
+          platform: task.platform,
+          opportunityTitle: task.opportunity_id || 'Unknown',
+          errorType: task.error_type || 'unknown',
+          errorMessage: task.error_message,
+          isRetryable: (task.retry_count || 0) < (task.max_retries || 2),
+        });
+      }
+    });
+
+    // Mark as initialized after delay
     const initTimer = setTimeout(() => {
       initialized.current = true;
     }, 3000);
@@ -86,6 +121,7 @@ export function useRealtimeNotifications() {
     return () => {
       unsubTx();
       unsubOpp();
+      unsubTask();
       clearTimeout(initTimer);
     };
   }, []);

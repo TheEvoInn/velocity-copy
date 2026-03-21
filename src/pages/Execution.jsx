@@ -51,6 +51,7 @@ export default function Execution() {
       last_retry_at: new Date().toISOString(),
     });
     queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
+    queryClient.invalidateQueries({ queryKey: ['taskQueueManager'] });
   };
 
   const handleCancel = async (task) => {
@@ -60,6 +61,7 @@ export default function Execution() {
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
     }
     queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
+    queryClient.invalidateQueries({ queryKey: ['taskQueueManager'] });
   };
 
   const aiEarnedToday = 0;

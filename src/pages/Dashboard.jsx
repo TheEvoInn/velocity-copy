@@ -14,14 +14,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadStats();
+    setLoading(false);
   }, []);
 
   const loadStats = async () => {
     try {
-      const opportunities = await base44.entities.Opportunity?.filter?.({ status: 'new' }, '-created_date', 10) || [];
-      const txns = await base44.entities.CryptoTransaction?.list?.() || [];
-      const identities = await base44.entities.AIIdentity?.list?.() || [];
-      const tasks = await base44.entities.AITask?.filter?.({ status: 'queued' }, '-created_date', 10) || [];
+      const opportunities = await base44.entities.Opportunity?.filter?.({ status: 'new' }, '-created_date', 10).catch(() => []) || [];
+      const txns = await base44.entities.CryptoTransaction?.list?.().catch(() => []) || [];
+      const identities = await base44.entities.AIIdentity?.list?.().catch(() => []) || [];
+      const tasks = await base44.entities.AITask?.filter?.({ status: 'queued' }, '-created_date', 10).catch(() => []) || [];
 
       const totalEarnings = txns.reduce((sum, t) => sum + (t.value_usd || 0), 0);
 
@@ -33,7 +34,6 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error('Failed to load stats:', error);
-    } finally {
       setLoading(false);
     }
   };

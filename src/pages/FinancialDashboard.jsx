@@ -39,7 +39,7 @@ export default function FinancialDashboard() {
     enabled: !!user?.email,
   });
 
-  // Fetch user goals (for balance/earnings info)
+  // Fetch user goals (for balance/earnings info) - real-time refresh every 5s
   const { data: userGoals } = useQuery({
     queryKey: ['userGoals', user?.email],
     queryFn: () => base44.entities.UserGoals.filter(
@@ -48,6 +48,8 @@ export default function FinancialDashboard() {
       1
     ),
     enabled: !!user?.email,
+    refetchInterval: 5000,
+    staleTime: 0
   });
 
   // Fetch AI identities for earnings breakdown

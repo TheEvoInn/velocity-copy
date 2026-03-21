@@ -110,32 +110,32 @@ export default function SessionReplayPlayer({ task, debugUrl, executionLog = [] 
             </div>
 
             {/* Current Step Details */}
-            {executionLog[currentStep] && (
+            {executionLog && executionLog[currentStep] && (
               <div className="bg-slate-800/50 rounded-lg p-3 space-y-2 border border-slate-700">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-xs font-semibold text-white">
-                      {executionLog[currentStep].step}
+                      {executionLog[currentStep].step || 'Unknown step'}
                     </p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      {new Date(executionLog[currentStep].timestamp).toLocaleTimeString()}
+                      {executionLog[currentStep].timestamp ? new Date(executionLog[currentStep].timestamp).toLocaleTimeString() : 'No timestamp'}
                     </p>
                   </div>
                   <span
                     className={`text-xs px-2 py-0.5 rounded shrink-0 ${
-                      executionLog[currentStep].status === 'completed'
+                      executionLog[currentStep]?.status === 'completed'
                         ? 'bg-emerald-500/20 text-emerald-400'
-                        : executionLog[currentStep].status === 'error'
+                        : executionLog[currentStep]?.status === 'error'
                         ? 'bg-red-500/20 text-red-400'
                         : 'bg-blue-500/20 text-blue-400'
                     }`}
                   >
-                    {executionLog[currentStep].status}
+                    {executionLog[currentStep]?.status || 'pending'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  {executionLog[currentStep].details || executionLog[currentStep].detail}
-                </p>
+                   {executionLog[currentStep]?.details || executionLog[currentStep]?.detail || 'No details available'}
+                 </p>
               </div>
             )}
 

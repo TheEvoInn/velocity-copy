@@ -213,26 +213,28 @@ export default function LiveExecutionMonitor() {
           </Card>
 
           {/* Current Step & Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Card className="bg-slate-900 border-slate-800 p-4">
-              <p className="text-[10px] text-slate-500 mb-1">CURRENT STEP</p>
-              <p className="text-xs font-semibold text-white truncate">
-                {liveData.current_step || 'Initializing...'}
-              </p>
-            </Card>
-            <Card className="bg-slate-900 border-slate-800 p-4">
-              <p className="text-[10px] text-slate-500 mb-1">EXECUTION TIME</p>
-              <p className="text-xs font-semibold text-white">
-                {liveData.execution_time_seconds || 0}s
-              </p>
-            </Card>
-            <Card className="bg-slate-900 border-slate-800 p-4">
-              <p className="text-[10px] text-slate-500 mb-1">FIELDS FILLED</p>
-              <p className="text-xs font-semibold text-white">
-                {liveData.fields_filled || 0} / {liveData.total_fields || 0}
-              </p>
-            </Card>
-          </div>
+          {liveData && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Card className="bg-slate-900 border-slate-800 p-4">
+                <p className="text-[10px] text-slate-500 mb-1">CURRENT STEP</p>
+                <p className="text-xs font-semibold text-white truncate">
+                  {typeof liveData.current_step === 'string' ? liveData.current_step : 'Initializing...'}
+                </p>
+              </Card>
+              <Card className="bg-slate-900 border-slate-800 p-4">
+                <p className="text-[10px] text-slate-500 mb-1">EXECUTION TIME</p>
+                <p className="text-xs font-semibold text-white">
+                  {typeof liveData.execution_time_seconds === 'number' ? liveData.execution_time_seconds : 0}s
+                </p>
+              </Card>
+              <Card className="bg-slate-900 border-slate-800 p-4">
+                <p className="text-[10px] text-slate-500 mb-1">FIELDS FILLED</p>
+                <p className="text-xs font-semibold text-white">
+                  {typeof liveData.fields_filled === 'number' ? liveData.fields_filled : 0} / {typeof liveData.total_fields === 'number' ? liveData.total_fields : 0}
+                </p>
+              </Card>
+            </div>
+          )}
 
           {/* Real-time Execution Log */}
           <Card className="bg-slate-900 border-slate-800">
@@ -248,16 +250,16 @@ export default function LiveExecutionMonitor() {
             {expandedLogs && (
               <CardContent className="p-0">
                 <div className="bg-slate-800/30 p-3 max-h-48 overflow-y-auto font-mono text-[10px] text-slate-300 space-y-1 border-t border-slate-800">
-                  {liveData.execution_log && liveData.execution_log.length > 0 ? (
+                  {Array.isArray(liveData.execution_log) && liveData.execution_log.length > 0 ? (
                     liveData.execution_log.slice(-20).map((log, idx) => (
                       <div key={idx} className="flex gap-2">
-                        <span className="text-slate-600">[{log.timestamp}]</span>
+                        <span className="text-slate-600">[{log?.timestamp || 'unknown'}]</span>
                         <span className={
-                          log.status === 'completed' ? 'text-emerald-400' :
-                          log.status === 'error' ? 'text-red-400' :
+                          log?.status === 'completed' ? 'text-emerald-400' :
+                          log?.status === 'error' ? 'text-red-400' :
                           'text-blue-400'
                         }>
-                          {log.step}
+                          {log?.step || 'unknown'}
                         </span>
                       </div>
                     ))
@@ -322,13 +324,13 @@ export default function LiveExecutionMonitor() {
           </Card>
 
           {/* Alerts */}
-          {liveData.alerts && liveData.alerts.length > 0 && (
+          {Array.isArray(liveData?.alerts) && liveData.alerts.length > 0 && (
             <Card className="bg-red-950/30 border-red-500/30 p-3">
               <div className="flex gap-2">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   {liveData.alerts.map((alert, idx) => (
-                    <p key={idx} className="text-xs text-red-300">{alert}</p>
+                    <p key={idx} className="text-xs text-red-300">{typeof alert === 'string' ? alert : String(alert)}</p>
                   ))}
                 </div>
               </div>

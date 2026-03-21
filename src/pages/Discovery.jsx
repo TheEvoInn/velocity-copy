@@ -1,249 +1,154 @@
 /**
- * DEPARTMENT 1: Discovery & Intelligence
- * Finds opportunities, analyzes markets, scans for profit signals.
- * Communicates with: Execution (sends tasks), Finance (estimates value),
- * Control (reads identity requirements), Command Center (shows summary).
+ * DISCOVERY DEPARTMENT
+ * Real-time opportunity scanning, analysis, and categorization
  */
-import React, { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
-import { useDepartmentSync } from '@/hooks/useDepartmentSync';
-import { platformComm, PLATFORM_EVENTS } from '@/services/platformCrossComm';
-import { Telescope, Zap, Target, Clock, TrendingUp, Search, Filter, RefreshCw, Send, BarChart2, Radio } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import React, { useState } from 'react';
+import { useOpportunitiesV2, useUserGoalsV2, useActivityLogsV2 } from '@/lib/velocityHooks';
+import { getDeptStyle } from '@/lib/galaxyTheme';
 import { Link } from 'react-router-dom';
-import OpportunityCard from '@/components/dashboard/OpportunityCard';
-import OpportunityDetail from '@/components/opportunity/OpportunityDetail';
-import RealTimeAlertSystem from '@/components/scanning/RealTimeAlertSystem';
-import OpportunityAnalysisPanel from '@/components/scanning/OpportunityAnalysisPanel';
-import RealJobScanPanel from '@/components/discovery/RealJobScanPanel';
-import GlobalOpportunityDiscovery from '@/components/discovery/GlobalOpportunityDiscovery';
-import WorkflowAutomationControl from '@/components/automation/WorkflowAutomationControl';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Zap, TrendingUp, Scan, ChevronRight } from 'lucide-react';
 
-const STATUS_COLORS = {
-  new: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  reviewing: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  queued: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-  executing: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  completed: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
-  failed: 'bg-red-500/20 text-red-300 border-red-500/30',
-  expired: 'bg-slate-600/20 text-slate-400 border-slate-600/30',
-  dismissed: 'bg-slate-700/20 text-slate-500 border-slate-700/30',
-};
-
-const CATEGORY_FILTERS = ['all', 'freelance', 'arbitrage', 'grant', 'contest', 'giveaway', 'resale', 'service'];
+const style = getDeptStyle('discovery');
 
 export default function Discovery() {
-  const { opportunities, activeOpps, identities, DeptBus, DEPT_EVENTS } = useDepartmentSync();
-  const queryClient = useQueryClient();
-  const [selectedOpp, setSelectedOpp] = useState(null);
-  const [filter, setFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('active');
-  const [scanning, setScanning] = useState(false);
-  const [platformStats, setPlatformStats] = useState(null);
+  const { opportunities, isLoading, refetch } = useOpportunitiesV2({ status: 'new' });
+  const { goals } = useUserGoalsV2();
+  const { logs } = useActivityLogsV2(20);
+  const [isScanning, setIsScanning] = useState(false);
 
-  // Listen to cross-platform events
-  useEffect(() => {
-    const unsub1 = platformComm.subscribe(PLATFORM_EVENTS.OPPORTUNITY_FOUND, () => {
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-    });
-    const unsub2 = platformComm.subscribe(PLATFORM_EVENTS.SCAN_COMPLETED, (data) => {
-      setPlatformStats(data);
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-    });
-    
-    return () => {
-      unsub1();
-      unsub2();
-    };
-  }, [queryClient]);
-
-  const filtered = (Array.isArray(opportunities) ? opportunities : []).filter(o => {
-    if (!o || !o.id) return false;
-    const catOk = filter === 'all' || o?.category === filter;
-    const statOk = statusFilter === 'all' || (statusFilter === 'active' ? ['new', 'queued', 'reviewing', 'executing'].includes(o?.status) : o?.status === statusFilter);
-    return catOk && statOk;
-  });
-
-  const safeOpps = Array.isArray(opportunities) ? opportunities : [];
-  const stats = {
-    total: safeOpps.length,
-    active: Array.isArray(activeOpps) ? activeOpps.length : 0,
-    completed: safeOpps.filter(o => o?.status === 'completed').length,
-    queued: safeOpps.filter(o => o?.status === 'queued').length,
-  };
-
-  const handleSendToExecution = async (opp) => {
-    if (!opp?.id) return;
-    const identity = Array.isArray(identities) ? (identities.find(i => i?.is_active) || identities[0]) : null;
+  const handleScan = async () => {
+    setIsScanning(true);
     try {
-      const task = await base44.entities.TaskExecutionQueue.create({
-        opportunity_id: opp.id,
-        url: opp?.url || '',
-        opportunity_type: opp?.opportunity_type || 'other',
-        platform: opp?.platform || 'unknown',
-        identity_id: identity?.id || '',
-        identity_name: identity?.name || '',
-        status: 'queued',
-        priority: typeof opp?.overall_score === 'number' ? opp.overall_score : 50,
-        estimated_value: typeof opp?.profit_estimate_high === 'number' ? opp.profit_estimate_high : 0,
-        queue_timestamp: new Date().toISOString(),
-      });
-      await base44.entities.Opportunity.update(opp.id, { status: 'queued' }).catch(() => {});
-      // Emit cross-platform event
-      await platformComm.notifyQueueing(opp, identity);
-      DeptBus.emit(DEPT_EVENTS.TASK_QUEUED, { opportunity: opp, identity, task_id: task?.id });
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-      queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
-    } catch (err) {
-      console.error('Failed to send to execution:', err.message);
+      await base44.functions.invoke('scanOpportunities', { action: 'scan', max_results: 20 });
+      refetch();
+    } finally {
+      setIsScanning(false);
     }
   };
 
-  const handleDismiss = async (opp) => {
-    await base44.entities.Opportunity.update(opp.id, { status: 'dismissed' });
-    queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-  };
+  const topOpps = opportunities
+    .filter(o => o.overall_score >= 60)
+    .sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0))
+    .slice(0, 10);
+
+  const categories = {};
+  opportunities.forEach(o => {
+    const cat = o.category || 'other';
+    categories[cat] = (categories[cat] || 0) + 1;
+  });
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {selectedOpp && <OpportunityDetail opportunity={selectedOpp} onClose={() => setSelectedOpp(null)} />}
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-            <Telescope className="w-5 h-5 text-amber-400" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-white">Discovery & Intelligence</h1>
-            <p className="text-xs text-slate-500">Market scanning · Opportunity analysis · Task routing</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-           <Button size="sm"
-             onClick={async () => {
-               setScanning(true);
-               try {
-                 await platformComm.emit(PLATFORM_EVENTS.SCAN_STARTED, { source: 'discovery_ui' });
-                 const result = await base44.functions.invoke('unifiedOrchestrator', { action: 'scan_opportunities' });
-                 await platformComm.emit(PLATFORM_EVENTS.SCAN_COMPLETED, { 
-                   total_found: result?.data?.grand_total_saved || 0,
-                   sources: result?.data?.sources || []
-                 });
-                 queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-               } catch (err) {
-                 console.error('Scan failed:', err.message);
-               } finally {
-                 setScanning(false);
-               }
-             }}
-             disabled={scanning}
-             className="bg-amber-600/80 hover:bg-amber-500 text-white text-xs h-8 gap-1.5">
-             <Radio className={`w-3.5 h-3.5 ${scanning ? 'animate-spin' : ''}`} />
-             {scanning ? 'Scanning Markets...' : 'Scan All Markets'}
-           </Button>
-         </div>
-      </div>
-
-      {/* Stats Row with Cross-Platform Data */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        {[
-          { label: 'Total Found', value: stats.total, icon: Target, color: 'text-amber-400' },
-          { label: 'Active Pipeline', value: stats.active, icon: TrendingUp, color: 'text-blue-400' },
-          { label: 'In Queue', value: stats.queued, icon: Clock, color: 'text-purple-400' },
-          { label: 'Completed', value: stats.completed, icon: BarChart2, color: 'text-emerald-400' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Icon className={`w-3.5 h-3.5 ${color}`} />
-              <span className="text-xs text-slate-500">{label}</span>
+    <div className="min-h-screen galaxy-bg p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `rgba(245,158,11,0.1)`, border: `1px solid ${style.color}` }}>
+              <span className="text-2xl">{style.icon}</span>
             </div>
-            <div className={`text-xl font-bold ${color}`}>{value}</div>
-            {platformStats && label === 'Total Found' && (
-              <p className="text-[10px] text-slate-600 mt-1">Last scan: +{platformStats.total_found}</p>
-            )}
+            <div>
+              <h1 className="font-orbitron text-2xl font-bold text-white">DISCOVERY</h1>
+              <p className="text-xs text-slate-400">Scan · Analyze · Classify Opportunities</p>
+            </div>
           </div>
-        ))}
-      </div>
-
-      {/* Real-Time Alerts */}
-      <div className="mb-5">
-        <RealTimeAlertSystem />
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-lg p-1">
-          {['active', 'all', 'completed', 'failed'].map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors capitalize ${
-                statusFilter === s ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}>{s}</button>
-          ))}
+          <Button
+            onClick={handleScan}
+            disabled={isScanning}
+            className="btn-cosmic gap-2"
+          >
+            <Scan className="w-4 h-4" />
+            {isScanning ? 'Scanning...' : 'Scan Now'}
+          </Button>
         </div>
-        <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-lg p-1 flex-wrap">
-          {CATEGORY_FILTERS.map(c => (
-            <button key={c} onClick={() => setFilter(c)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors capitalize ${
-                filter === c ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}>{c}</button>
-          ))}
-        </div>
-      </div>
 
-      {/* Opportunities Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-        {filtered.slice(0, 30).map(opp => (
-          <div key={opp.id} className="relative group">
-            <OpportunityCard opportunity={opp} onClick={() => setSelectedOpp(opp)} />
-            {['new', 'reviewing'].includes(opp.status) && (
-              <div className="absolute bottom-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={(e) => { e.stopPropagation(); handleSendToExecution(opp); }}
-                  className="flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg transition-colors">
-                  <Send className="w-3 h-3" /> Execute
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); handleDismiss(opp); }}
-                  className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded-lg transition-colors">
-                  Dismiss
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-        {filtered.length === 0 && (
-          <div className="col-span-3 bg-slate-900/40 border border-slate-800 rounded-xl p-10 text-center">
-            <Telescope className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-            <p className="text-sm text-slate-500 mb-1">No opportunities match your filters.</p>
-            <Link to="/Chat">
-              <Button size="sm" className="mt-3 bg-amber-600 hover:bg-amber-500 text-white text-xs gap-1.5">
-                <Zap className="w-3.5 h-3.5" /> Ask AI to scan
-              </Button>
-            </Link>
-          </div>
+        {/* Key Metrics */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <Card className="glass-card p-4">
+            <div className="text-xs text-slate-400 mb-1">Total Found</div>
+            <div className="text-2xl font-bold text-amber-400">{opportunities.length}</div>
+          </Card>
+          <Card className="glass-card p-4">
+            <div className="text-xs text-slate-400 mb-1">High Quality (60+)</div>
+            <div className="text-2xl font-bold text-emerald-400">{topOpps.length}</div>
+          </Card>
+          <Card className="glass-card p-4">
+            <div className="text-xs text-slate-400 mb-1">Est. Weekly Value</div>
+            <div className="text-2xl font-bold text-cyan-400">
+              ${topOpps.reduce((s, o) => s + (o.profit_estimate_high || 0), 0) / 7 | 0}
+            </div>
+          </Card>
+        </div>
+
+        {/* Category Breakdown */}
+        {Object.keys(categories).length > 0 && (
+          <Card className="glass-card p-4 mb-6">
+            <h3 className="font-orbitron text-sm font-bold text-white mb-3">Category Distribution</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {Object.entries(categories).map(([cat, count]) => (
+                <div key={cat} className="text-center p-2 bg-slate-800/30 rounded-lg border border-slate-700/50">
+                  <div className="text-xs text-slate-400 capitalize">{cat}</div>
+                  <div className="text-lg font-bold text-amber-400">{count}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
         )}
-      </div>
 
-      {/* Real Job Scan Panel */}
-      <div className="mb-5">
-        <RealJobScanPanel onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-        }} />
-      </div>
+        {/* Top Opportunities */}
+        <Card className="glass-card p-4 mb-6">
+          <h3 className="font-orbitron text-sm font-bold text-white mb-4 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-amber-400" />
+            Top Ranked Opportunities
+          </h3>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {topOpps.length === 0 ? (
+              <div className="text-xs text-slate-500 text-center py-8">No high-quality opportunities yet. Run a scan.</div>
+            ) : (
+              topOpps.map(opp => (
+                <Link key={opp.id} to={`/Opportunities?id=${opp.id}`}>
+                  <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/40 hover:border-amber-500/40 transition cursor-pointer">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm text-white truncate">{opp.title}</div>
+                        <div className="text-xs text-slate-400">{opp.platform || 'Unknown'}</div>
+                      </div>
+                      <div className="ml-3 text-right">
+                        <div className="text-sm font-bold text-emerald-400">${opp.profit_estimate_high || 0}</div>
+                        <div className="text-xs text-slate-500">Score: {opp.overall_score || 0}</div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </Card>
 
-      {/* Global Opportunity Discovery */}
-      <div className="mb-5">
-        <GlobalOpportunityDiscovery />
-      </div>
+        {/* Recent Activity */}
+        <Card className="glass-card p-4">
+          <h3 className="font-orbitron text-sm font-bold text-white mb-3">Recent Activity</h3>
+          <div className="space-y-1 max-h-48 overflow-y-auto text-xs text-slate-400">
+            {logs.slice(0, 10).map(log => (
+              <div key={log.id} className="flex justify-between">
+                <span>{log.message}</span>
+                <span className="text-slate-600">{new Date(log.created_date).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
 
-      {/* Workflow Automation Control */}
-      <div className="mb-5">
-        <WorkflowAutomationControl />
+        {/* Deep Space Link */}
+        <div className="mt-6">
+          <Link to="/VelocitySystemDashboard">
+            <Button variant="outline" className="w-full gap-2 border-slate-700">
+              <span>📡 Deep Space Analytics</span>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </Link>
+        </div>
       </div>
-
-      {/* Deep Analysis Panel */}
-      <OpportunityAnalysisPanel />
     </div>
   );
 }

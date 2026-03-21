@@ -1,167 +1,158 @@
 /**
- * DEPARTMENT 3: Finance & Compliance
- * Handles wallet, transactions, KYC, legal identity, payouts, and financial tracking.
- * Communicates with: Execution (confirms earnings), Discovery (filters by KYC need),
- * Control (validates identity), Command Center (shows balances).
+ * FINANCE DEPARTMENT
+ * Real-time earnings, wallet, transactions, and financial analytics
  */
-import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
-import { useDepartmentSync } from '@/hooks/useDepartmentSync';
-import { Landmark, DollarSign, TrendingUp, TrendingDown, Shield, CreditCard, Plus, ArrowUpRight, ArrowDownLeft, Lock, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import TransactionForm from '@/components/wallet/TransactionForm';
-import ProfitChart from '@/components/dashboard/ProfitChart';
-import FinancialDashboard from '@/components/financial/FinancialDashboard';
-import RiskComplianceDashboard from '@/components/risk/RiskComplianceDashboard';
-import PayoutVerifierPanel from '@/components/wallet/PayoutVerifierPanel';
+import React from 'react';
+import { useTransactionsV2, useUserGoalsV2 } from '@/lib/velocityHooks';
+import { getDeptStyle } from '@/lib/galaxyTheme';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { TrendingUp, Wallet, DollarSign, PieChart } from 'lucide-react';
 
-const TX_TYPE_CONFIG = {
-  income:     { icon: ArrowDownLeft, color: 'text-emerald-400', bg: 'bg-emerald-500/15', sign: '+' },
-  expense:    { icon: ArrowUpRight,  color: 'text-red-400',     bg: 'bg-red-500/15',     sign: '-' },
-  transfer:   { icon: ArrowUpRight,  color: 'text-blue-400',    bg: 'bg-blue-500/15',    sign: '~' },
-  investment: { icon: TrendingUp,    color: 'text-purple-400',  bg: 'bg-purple-500/15',  sign: '↗' },
-};
+const style = getDeptStyle('finance');
 
 export default function Finance() {
-  const { transactions, walletBalance, todayEarned, totalEarned, userGoals, DeptBus, DEPT_EVENTS } = useDepartmentSync();
-  const queryClient = useQueryClient();
-  const [showTxForm, setShowTxForm] = useState(false);
-  const [txFilter, setTxFilter] = useState('all');
+  const { transactions } = useTransactionsV2();
+  const { goals } = useUserGoalsV2();
 
-  const safeTxs = Array.isArray(transactions) ? transactions : [];
-  const filtered = txFilter === 'all' ? safeTxs : safeTxs.filter(t => t && t.type === txFilter);
+  const stats = {
+    wallet: goals.wallet_balance || 0,
+    total: goals.total_earned || 0,
+    today: transactions
+      .filter(t => new Date(t.timestamp || 0).toDateString() === new Date().toDateString())
+      .reduce((s, t) => s + (t.value_usd || 0), 0),
+    week: transactions
+      .filter(t => {
+        const tDate = new Date(t.timestamp || 0);
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        return tDate >= weekAgo;
+      })
+      .reduce((s, t) => s + (t.value_usd || 0), 0),
+  };
 
-  const totalExpenses = safeTxs.filter(t => t && t.type === 'expense').reduce((s, t) => s + (typeof t?.amount === 'number' ? t.amount : 0), 0);
-  const pendingPayouts = safeTxs.filter(t => t && t.payout_status === 'pending').reduce((s, t) => s + (typeof t?.net_amount === 'number' ? t.net_amount : (typeof t?.amount === 'number' ? t.amount : 0)), 0);
-  const platformFees = safeTxs.reduce((s, t) => s + (t && typeof t?.platform_fee === 'number' ? t.platform_fee : 0), 0);
+  const bySource = {};
+  transactions.slice(0, 50).forEach(t => {
+    const source = t.source || 'other';
+    bySource[source] = (bySource[source] || 0) + (t.value_usd || 0);
+  });
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {showTxForm && (
-        <TransactionForm
-          onClose={() => {
-            setShowTxForm(false);
-            queryClient.invalidateQueries({ queryKey: ['transactions'] });
-            DeptBus.emit(DEPT_EVENTS.TRANSACTION_RECORDED, { source: 'manual' });
-          }}
-          currentBalance={typeof userGoals?.wallet_balance === 'number' ? userGoals.wallet_balance : 0}
-        />
-      )}
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-            <Landmark className="w-5 h-5 text-emerald-400" />
+    <div className="min-h-screen galaxy-bg p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `rgba(16,185,129,0.1)`, border: `1px solid ${style.color}` }}>
+              <span className="text-2xl">{style.icon}</span>
+            </div>
+            <div>
+              <h1 className="font-orbitron text-2xl font-bold text-white">FINANCE</h1>
+              <p className="text-xs text-slate-400">Earnings · Wallet · Transactions · Analytics</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-white">Finance & Compliance</h1>
-            <p className="text-xs text-slate-500">Wallet · Transactions · KYC · Payouts</p>
-          </div>
+          <Link to="/WalletPage">
+            <Button className="btn-cosmic gap-2">
+              <Wallet className="w-4 h-4" />
+              Wallet
+            </Button>
+          </Link>
         </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={() => setShowTxForm(true)}
-            className="bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs h-8 gap-1.5">
-            <Plus className="w-3.5 h-3.5" /> Log Transaction
-          </Button>
-          <Link to="/KYCManagement">
-            <Button size="sm" variant="outline"
-              className="border-slate-700 text-slate-300 text-xs h-8 gap-1.5 hover:bg-slate-800">
-              <Shield className="w-3.5 h-3.5" /> KYC
+
+        {/* Key Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <Card className="glass-card p-4">
+            <div className="text-xs text-slate-400 mb-1">Wallet Balance</div>
+            <div className="text-2xl font-bold text-emerald-400">${stats.wallet.toFixed(0)}</div>
+          </Card>
+          <Card className="glass-card p-4">
+            <div className="text-xs text-slate-400 mb-1">Earned Today</div>
+            <div className="text-2xl font-bold text-amber-400">${stats.today.toFixed(0)}</div>
+          </Card>
+          <Card className="glass-card p-4">
+            <div className="text-xs text-slate-400 mb-1">Week Total</div>
+            <div className="text-2xl font-bold text-cyan-400">${stats.week.toFixed(0)}</div>
+          </Card>
+          <Card className="glass-card p-4">
+            <div className="text-xs text-slate-400 mb-1">All-Time</div>
+            <div className="text-2xl font-bold text-violet-400">${stats.total.toFixed(0)}</div>
+          </Card>
+        </div>
+
+        {/* Daily Goal Tracker */}
+        {goals.daily_target && (
+          <Card className="glass-card p-4 mb-6">
+            <h3 className="font-orbitron text-sm font-bold text-white mb-3">Daily Goal</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Target: ${goals.daily_target.toFixed(0)}</span>
+                <span className="text-emerald-400 font-bold">{((stats.today / goals.daily_target) * 100).toFixed(0)}%</span>
+              </div>
+              <div className="w-full bg-slate-800/50 rounded-full h-2 overflow-hidden border border-slate-700/50">
+                <div
+                  className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-full transition-all"
+                  style={{ width: `${Math.min((stats.today / goals.daily_target) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Income Sources */}
+        {Object.keys(bySource).length > 0 && (
+          <Card className="glass-card p-4 mb-6">
+            <h3 className="font-orbitron text-sm font-bold text-white mb-3 flex items-center gap-2">
+              <PieChart className="w-4 h-4 text-amber-400" />
+              Income Sources (Last 50 Tx)
+            </h3>
+            <div className="space-y-2">
+              {Object.entries(bySource)
+                .sort((a, b) => b[1] - a[1])
+                .map(([source, amount]) => (
+                  <div key={source} className="flex justify-between text-sm p-2 bg-slate-800/30 rounded">
+                    <span className="text-slate-400 capitalize">{source}</span>
+                    <span className="font-bold text-emerald-400">${amount.toFixed(0)}</span>
+                  </div>
+                ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Recent Transactions */}
+        <Card className="glass-card p-4">
+          <h3 className="font-orbitron text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-cyan-400" />
+            Recent Transactions
+          </h3>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {transactions.length === 0 ? (
+              <div className="text-xs text-slate-500 text-center py-4">No transactions yet</div>
+            ) : (
+              transactions.slice(0, 15).map(tx => (
+                <div key={tx.id} className="flex justify-between items-center p-2 bg-slate-800/30 rounded text-sm">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-slate-400 capitalize">{tx.transaction_type}</div>
+                    <div className="text-xs text-slate-600">{new Date(tx.timestamp).toLocaleDateString()}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-emerald-400">${tx.value_usd?.toFixed(0) || 0}</div>
+                    <div className="text-xs text-slate-500 capitalize">{tx.status}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        {/* Deep Space Link */}
+        <div className="mt-6">
+          <Link to="/FinancialDashboard">
+            <Button variant="outline" className="w-full gap-2 border-slate-700">
+              <span>📊 Financial Analytics</span>
             </Button>
           </Link>
         </div>
       </div>
-
-      {/* Balance Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        {[
-          { label: 'Wallet Balance', value: `$${walletBalance.toFixed(2)}`, icon: CreditCard, color: 'text-emerald-400', large: true },
-          { label: "Today's Earnings", value: `$${todayEarned.toFixed(2)}`, icon: TrendingUp, color: 'text-blue-400' },
-          { label: 'Pending Payouts', value: `$${pendingPayouts.toFixed(2)}`, icon: DollarSign, color: 'text-amber-400' },
-          { label: 'Platform Fees', value: `$${platformFees.toFixed(2)}`, icon: TrendingDown, color: 'text-red-400' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Icon className={`w-3.5 h-3.5 ${color}`} />
-              <span className="text-xs text-slate-500">{label}</span>
-            </div>
-            <div className={`text-xl font-bold ${color}`}>{value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Profit Chart */}
-      <div className="mb-5">
-        <ProfitChart transactions={transactions} />
-      </div>
-
-      {/* Transaction Ledger */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 mb-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-emerald-400" />
-            Transaction Ledger
-          </h2>
-          <div className="flex gap-1 bg-slate-800 rounded-lg p-0.5">
-            {['all', 'income', 'expense', 'transfer', 'investment'].map(t => (
-              <button key={t} onClick={() => setTxFilter(t)}
-                className={`px-2 py-0.5 rounded-md text-xs font-medium transition-colors capitalize ${
-                  txFilter === t ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}>{t}</button>
-            ))}
-          </div>
-        </div>
-        <div className="space-y-1.5 max-h-80 overflow-y-auto">
-           {filtered.slice(0, 50).map(tx => {
-             if (!tx || !tx.id) return null;
-             const cfg = TX_TYPE_CONFIG[tx.type] || TX_TYPE_CONFIG.income;
-             const Icon = cfg.icon;
-             try {
-               return (
-                 <div key={tx.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800/50 transition-colors">
-                   <div className={`w-7 h-7 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
-                     <Icon className={`w-3.5 h-3.5 ${cfg.color}`} />
-                   </div>
-                   <div className="flex-1 min-w-0">
-                     <p className="text-xs text-white font-medium truncate">{tx.description || tx.platform || tx.type}</p>
-                     <p className="text-xs text-slate-500">{tx.platform || 'unknown'} · {tx.created_date ? new Date(tx.created_date).toLocaleDateString() : 'N/A'}</p>
-                   </div>
-                   <div className="text-right">
-                     <p className={`text-sm font-semibold ${cfg.color}`}>
-                       {cfg.sign}${(typeof tx?.net_amount === 'number' ? tx.net_amount : (typeof tx?.amount === 'number' ? tx.amount : 0)).toFixed(2)}
-                     </p>
-                     {typeof tx?.platform_fee === 'number' && tx.platform_fee > 0 && (
-                       <p className="text-xs text-slate-600">fee: ${tx.platform_fee.toFixed(2)}</p>
-                     )}
-                   </div>
-                 </div>
-               );
-             } catch (e) {
-               console.error('TX render error:', e);
-               return null;
-             }
-           })}
-          {filtered.length === 0 && (
-            <div className="text-center py-8 text-slate-500 text-sm">No transactions yet.</div>
-          )}
-        </div>
-      </div>
-
-      {/* Financial Intelligence */}
-      <div className="mb-5">
-        <FinancialDashboard />
-      </div>
-
-      {/* Payout Verifier — PayPal & Stripe */}
-      <div className="mb-5">
-        <PayoutVerifierPanel />
-      </div>
-
-      {/* Risk & Compliance */}
-      <RiskComplianceDashboard />
     </div>
   );
 }

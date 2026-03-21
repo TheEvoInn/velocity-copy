@@ -212,21 +212,28 @@ export default function TemplatesLibrary() {
       if (store) {
         await base44.entities.UserDataStore.update(store.id, updates);
       } else {
-        await base44.entities.UserDataStore.create({ user_email: me.email, ...updates });
+        const storeData = await base44.entities.UserDataStore.create({ user_email: me.email, ...updates });
       }
 
       // Apply goals config if provided
       if (template.goals_config && userGoals.id) {
         await base44.entities.UserGoals.update(userGoals.id, template.goals_config);
       }
+
+      return template;
     },
-    onSuccess: (_, template) => {
+    onSuccess: (template) => {
       toast.success(`✓ "${template.name}" applied! Autopilot configured.`);
-      refetchStore();
-      qc.invalidateQueries({ queryKey: ['userDataStore_templates', 'userGoals', 'platformState'] });
+      qc.invalidateQueries({ queryKey: ['userDataStore_templates'] });
+      qc.invalidateQueries({ queryKey: ['userGoals'] });
+      qc.invalidateQueries({ queryKey: ['platformState'] });
       setApplyingId(null);
     },
-    onError: e => { toast.error(e.message); setApplyingId(null); },
+    onError: (error) => {
+      console.error('Apply template error:', error);
+      toast.error(`Failed to apply template: ${error.message || 'Unknown error'}`);
+      setApplyingId(null);
+    },
   });
 
   const handleApply = async (template) => {

@@ -209,7 +209,7 @@ export default function StarshipBridgeScene() {
   return (
     <div className="relative w-full h-screen">
       <canvas ref={canvasRef} className="w-full h-full" />
-      <BridgeHUDOverlay 
+      <EnhancedBridgeHUD 
         alerts={alerts}
         focusedStation={focusedStation}
         particleCount={particleCount}

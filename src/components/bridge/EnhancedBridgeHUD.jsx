@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 
-export default function EnhancedBridgeHUD({ alerts, focusedStation, particleCount }) {
+export default function EnhancedBridgeHUD({ alerts, focusedStation, particleCount, performanceStats = {} }) {
   const [time, setTime] = useState(new Date());
   
   useEffect(() => {
@@ -151,15 +151,21 @@ export default function EnhancedBridgeHUD({ alerts, focusedStation, particleCoun
           <div className="space-y-1 text-muted-foreground">
             <div className="flex justify-between">
               <span>FRAME RATE:</span>
-              <span className="text-green-400">60 FPS</span>
+              <span className={performanceStats.fps >= 55 ? 'text-green-400' : 'text-yellow-400'}>
+                {performanceStats.fps || 60} FPS
+              </span>
             </div>
             <div className="flex justify-between">
               <span>MEMORY:</span>
-              <span className="text-green-400">124 MB</span>
+              <span className={performanceStats.memoryUsage > 500 ? 'text-yellow-400' : 'text-green-400'}>
+                {performanceStats.memoryUsage || 124} MB
+              </span>
             </div>
             <div className="flex justify-between">
-              <span>RENDER TIME:</span>
-              <span className="text-green-400">16.67ms</span>
+              <span>FRAME TIME:</span>
+              <span className={performanceStats.avgFrameTime > 18 ? 'text-yellow-400' : 'text-green-400'}>
+                {performanceStats.avgFrameTime?.toFixed(2) || '16.67'}ms
+              </span>
             </div>
             <div className="flex justify-between">
               <span>CAMERA MODE:</span>

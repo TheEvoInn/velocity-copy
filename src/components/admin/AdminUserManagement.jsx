@@ -29,7 +29,7 @@ function Badge({ status, text }) {
   );
 }
 
-function UserRow({ user, identities, goals, connections, kycs }) {
+function UserRow({ user, identities, goals, connections, kycs, onAudit }) {
   const [expanded, setExpanded] = useState(false);
 
   const userIdentities  = identities.filter(i => i.created_by === user.email);
@@ -60,6 +60,12 @@ function UserRow({ user, identities, goals, connections, kycs }) {
             <span className="px-2 py-0.5 rounded text-[10px] bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">Autopilot ON</span>
           )}
         </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onAudit(user.email); }}
+          className="text-slate-500 hover:text-cyan-400 transition-colors px-2"
+          title="Audit & repair user data connections">
+          <Wrench className="w-3.5 h-3.5" />
+        </button>
         <div className="text-xs text-slate-500 shrink-0">
           {user.role === 'admin' ? <Shield className="w-3.5 h-3.5 text-red-400" /> : null}
         </div>
@@ -110,6 +116,21 @@ function UserRow({ user, identities, goals, connections, kycs }) {
 
 export default function AdminUserManagement() {
   const [search, setSearch] = useState('');
+  const [auditUser, setAuditUser] = useState(null);
+  const [auditResult, setAuditResult] = useState(null);
+  const qc = useQueryClient();
+
+  const auditMutation = useMutation({
+    mutationFn: async (user_email) => {
+      const res = await base44.functions.invoke('userDataConnectionAudit', { user_email });
+      return res.data?.audit;
+    },
+    onSuccess: (result) => {
+      setAuditResult(result);
+      toast.success(`Audit complete: ${result.repairs_made} issues repaired`);
+    },
+    onError: (err) => toast.error(err.message)
+  });
 
   const { data: users = [], isLoading: loadingUsers, refetch } = useQuery({
     queryKey: ['admin_all_users'],
@@ -166,6 +187,47 @@ export default function AdminUserManagement() {
         </p>
       </div>
 
+      {/* Audit Modal */}
+      {auditUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-2xl w-full max-h-96 overflow-auto p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-orbitron text-lg font-bold text-white">Data Connection Audit</h3>
+              <button onClick={() => { setAuditUser(null); setAuditResult(null); }} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            {auditResult ? (
+              <div className="space-y-3 text-sm">
+                <div className={`p-3 rounded-lg ${auditResult.status === 'fully_connected' ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-amber-500/10 border border-amber-500/30'}`}>
+                  <p className="font-semibold">{auditResult.status.replace(/_/g, ' ').toUpperCase()}</p>
+                  <p className="text-xs text-slate-400 mt-1">Issues: {auditResult.issues_found} → Repaired: {auditResult.repairs_made}</p>
+                </div>
+
+                {Object.entries(auditResult.connections).map(([key, val]) => (
+                  <div key={key} className="p-3 bg-slate-800/50 rounded border border-slate-700">
+                    <p className="font-mono text-xs font-bold text-violet-400 uppercase">{key.replace(/_/g, ' ')}</p>
+                    {typeof val === 'object' ? (
+                      <pre className="text-xs text-slate-300 mt-1 overflow-auto max-h-32">
+                        {JSON.stringify(val, null, 2)}
+                      </pre>
+                    ) : (
+                      <p className="text-xs text-slate-400 mt-1">{val}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="inline-block mb-3">
+                  <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                </div>
+                <p className="text-slate-400 text-sm">Auditing user data connections...</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
@@ -202,7 +264,11 @@ export default function AdminUserManagement() {
           filtered.map(u => (
             <UserRow key={u.id} user={u}
               identities={identities} goals={goals}
-              connections={connections} kycs={kycs} />
+              connections={connections} kycs={kycs}
+              onAudit={(email) => {
+                setAuditUser(email);
+                auditMutation.mutate(email);
+              }} />
           ))
         )}
       </div>

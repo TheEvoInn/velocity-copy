@@ -25,7 +25,7 @@ const STATUS_COLOR = {
   flagged:      '#ef4444',
 };
 
-function KYCCard({ kyc, onUpdate }) {
+function KYCCard({ kyc, onUpdate, allIdentities }) {
   const [expanded, setExpanded] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [adminNote, setAdminNote] = useState('');

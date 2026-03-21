@@ -375,6 +375,12 @@ export default function StarshipBridgeScene({
               <div className="flex items-center gap-3">
                 <span className="font-orbitron text-xl font-bold text-cyan-300">VELOCITY BRIDGE</span>
                 <span className="text-xs text-slate-400">OPERATIONAL</span>
+                <button
+                  onClick={onOpenSectorMap}
+                  className="ml-4 px-3 py-1.5 text-xs bg-cyan-500/20 border border-cyan-500/40 rounded-lg text-cyan-300 hover:bg-cyan-500/30 transition-all font-orbitron tracking-widest"
+                >
+                  [MAP] Open Sector Map
+                </button>
               </div>
               <div className="flex items-center gap-4 text-sm">
                 <div className="text-right">

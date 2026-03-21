@@ -41,28 +41,35 @@ Deno.serve(async (req) => {
         issues: []
       };
 
-      // Check identities
-      const identities = await base44.asServiceRole.entities.AIIdentity.list();
-      checks.identities = identities.length > 0;
-      if (!checks.identities) checks.issues.push('No identities created');
+      try {
+        // Check identities
+        const identities = (await base44.asServiceRole.entities.AIIdentity.list().catch(() => [])) || [];
+        const safeIds = Array.isArray(identities) ? identities : [];
+        checks.identities = safeIds.length > 0;
+        if (!checks.identities) checks.issues.push('No identities created');
 
-      // Check active identity
-      const activeIdentity = identities.find(i => i.is_active);
-      checks.active_identity = !!activeIdentity;
-      if (!checks.active_identity) checks.issues.push('No active identity selected');
+        // Check active identity
+        const activeIdentity = safeIds.find(i => i && i.is_active);
+        checks.active_identity = !!activeIdentity;
+        if (!checks.active_identity) checks.issues.push('No active identity selected');
 
-      // Check accounts
-      const accounts = await base44.asServiceRole.entities.LinkedAccountCreation.list();
-      checks.accounts = accounts.length > 0;
-      if (!checks.accounts) checks.issues.push('No accounts linked. Will auto-create on demand.');
+        // Check accounts
+        const accounts = (await base44.asServiceRole.entities.LinkedAccountCreation.list().catch(() => [])) || [];
+        const safeAccounts = Array.isArray(accounts) ? accounts : [];
+        checks.accounts = safeAccounts.length > 0;
+        if (!checks.accounts) checks.issues.push('No accounts linked. Will auto-create on demand.');
 
-      // Check credentials
-      const creds = await base44.asServiceRole.entities.CredentialVault.filter({ is_active: true });
-      checks.credentials = creds.length > 0;
-      if (!checks.credentials) checks.issues.push('No credentials stored. Will generate on account creation.');
+        // Check credentials
+        const creds = (await base44.asServiceRole.entities.CredentialVault.filter({ is_active: true }).catch(() => [])) || [];
+        const safeCreds = Array.isArray(creds) ? creds : [];
+        checks.credentials = safeCreds.length > 0;
+        if (!checks.credentials) checks.issues.push('No credentials stored. Will generate on account creation.');
 
-      // Determine readiness
-      checks.ready_to_autopilot = checks.identities && checks.active_identity;
+        // Determine readiness
+        checks.ready_to_autopilot = checks.identities && checks.active_identity;
+      } catch (e) {
+        checks.issues.push(`Pre-flight check error: ${e.message}`);
+      }
 
       return Response.json({
         success: true,
@@ -75,35 +82,44 @@ Deno.serve(async (req) => {
     if (action === 'ensure_identity') {
       let activeIdentity = null;
 
-      // Try to get active identity
-      const identities = await base44.asServiceRole.entities.AIIdentity.filter({ is_active: true });
-      if (identities.length) {
-        activeIdentity = identities[0];
-      } else {
-        // No active identity, find first or create default
-        const allIdentities = await base44.asServiceRole.entities.AIIdentity.list();
-        if (allIdentities.length) {
-          activeIdentity = await base44.asServiceRole.entities.AIIdentity.update(allIdentities[0].id, { is_active: true });
+      try {
+        // Try to get active identity
+        const identities = (await base44.asServiceRole.entities.AIIdentity.filter({ is_active: true }).catch(() => [])) || [];
+        const safeIds = Array.isArray(identities) ? identities : [];
+        if (safeIds.length > 0 && safeIds[0]) {
+          activeIdentity = safeIds[0];
         } else {
-          // Create default identity
-          activeIdentity = await base44.asServiceRole.entities.AIIdentity.create({
-            name: 'Default Autopilot',
-            role_label: 'Freelancer',
-            email: user.email,
-            is_active: true,
-            skills: ['general', 'problem-solving', 'communication'],
-            bio: 'Autonomous agent optimized for profit generation',
-            tagline: 'Delivering results 24/7',
-            communication_tone: 'professional'
-          });
+          // No active identity, find first or create default
+          const allIdentities = (await base44.asServiceRole.entities.AIIdentity.list().catch(() => [])) || [];
+          const safeAllIds = Array.isArray(allIdentities) ? allIdentities : [];
+          if (safeAllIds.length > 0 && safeAllIds[0]) {
+            activeIdentity = await base44.asServiceRole.entities.AIIdentity.update(safeAllIds[0].id, { is_active: true }).catch(() => safeAllIds[0]);
+          } else {
+            // Create default identity
+            activeIdentity = await base44.asServiceRole.entities.AIIdentity.create({
+              name: 'Default Autopilot',
+              role_label: 'Freelancer',
+              email: user?.email || 'autopilot@system',
+              is_active: true,
+              skills: ['general', 'problem-solving', 'communication'],
+              bio: 'Autonomous agent optimized for profit generation',
+              tagline: 'Delivering results 24/7',
+              communication_tone: 'professional'
+            }).catch(() => null);
 
-          await base44.asServiceRole.entities.ActivityLog.create({
-            action_type: 'system',
-            message: '🤖 Default identity auto-created for Autopilot',
-            severity: 'info',
-            metadata: { identity_id: activeIdentity.id }
-          });
+            if (activeIdentity && activeIdentity.id) {
+              await base44.asServiceRole.entities.ActivityLog.create({
+                action_type: 'system',
+                message: '🤖 Default identity auto-created for Autopilot',
+                severity: 'info',
+                metadata: { identity_id: activeIdentity.id }
+              }).catch(() => {});
+            }
+          }
         }
+      } catch (e) {
+        console.error('Error ensuring identity:', e.message);
+        return Response.json({ error: `Identity setup failed: ${e.message}` }, { status: 500 });
       }
 
       return Response.json({
@@ -115,52 +131,64 @@ Deno.serve(async (req) => {
 
     // ── ensure_account ──────────────────────────────────────────────────────────
     if (action === 'ensure_account') {
-      const { platform, for_identity_id } = await req.json();
+      try {
+        const body = await req.json().catch(() => ({}));
+        const { platform, for_identity_id } = body;
 
-      // Get identity
-      let identityId = for_identity_id;
-      if (!identityId) {
-        const active = await base44.asServiceRole.entities.AIIdentity.filter({ is_active: true });
-        identityId = active[0]?.id;
-      }
+        if (!platform) {
+          return Response.json({ error: 'platform required' }, { status: 400 });
+        }
 
-      if (!identityId) {
-        return Response.json({
-          success: false,
-          error: 'No active identity. Run ensure_identity first.'
-        });
-      }
+        // Get identity
+        let identityId = for_identity_id;
+        if (!identityId) {
+          const active = (await base44.asServiceRole.entities.AIIdentity.filter({ is_active: true }).catch(() => [])) || [];
+          const safeActive = Array.isArray(active) ? active : [];
+          identityId = safeActive.length > 0 && safeActive[0] ? safeActive[0].id : null;
+        }
 
-      // Check if account exists
-      const existing = await base44.asServiceRole.entities.LinkedAccountCreation.filter({
-        platform,
-        identity_id: identityId,
-        account_status: { $ne: 'banned' }
-      });
+        if (!identityId) {
+          return Response.json({
+            success: false,
+            error: 'No active identity. Run ensure_identity first.'
+          });
+        }
 
-      if (existing.length && existing[0].onboarding_completed) {
-        return Response.json({
-          success: true,
-          account: existing[0],
-          exists: true
-        });
-      }
+        // Check if account exists
+        const existing = (await base44.asServiceRole.entities.LinkedAccountCreation.filter({
+          platform,
+          identity_id: identityId,
+          account_status: { $ne: 'banned' }
+        }).catch(() => [])) || [];
 
-      // Auto-create account
-      const result = await base44.asServiceRole.functions.invoke('accountCreationEngine', {
-        action: 'check_and_create_account',
-        platform,
-        identity_id: identityId,
-        on_demand: true
-      });
+        const safeExisting = Array.isArray(existing) ? existing : [];
+        if (safeExisting.length > 0 && safeExisting[0] && safeExisting[0].onboarding_completed) {
+          return Response.json({
+            success: true,
+            account: safeExisting[0],
+            exists: true
+          });
+        }
+
+        // Auto-create account
+        const result = await base44.asServiceRole.functions.invoke('accountCreationEngine', {
+          action: 'check_and_create_account',
+          platform,
+          identity_id: identityId,
+          on_demand: true
+        }).catch(e => ({ data: { success: false, error: e.message } }));
 
       return Response.json({
-        success: result.data?.success,
-        account: result.data?.account,
-        created: result.data?.created,
-        message: result.data?.message
+        success: result?.data?.success || false,
+        account: result?.data?.account || null,
+        created: result?.data?.created || false,
+        message: result?.data?.message || 'Account creation attempt completed'
       });
-    }
+      } catch (e) {
+      console.error('Error ensuring account:', e.message);
+      return Response.json({ error: `Account setup failed: ${e.message}` }, { status: 500 });
+      }
+      }
 
     // ── full_autopilot_cycle ────────────────────────────────────────────────────
     if (action === 'full_autopilot_cycle') {
@@ -198,30 +226,39 @@ Deno.serve(async (req) => {
         cycleResults.opportunities_found = scanRes.data?.opportunities?.length || 0;
 
         // 4. Gemini-score new opportunities
-        const opportunities = scanRes.data?.opportunities || [];
+        const opportunities = Array.isArray(scanRes.data?.opportunities) ? scanRes.data.opportunities : [];
         for (const opp of opportunities.slice(0, 5)) {
-          if (!opp.overall_score && opp.id) {
-            const scores = await geminiScore(opp.title, opp.category, opp.platform, opp.capital_required);
-            if (scores) {
-              await base44.asServiceRole.entities.Opportunity.update(opp.id, {
-                velocity_score: scores.velocity_score,
-                risk_score: scores.risk_score,
-                overall_score: scores.overall_score,
-              }).catch(() => {});
+          if (opp && !opp.overall_score && opp.id) {
+            try {
+              const scores = await geminiScore(opp.title || '', opp.category || '', opp.platform || '', typeof opp.capital_required === 'number' ? opp.capital_required : 0);
+              if (scores && typeof scores.overall_score === 'number') {
+                await base44.asServiceRole.entities.Opportunity.update(opp.id, {
+                  velocity_score: typeof scores.velocity_score === 'number' ? scores.velocity_score : 50,
+                  risk_score: typeof scores.risk_score === 'number' ? scores.risk_score : 50,
+                  overall_score: scores.overall_score,
+                }).catch(e => console.error(`Failed to score opp ${opp.id}:`, e.message));
+              }
+            } catch (e) {
+              console.error(`Gemini scoring error for ${opp?.id}:`, e.message);
             }
           }
         }
 
         // 4b. Ensure accounts for discovered opportunities
-        const platformsNeeded = [...new Set(opportunities.map(o => o.platform || 'upwork'))];
+        const platformsNeeded = [...new Set(opportunities.map(o => o && o.platform ? o.platform : 'upwork').filter(Boolean))];
 
         for (const platform of platformsNeeded) {
-          const accountRes = await base44.asServiceRole.functions.invoke('autopilotOrchestrator', {
-            action: 'ensure_account',
-            platform
-          });
-          if (accountRes.data?.success) {
-            cycleResults.accounts_ensured++;
+          if (!platform) continue;
+          try {
+            const accountRes = await base44.asServiceRole.functions.invoke('autopilotOrchestrator', {
+              action: 'ensure_account',
+              platform
+            }).catch(e => ({ data: { success: false, error: e.message } }));
+            if (accountRes?.data?.success) {
+              cycleResults.accounts_ensured++;
+            }
+          } catch (e) {
+            console.error(`Error ensuring account for ${platform}:`, e.message);
           }
         }
 

@@ -130,58 +130,62 @@ async function checkPlatformConflicts(base44, payload) {
  }
 
 async function recalculatePriorities(base44, payload) {
-   const { force_recalc } = payload || {};
-   try {
-     // Fetch all queued tasks
-     const queue = await base44.entities.TaskExecutionQueue.filter({
-       status: 'queued'
-     }, '', 100);
+    const { force_recalc } = payload || {};
+    try {
+      // Fetch all queued tasks
+      const queue = (await base44.entities.TaskExecutionQueue.filter({
+        status: 'queued'
+      }, '', 100).catch(() => [])) || [];
 
-     const opportunities = await base44.entities.Opportunity.list('', 100);
-     const safeTasks = Array.isArray(queue) ? queue : [];
-     const safeOpps = Array.isArray(opportunities) ? opportunities : [];
-     const oppMap = {};
-     safeOpps.forEach(o => { if (o && o.id) oppMap[o.id] = o; });
+      const opportunities = (await base44.entities.Opportunity.list('', 100).catch(() => [])) || [];
+      const safeTasks = Array.isArray(queue) ? queue : [];
+      const safeOpps = Array.isArray(opportunities) ? opportunities : [];
+      const oppMap = {};
+      safeOpps.forEach(o => { if (o && o.id) oppMap[o.id] = o; });
 
-     let updated = 0;
-     for (const task of safeTasks) {
-       if (!task || !task.id) continue;
-       const opp = oppMap[task.opportunity_id];
-       if (!opp || !opp.deadline) continue;
+      let updated = 0;
+      for (const task of safeTasks) {
+        if (!task || !task.id) continue;
+        try {
+          const opp = oppMap[task.opportunity_id];
+          if (!opp || !opp.deadline) continue;
 
-       // Recalculate based on:
-       // 1. Deadline urgency (high if < 24 hours)
-       // 2. Estimated value
-       // 3. Historical success rate
-       const now = new Date();
-       const deadline = new Date(opp.deadline);
-       const hoursUntilDeadline = (deadline - now) / (1000 * 60 * 60);
+          // Recalculate based on deadline urgency, value, success rate
+          const now = new Date();
+          let deadline;
+          try { deadline = new Date(opp.deadline); } catch { continue; }
+          if (isNaN(deadline.getTime())) continue;
 
-       let newPriority = typeof opp.overall_score === 'number' ? opp.overall_score : 50;
+          const hoursUntilDeadline = (deadline - now) / (1000 * 60 * 60);
 
-    // Boost urgency if deadline approaching
-    if (hoursUntilDeadline < 24 && hoursUntilDeadline > 0) {
-      newPriority = Math.min(100, newPriority + 25);
-    } else if (hoursUntilDeadline < 6) {
-      newPriority = 100; // Critical
-    }
+          let newPriority = typeof opp.overall_score === 'number' ? opp.overall_score : 50;
 
-    // Boost if high value
-    if (typeof opp.profit_estimate_high === 'number' && opp.profit_estimate_high > 1000) {
-      newPriority = Math.min(100, newPriority + 10);
-    }
+          // Boost urgency if deadline approaching
+          if (typeof hoursUntilDeadline === 'number' && hoursUntilDeadline < 24 && hoursUntilDeadline > 0) {
+            newPriority = Math.min(100, newPriority + 25);
+          } else if (typeof hoursUntilDeadline === 'number' && hoursUntilDeadline < 6) {
+            newPriority = 100; // Critical
+          }
 
-    // Apply historical success rate
-    const successRate = typeof task.success_rate_for_platform === 'number' ? task.success_rate_for_platform : 0.5;
-    newPriority = Math.round(newPriority * (0.5 + successRate * 0.5));
+          // Boost if high value
+          if (typeof opp.profit_estimate_high === 'number' && opp.profit_estimate_high > 1000) {
+            newPriority = Math.min(100, newPriority + 10);
+          }
 
-    if (newPriority !== task.priority) {
-      await base44.entities.TaskExecutionQueue.update(task.id, {
-        priority: newPriority
-      });
-      updated++;
-    }
-    }
+          // Apply historical success rate
+          const successRate = typeof task.success_rate_for_platform === 'number' ? task.success_rate_for_platform : 0.5;
+          newPriority = Math.round(newPriority * (0.5 + successRate * 0.5));
+
+          if (typeof newPriority === 'number' && newPriority !== task.priority) {
+            await base44.entities.TaskExecutionQueue.update(task.id, {
+              priority: newPriority
+            }).catch(e => console.error(`Failed to update task ${task.id}:`, e.message));
+            updated++;
+          }
+        } catch (e) {
+          console.error(`Error recalculating priority for task ${task?.id}:`, e.message);
+        }
+      }
 
     return Response.json({
     success: true,

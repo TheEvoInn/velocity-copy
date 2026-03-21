@@ -62,8 +62,10 @@ export default function TaskQueueMonitor() {
     setSelectedPlatform({ platform, result });
   };
 
-  const conflictsCount = queueStatus.platform_conflicts?.length || 0;
-  const highPriorityCount = (queueStatus.queue || []).filter(t => t.priority > 75).length;
+  const safePlatformConflicts = Array.isArray(queueStatus?.platform_conflicts) ? queueStatus.platform_conflicts : [];
+  const safeQueue = Array.isArray(queueStatus?.queue) ? queueStatus.queue : [];
+  const conflictsCount = safePlatformConflicts.length;
+  const highPriorityCount = safeQueue.filter(t => t && typeof t?.priority === 'number' && t.priority > 75).length;
 
   return (
     <div className="space-y-4">
@@ -117,10 +119,10 @@ export default function TaskQueueMonitor() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-red-300 space-y-2">
-            {queueStatus.platform_conflicts?.map((conflict, i) => (
-              <div key={i} className="flex items-center justify-between p-2 bg-slate-900/50 rounded">
+            {safePlatformConflicts.map((conflict, i) => (
+              conflict && <div key={i} className="flex items-center justify-between p-2 bg-slate-900/50 rounded">
                 <div>
-                  <strong>{conflict.platform}</strong>: {conflict.count} overlapping tasks
+                  <strong>{conflict?.platform || 'unknown'}</strong>: {typeof conflict?.count === 'number' ? conflict.count : 0} overlapping tasks
                 </div>
                 <Button
                   size="sm"
@@ -157,17 +159,17 @@ export default function TaskQueueMonitor() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-xs space-y-2">
-          {queueStatus.by_platform?.length ? (
+          {Array.isArray(queueStatus?.by_platform) && queueStatus.by_platform.length ? (
             queueStatus.by_platform.map((p, i) => (
-              <div key={i} className="flex items-center justify-between p-2 bg-slate-800/50 rounded">
+              p && <div key={i} className="flex items-center justify-between p-2 bg-slate-800/50 rounded">
                 <div>
-                  <strong className="text-white">{p.platform}</strong>
+                  <strong className="text-white">{p?.platform || 'unknown'}</strong>
                   <div className="text-slate-500 mt-1">
-                    Queued: {p.queued} | Processing: {p.processing}
+                    Queued: {typeof p?.queued === 'number' ? p.queued : 0} | Processing: {typeof p?.processing === 'number' ? p.processing : 0}
                   </div>
                 </div>
                 <div className="text-right">
-                  {p.processing > 0 ? (
+                  {typeof p?.processing === 'number' && p.processing > 0 ? (
                     <Badge className="bg-red-900/30 text-red-300 text-[10px]">BUSY</Badge>
                   ) : (
                     <Badge className="bg-emerald-900/30 text-emerald-300 text-[10px]">READY</Badge>
@@ -211,7 +213,7 @@ export default function TaskQueueMonitor() {
       </Card>
 
       {/* Top Tasks in Queue */}
-      {queueStatus.queue?.length > 0 && (
+      {safeQueue.length > 0 && (
         <Card className="bg-slate-900/80 border-slate-800">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -220,23 +222,23 @@ export default function TaskQueueMonitor() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs space-y-2">
-            {queueStatus.queue.slice(0, 5).map((task, i) => (
-              <div key={task.id} className="flex items-center justify-between p-2 bg-slate-800/50 rounded">
+            {safeQueue.slice(0, 5).map((task, i) => (
+              task && task.id && <div key={task.id} className="flex items-center justify-between p-2 bg-slate-800/50 rounded">
                 <div>
-                  <div className="font-mono text-slate-300">{task.platform}</div>
+                  <div className="font-mono text-slate-300">{task?.platform || 'unknown'}</div>
                   <div className="text-slate-500 text-[9px] mt-0.5">
-                    {task.opportunity_type} • Est: ${task.estimated_value?.toFixed(0) || 0}
+                    {task?.opportunity_type || 'task'} • Est: ${typeof task?.estimated_value === 'number' ? task.estimated_value.toFixed(0) : 0}
                   </div>
                 </div>
                 <div className="text-right">
                   <Badge 
                     className={`text-[10px] ${
-                      task.priority > 75 ? 'bg-red-900/30 text-red-300' :
-                      task.priority > 50 ? 'bg-amber-900/30 text-amber-300' :
+                      typeof task?.priority === 'number' && task.priority > 75 ? 'bg-red-900/30 text-red-300' :
+                      typeof task?.priority === 'number' && task.priority > 50 ? 'bg-amber-900/30 text-amber-300' :
                       'bg-blue-900/30 text-blue-300'
                     }`}
                   >
-                    {task.priority}
+                    {typeof task?.priority === 'number' ? task.priority : 50}
                   </Badge>
                 </div>
               </div>
@@ -257,12 +259,12 @@ export default function TaskQueueMonitor() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs space-y-2">
-            {selectedPlatform.result.is_conflict ? (
+            {selectedPlatform?.result?.is_conflict ? (
               <div className="p-3 bg-red-900/20 border border-red-800/50 rounded text-red-300">
-                <strong>⚠️ {selectedPlatform.result.executing_count} task(s) executing simultaneously!</strong>
-                {selectedPlatform.result.executing_tasks.map((t, i) => (
-                  <div key={i} className="text-[10px] mt-1 font-mono text-slate-300">
-                    Task {t.id.slice(0, 8)}... ({t.status}) started at {new Date(t.started_at).toLocaleTimeString()}
+                <strong>⚠️ {typeof selectedPlatform.result?.executing_count === 'number' ? selectedPlatform.result.executing_count : 0} task(s) executing simultaneously!</strong>
+                {Array.isArray(selectedPlatform.result?.executing_tasks) && selectedPlatform.result.executing_tasks.map((t, i) => (
+                  t && <div key={i} className="text-[10px] mt-1 font-mono text-slate-300">
+                    Task {t?.id ? t.id.slice(0, 8) : 'unknown'}... ({t?.status || 'unknown'}) started at {t?.started_at ? new Date(t.started_at).toLocaleTimeString() : 'N/A'}
                   </div>
                 ))}
               </div>

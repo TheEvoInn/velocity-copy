@@ -29,29 +29,37 @@ export default function DeepSpaceView({ department, onExit }) {
       }
     };
 
-    // Real-time API metrics - fetch from ActivityLog
+    // Real-time API metrics - fetch from ActivityLog with dept filter
      const fetchMetrics = async () => {
        try {
          const { base44 } = await import('@/api/base44Client');
          const logs = await base44.entities.ActivityLog.filter(
-           { metadata: { department } },
+           { created_by: user?.email },
            '-created_date',
            100
          ).catch(() => []);
 
          const logsArray = Array.isArray(logs) ? logs : [];
-         const recentLogs = logsArray.filter(l => {
+         const deptLogs = logsArray.filter(l => 
+           l.metadata?.department === department || 
+           l.action_type?.includes(department.toLowerCase())
+         );
+
+         const recentLogs = deptLogs.filter(l => {
            const created = new Date(l.created_date);
            const now = new Date();
            return (now - created) / 1000 < 60;
          });
 
-         const errors = logsArray.filter(l => l.severity === 'error').length;
+         const errors = deptLogs.filter(l => l.severity === 'error').length;
+         const taskLogs = deptLogs.filter(l => l.action_type === 'execution');
+
          setApiMetrics({
            requests_per_min: recentLogs.length,
-           avg_response_ms: Math.round(Math.random() * 100 + 10),
-           error_rate: logsArray.length > 0 ? ((errors / logsArray.length) * 100).toFixed(2) : 0,
-           active_tasks: 0
+           avg_response_ms: deptLogs.length > 0 ? 
+             Math.round(deptLogs.reduce((sum, l) => sum + (l.metadata?.response_time_ms || 0), 0) / deptLogs.length) : 0,
+           error_rate: deptLogs.length > 0 ? ((errors / deptLogs.length) * 100).toFixed(2) : 0,
+           active_tasks: taskLogs.filter(l => l.metadata?.status === 'processing').length
          });
        } catch (e) {
          console.error('Error fetching metrics:', e);

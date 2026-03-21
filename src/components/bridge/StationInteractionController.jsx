@@ -9,6 +9,11 @@ class StationInteractionController {
     this.mouse = new THREE.Vector2();
     this.focusedStation = null;
     this.interactionCallbacks = {};
+    this.povController = null;
+  }
+
+  setPOVController(povController) {
+    this.povController = povController;
   }
 
   registerCallback(event, callback) {
@@ -57,7 +62,13 @@ class StationInteractionController {
   }
 
   focusStation(station) {
-    if (this.focusedStation === station) return;
+    if (this.focusedStation === station) {
+      // Double-click to enter inspection mode
+      if (this.povController) {
+        this.povController.startInspectionMode(station.mesh);
+      }
+      return;
+    }
     
     this.focusedStation = station;
     this.fireCallback('station:focused', {
@@ -72,6 +83,11 @@ class StationInteractionController {
     
     const prevStation = this.focusedStation;
     this.focusedStation = null;
+    
+    if (this.povController && this.povController.inspectionMode) {
+      this.povController.exitInspectionMode();
+    }
+    
     this.fireCallback('station:unfocused', {
       station: prevStation.name
     });

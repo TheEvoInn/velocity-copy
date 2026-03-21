@@ -35,6 +35,25 @@ export default function Execution() {
 
   const todayCompleted = tasks.filter(t => t.status === 'completed' && new Date(t.completion_timestamp || 0).toDateString() === new Date().toDateString()).length;
 
+  // Fetch analysis tasks for Task Reader
+  useEffect(() => {
+    const fetchAnalysisTasks = async () => {
+      try {
+        const aiTasks = await base44.entities.AITask.filter({ status: ['analyzing', 'queued', 'completed', 'failed'] }, '-created_at', 10);
+        setRecentAnalysisTasks(aiTasks || []);
+        setAnalysisStats({
+          analyzing: (aiTasks || []).filter(t => t.status === 'analyzing').length,
+          queued: (aiTasks || []).filter(t => t.status === 'queued').length,
+          completed: (aiTasks || []).filter(t => t.status === 'completed').length,
+          failed: (aiTasks || []).filter(t => t.status === 'failed').length
+        });
+      } catch (error) {
+        console.error('Error fetching analysis tasks:', error);
+      }
+    };
+    fetchAnalysisTasks();
+  }, []);
+
   return (
     <div className="min-h-screen galaxy-bg p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
@@ -56,6 +75,22 @@ export default function Execution() {
             </Button>
           </Link>
         </div>
+
+        {/* Tabs Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+          <TabsList className="glass-card border-slate-700">
+            <TabsTrigger value="queue" className="flex items-center gap-2">
+              <Play className="w-4 h-4" />
+              Task Queue
+            </TabsTrigger>
+            <TabsTrigger value="analysis" className="flex items-center gap-2">
+              <Workflow className="w-4 h-4" />
+              Task Reader
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Task Queue Tab */}
+          <TabsContent value="queue" className="space-y-4">
 
         {/* Status Grid */}
         <div className="grid grid-cols-5 gap-2 mb-6">

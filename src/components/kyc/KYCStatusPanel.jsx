@@ -17,13 +17,13 @@ const STATUS_CONFIG = {
 };
 
 export default function KYCStatusPanel({ onStartKYC }) {
-  const { data: kyc = [], isLoading } = useQuery({
-    queryKey: ['kyc'],
-    queryFn: () => base44.entities.KYCVerification.filter({}, '-created_date', 1),
-    initialData: [],
+  const { data: kycRecord = null, isLoading } = useQuery({
+    queryKey: ['kyc_my'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('kycAdminService', { action: 'get_my_kyc' });
+      return res.data?.record || null;
+    },
   });
-
-  const kycRecord = kyc[0];
 
   if (!kycRecord) {
     return (

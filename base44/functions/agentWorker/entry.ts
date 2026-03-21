@@ -147,7 +147,7 @@ async function executeTask(base44, payload) {
           error_message: 'No active identity found. Please create and activate an identity in Identity Manager.',
           needs_manual_review: true,
           manual_review_reason: 'No identity available',
-          deep_link_for_manual: opp.url,
+          deep_link_for_manual: opp?.url || url,
           execution_log: execLog
         });
       }
@@ -243,9 +243,9 @@ async function executeTask(base44, payload) {
         form_data_submitted: { content_preview: (executionResult.deliverable || '').substring(0, 500) },
         needs_manual_review: executionResult.needs_manual_action || false,
         manual_review_reason: executionResult.needs_manual_action
-          ? `Deliverable ready. Manual submission required at: ${opp.url}`
+          ? `Deliverable ready. Manual submission required at: ${opp?.url || url}`
           : null,
-        deep_link_for_manual: opp.url,
+        deep_link_for_manual: opp?.url || url,
         execution_log: execLog
       });
     }

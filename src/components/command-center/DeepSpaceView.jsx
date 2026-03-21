@@ -9,25 +9,53 @@ import DepartmentSpecificPanel from './deep-space/DepartmentSpecificPanel';
 
 export default function DeepSpaceView({ department, onExit }) {
   const [logs, setLogs] = useState([]);
-  const [apiMetrics, setApiMetrics] = useState({});
+  const [apiMetrics, setApiMetrics] = useState({ requests_per_min: 0, avg_response_ms: 0, error_rate: 0, active_tasks: 0 });
   const [transactions, setTransactions] = useState([]);
   const [selectedTab, setSelectedTab] = useState('logs');
 
   useEffect(() => {
-    // Simulate real-time log stream
-    const logInterval = setInterval(() => {
-      const events = [
-        { type: 'execution', message: `Task execution started in ${department}`, timestamp: new Date() },
-        { type: 'api', message: 'API call to external service', timestamp: new Date() },
-        { type: 'success', message: 'Workflow step completed successfully', timestamp: new Date() },
-        { type: 'error', message: 'Retrying failed operation', timestamp: new Date() }
-      ];
+    // Real-time log stream from ActivityLog entity
+    const fetchLogs = async () => {
+      try {
+        const { base44 } = await import('@/api/base44Client');
+        const recentLogs = await base44.entities.ActivityLog.filter(
+          { metadata: { department } },
+          '-created_date',
+          50
+        ).catch(() => []);
+        setLogs(Array.isArray(recentLogs) ? recentLogs : []);
+      } catch (e) {
+        console.error('Error fetching logs:', e);
+      }
+    };
 
-      const randomEvent = events[Math.floor(Math.random() * events.length)];
-      setLogs(prev => [randomEvent, ...prev.slice(0, 49)]);
-    }, 2000);
+    // Real-time API metrics from system monitoring
+    const fetchMetrics = async () => {
+      try {
+        const { base44 } = await import('@/api/base44Client');
+        const metrics = await base44.asServiceRole.functions.invoke('systemAudit', {
+          action: 'get_department_metrics',
+          department
+        }).catch(() => ({ data: {} }));
+        
+        if (metrics?.data?.metrics) {
+          setApiMetrics(metrics.data.metrics);
+        }
+      } catch (e) {
+        console.error('Error fetching metrics:', e);
+      }
+    };
 
-    return () => clearInterval(logInterval);
+    fetchLogs();
+    fetchMetrics();
+
+    const logInterval = setInterval(fetchLogs, 3000); // Poll every 3s
+    const metricsInterval = setInterval(fetchMetrics, 5000); // Poll every 5s
+
+    return () => {
+      clearInterval(logInterval);
+      clearInterval(metricsInterval);
+    };
   }, [department]);
 
   const DEPT_CONFIG = {

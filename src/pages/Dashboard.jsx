@@ -44,15 +44,23 @@ export default function Dashboard() {
   const { identities = [] } = useAIIdentitiesV2();
   const { workflows = [] } = useWorkflowsV2();
   
-  // Calculate derived metrics
-  const todayEarned = transactions
-    .filter(t => new Date(t.timestamp || 0).toDateString() === new Date().toDateString())
-    .reduce((s, t) => s + (t.value_usd || 0), 0);
-  const totalEarned = userGoals.total_earned || 0;
-  const walletBalance = userGoals.wallet_balance || 0;
-  const activeOpps = opportunities.filter(o => ['new', 'reviewing', 'queued', 'executing'].includes(o.status));
-  const activeTasks = tasks.filter(t => ['queued', 'processing', 'navigating', 'filling', 'submitting'].includes(t.status));
-  const activeIdentity = identities.find(i => i.is_active);
+  // Calculate derived metrics (with null-safety)
+  const todayEarned = Array.isArray(transactions)
+    ? transactions
+        .filter(t => new Date(t?.timestamp || 0).toDateString() === new Date().toDateString())
+        .reduce((s, t) => s + (t?.value_usd || 0), 0)
+    : 0;
+  const totalEarned = userGoals?.total_earned ?? 0;
+  const walletBalance = userGoals?.wallet_balance ?? 0;
+  const activeOpps = Array.isArray(opportunities)
+    ? opportunities.filter(o => ['new', 'reviewing', 'queued', 'executing'].includes(o?.status))
+    : [];
+  const activeTasks = Array.isArray(tasks)
+    ? tasks.filter(t => ['queued', 'processing', 'navigating', 'filling', 'submitting'].includes(t?.status))
+    : [];
+  const activeIdentity = Array.isArray(identities)
+    ? identities.find(i => i?.is_active)
+    : null;
   const queryClient = useQueryClient();
   useRealtimeNotifications();
 
@@ -106,9 +114,15 @@ export default function Dashboard() {
     }
   }, [hasOnboarded, userGoals]);
   const today = new Date().toDateString();
-  const completedToday = opportunities.filter(o => o.status === 'completed' && new Date(o.updated_date || 0).toDateString() === today).length;
-  const failedTasks = tasks.filter(t => t.status === 'failed').length;
-  const reviewTasks = tasks.filter(t => t.status === 'needs_review').length;
+  const completedToday = Array.isArray(opportunities)
+    ? opportunities.filter(o => o?.status === 'completed' && new Date(o?.updated_date || 0).toDateString() === today).length
+    : 0;
+  const failedTasks = Array.isArray(tasks)
+    ? tasks.filter(t => t?.status === 'failed').length
+    : 0;
+  const reviewTasks = Array.isArray(tasks)
+    ? tasks.filter(t => t?.status === 'needs_review').length
+    : 0;
 
   // Per-department stat summaries (real-time synced)
   const deptStats = {

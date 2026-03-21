@@ -10,6 +10,7 @@ import {
   ChevronDown, ChevronUp, RefreshCw, MessageSquare, Eye, EyeOff
 } from 'lucide-react';
 import DocVerificationTracker from '@/components/kyc/DocVerificationTracker';
+import KYCAIAnalysisPanel from '@/components/kyc/KYCAIAnalysisPanel';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';

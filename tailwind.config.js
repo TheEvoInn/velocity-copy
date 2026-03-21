@@ -17,6 +17,7 @@ module.exports = {
       fontFamily: {
         orbitron: ['Orbitron', 'sans-serif'],
         inter: ['Inter', 'sans-serif'],
+        mono: ['Space Mono', 'monospace'],
       },
   		borderRadius: {
   			lg: 'var(--radius)',

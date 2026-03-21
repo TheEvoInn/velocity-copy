@@ -64,8 +64,6 @@ Deno.serve(async (req) => {
 
     // ── GET ALL NOTIFICATIONS WITH FILTERS ──────────────────────────────────
     if (action === 'get_notifications') {
-      const { filter_type, filter_severity, limit = 100 } = await req.json().catch(() => ({}));
-
       let query = {};
       if (filter_type) query.type = filter_type;
       if (filter_severity) query.severity = filter_severity;

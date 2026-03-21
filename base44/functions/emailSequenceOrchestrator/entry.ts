@@ -239,7 +239,7 @@ async function generateSequenceEmails(sequenceType, offerType, productId, produc
       {
         sequence_number: 4,
         subject: `Everything included in {{product_name}}`,
-        preview_text: 'Here's the complete breakdown...',
+        preview_text: 'Here is the complete breakdown...',
         delay_days: 6,
         cta_text: 'See Full Details',
         body: `<h1>What You Get</h1><p>Module 1: Foundations<br/>Module 2: Advanced techniques<br/>Module 3: Scaling to 6-figures<br/>Plus: Lifetime updates & community access</p>`

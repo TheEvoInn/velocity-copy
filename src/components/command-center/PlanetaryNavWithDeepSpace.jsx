@@ -46,6 +46,8 @@ const DEPARTMENTS = [
 ];
 
 export default function PlanetaryNavWithDeepSpace({ stats = {} }) {
+  const navigate = useNavigate();
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {DEPARTMENTS.map((dept) => (
@@ -53,9 +55,16 @@ export default function PlanetaryNavWithDeepSpace({ stats = {} }) {
           key={dept.name}
           className="group"
         >
-          <Link to={dept.path}>
+          <Link 
+            to={dept.path}
+            className="block h-full"
+          >
             <div
-              className="tilt-card relative rounded-2xl p-4 transition-all overflow-hidden h-full cursor-pointer"
+              className="tilt-card relative rounded-2xl p-4 transition-all overflow-hidden h-full cursor-pointer pointer-events-auto"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate(dept.path);
+              }}
               style={{
                 background: `linear-gradient(135deg, ${dept.color}12, ${dept.color}06, rgba(5,7,20,0.8))`,
                 border: `1px solid ${dept.color}25`,

@@ -196,7 +196,7 @@ async function getGlobalHealth(base44, user) {
     const statuses = [health.autopilot.status, health.ned.status, health.vipz.status, health.discovery.status];
     if (statuses.includes('critical')) health.overall = 'critical';
     else if (statuses.includes('warning')) health.overall = 'warning';
-    else if (statuses.includes('healthy')) health.overall = 'healthy';
+    else if (statuses.some(s => s === 'healthy' || s === 'initializing')) health.overall = 'operational';
     else health.overall = 'initializing';
 
   } catch (e) {

@@ -54,7 +54,7 @@ export default function FinancialDashboard() {
     staleTime: 0
   });
 
-  // Fetch AI identities for earnings breakdown
+  // Fetch AI identities for earnings breakdown - real-time every 15s
   const { data: identities = [] } = useQuery({
     queryKey: ['identities', user?.email],
     queryFn: () => base44.entities.AIIdentity.filter(
@@ -63,6 +63,8 @@ export default function FinancialDashboard() {
       100
     ),
     enabled: !!user?.email,
+    refetchInterval: 15000,
+    staleTime: 0
   });
 
   const currentBalance = userGoals?.[0]?.wallet_balance || 0;

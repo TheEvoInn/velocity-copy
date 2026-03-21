@@ -3,9 +3,8 @@
  * System administration, identity management, security, and compliance
  */
 import React from 'react';
-import { base44 } from '@/api/base44Client';
-import { useAIIdentitiesV2, useWorkflowsV2 } from '@/lib/velocityHooks';
 import { getDeptStyle } from '@/lib/galaxyTheme';
+import { useAIIdentities, useWorkflows } from '@/hooks/useQueryHooks';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,11 +14,30 @@ import SubPageNav from '@/components/layout/SubPageNav';
 const style = getDeptStyle('control');
 
 export default function Control() {
-  const { identities } = useAIIdentitiesV2();
-  const { workflows } = useWorkflowsV2();
+  const { data: identities = [], isLoading: idLoading, error: idError } = useAIIdentities();
+  const { data: workflows = [], isLoading: wfLoading, error: wfError } = useWorkflows();
 
   const activeIdentities = identities.filter(i => i.is_active).length;
   const activeWorkflows = workflows.filter(w => w.status === 'active').length;
+  const isLoading = idLoading || wfLoading;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen galaxy-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (idError || wfError) {
+    return (
+      <div className="min-h-screen galaxy-bg flex items-center justify-center">
+        <div className="p-6 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+          Error loading Control panel data. Please try again.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen galaxy-bg">

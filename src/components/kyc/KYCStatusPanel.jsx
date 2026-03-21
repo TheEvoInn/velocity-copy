@@ -51,6 +51,9 @@ export default function KYCStatusPanel({ onStartKYC }) {
       toast.success('Check again request acknowledged. Please review the flagged fields.');
       refetchKYC();
     },
+    onError: (error) => {
+      toast.error(`Failed to acknowledge: ${error.message || 'Unknown error'}`);
+    },
   });
 
   const reapplyMutation = useMutation({
@@ -60,6 +63,9 @@ export default function KYCStatusPanel({ onStartKYC }) {
     onSuccess: () => {
       toast.success('KYC reapplied. Your submission is back in the review queue.');
       refetchKYC();
+    },
+    onError: (error) => {
+      toast.error(`Failed to reapply: ${error.message || 'Unknown error'}`);
     },
   });
 
@@ -170,19 +176,20 @@ export default function KYCStatusPanel({ onStartKYC }) {
         )}
 
         {/* Admin Notifications */}
-        {adminNotifications.length > 0 && (
+        {adminNotifications?.length > 0 && (
           <div className="space-y-2">
             {adminNotifications.slice(0, 2).map(notif => (
               <div key={notif.id} className="bg-amber-950/40 border border-amber-800/50 rounded-lg p-3 flex gap-3">
                 <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-amber-300">{notif.title}</p>
-                  <p className="text-xs text-amber-200 mt-0.5">{notif.message}</p>
+                  <p className="text-xs font-semibold text-amber-300">{notif.title || 'Admin Alert'}</p>
+                  <p className="text-xs text-amber-200 mt-0.5">{notif.message || 'You have received a notification from an administrator.'}</p>
                   {notif.action_type === 'document_upload_required' && (
                     <div className="flex gap-2 mt-2">
                       <Button
                         size="sm"
                         onClick={() => setShowUpdateForm(true)}
+                        disabled={checkAgainMutation.isPending || reapplyMutation.isPending}
                         className="h-7 text-xs bg-amber-600 hover:bg-amber-500 gap-1"
                       >
                         <Edit2 className="w-3 h-3" />
@@ -195,7 +202,7 @@ export default function KYCStatusPanel({ onStartKYC }) {
                         className="h-7 text-xs bg-blue-600 hover:bg-blue-500 gap-1"
                       >
                         <RefreshCw className="w-3 h-3" />
-                        Reapply
+                        {reapplyMutation.isPending ? 'Reapplying...' : 'Reapply'}
                       </Button>
                     </div>
                   )}

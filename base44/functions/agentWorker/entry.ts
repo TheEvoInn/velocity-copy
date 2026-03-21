@@ -113,11 +113,22 @@ async function executeTask(base44, payload) {
       const opps = await base44.asServiceRole.entities.Opportunity.filter({ id: opportunity_id }, null, 1);
       opp = opps?.[0];
     }
-    if (!opp) {
-      log('load_opportunity', 'failed', 'Opportunity not found');
+    if (!opp && !task_id) {
+      log('load_opportunity', 'failed', 'Opportunity not found and no task_id provided');
+      if (task_id) {
+        await base44.asServiceRole.entities.TaskExecutionQueue.update(task_id, {
+          status: 'failed',
+          error_message: 'Opportunity not found',
+          execution_log: execLog
+        }).catch(() => {});
+      }
       return Response.json({ success: false, error: 'Opportunity not found' }, { status: 404 });
     }
-    log('load_opportunity', 'success', `${opp.title} on ${opp.platform || platform}`);
+    if (opp) {
+      log('load_opportunity', 'success', `${opp.title} on ${opp.platform || platform}`);
+    } else if (task_id) {
+      log('load_opportunity', 'skipped', 'No opportunity_id, proceeding with task_id only');
+    }
 
     // Load identity
     let identity = null;

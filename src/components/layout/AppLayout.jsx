@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   Zap, LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal, ShoppingCart, Coins,
-  MessageSquare, ChevronRight, X, Menu, Shield, Settings
+  MessageSquare, ChevronRight, X, Menu, Shield, Settings, Target
 } from 'lucide-react';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
 import NotificationBell from '../notifications/NotificationBell';
@@ -95,6 +95,30 @@ const DEPARTMENTS = [
     activeBorder: 'border-purple-400/60',
     textActive: 'text-purple-300',
     planet: '⚙️',
+  },
+  {
+    path: '/VIPZ',
+    icon: Target,
+    label: 'VIPZ',
+    subtitle: 'Marketing Automation',
+    color: '#ec4899',
+    glow: 'rgba(236,72,153,0.5)',
+    gradient: 'from-pink-500/20 to-rose-600/10',
+    activeBorder: 'border-pink-400/60',
+    textActive: 'text-pink-300',
+    planet: '🎯',
+  },
+  {
+    path: '/NED',
+    icon: Coins,
+    label: 'NED',
+    subtitle: 'Crypto Intelligence',
+    color: '#06b6d4',
+    glow: 'rgba(6,182,212,0.5)',
+    gradient: 'from-cyan-500/20 to-blue-600/10',
+    activeBorder: 'border-cyan-400/60',
+    textActive: 'text-cyan-300',
+    planet: '🤖',
   },
 ];
 

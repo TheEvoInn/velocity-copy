@@ -40,7 +40,7 @@ export default function TaskQueueManager() {
   const [localOrder, setLocalOrder] = useState(null); // override after drag
 
   const { data: rawTasks = [], isLoading, refetch } = useQuery({
-    queryKey: ['taskQueueManager'],
+    queryKey: ['taskQueueManager', 'taskQueue'],
     queryFn: () => base44.entities.TaskExecutionQueue.filter(
       { status: { $in: ['queued', 'processing', 'needs_review', 'paused'] } },
       '-priority',

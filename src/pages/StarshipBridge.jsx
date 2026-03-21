@@ -21,8 +21,8 @@ export default function StarshipBridge() {
   };
 
   return (
-    <div className="w-full h-screen bg-black overflow-hidden flex flex-col">
-      <div className="flex-1">
+    <div className="w-screen h-screen bg-black overflow-hidden relative">
+      <div className="absolute inset-0">
         <StarshipBridgeScene onModuleSelect={handleModuleSelect} />
       </div>
       <CockpitControlPanel />

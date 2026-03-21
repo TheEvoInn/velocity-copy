@@ -12,11 +12,19 @@ export default function SmartRetryPanel() {
 
   const { data: pendingRetries = [] } = useQuery({
     queryKey: ['retryHistory'],
-    queryFn: () => base44.entities.RetryHistory.filter(
-      { status: { $in: ['pending', 'in_progress'] } },
-      '-scheduled_retry_at',
-      20
-    ),
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.RetryHistory.filter(
+          { status: { $in: ['pending', 'in_progress'] } },
+          '-scheduled_retry_at',
+          20
+        );
+        return Array.isArray(result) ? result : [];
+      } catch (err) {
+        console.error('Failed to fetch retry history:', err);
+        return [];
+      }
+    },
     initialData: [],
     refetchInterval: 30000, // Refresh every 30s
   });
@@ -81,11 +89,12 @@ export default function SmartRetryPanel() {
           </div>
         ) : (
           <div className="space-y-2.5">
-            {pendingRetries.map((retry) => {
-              const scheduledTime = new Date(retry.scheduled_retry_at);
-              const now = new Date();
-              const minutesUntil = Math.round((scheduledTime - now) / 60000);
-              const isOverdue = minutesUntil < 0;
+            {Array.isArray(pendingRetries) && pendingRetries.map((retry) => {
+                if (!retry || !retry.scheduled_retry_at) return null;
+                const scheduledTime = new Date(retry.scheduled_retry_at);
+                const now = new Date();
+                const minutesUntil = Math.round((scheduledTime - now) / 60000);
+                const isOverdue = minutesUntil < 0;
 
               return (
                 <div
@@ -97,19 +106,19 @@ export default function SmartRetryPanel() {
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        {strategyIcons[retry.recovery_strategy] && (
+                        {retry?.recovery_strategy && strategyIcons[retry.recovery_strategy] && (
                           <div className="text-slate-400">
                             {strategyIcons[retry.recovery_strategy]}
                           </div>
                         )}
                         <p className="text-xs font-semibold text-white truncate">
-                          {retry.platform}
+                          {retry?.platform || 'Unknown'}
                         </p>
                         <Badge
                           variant="outline"
-                          className={`text-[9px] ${errorTypeColors[retry.error_type] || 'text-slate-400'}`}
+                          className={`text-[9px] ${(retry?.error_type && errorTypeColors[retry.error_type]) || 'text-slate-400'}`}
                         >
-                          {retry.error_type.replace(/_/g, ' ')}
+                          {(retry?.error_type || 'unknown').replace(/_/g, ' ')}
                         </Badge>
                       </div>
                       <p className="text-[10px] text-slate-400 mt-1 truncate">
@@ -117,18 +126,18 @@ export default function SmartRetryPanel() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 ml-2">
-                      <div className="text-right">
-                        <p className="text-[10px] font-semibold text-emerald-400">
-                          {retry.confidence_score}%
-                        </p>
-                        <p className="text-[9px] text-slate-500">confidence</p>
-                      </div>
-                      {retry.status === 'pending' && (
-                        <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                      )}
-                      {retry.status === 'in_progress' && (
-                        <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin" />
-                      )}
+                    <div className="text-right">
+                      <p className="text-[10px] font-semibold text-emerald-400">
+                        {typeof retry?.confidence_score === 'number' ? retry.confidence_score : 0}%
+                      </p>
+                      <p className="text-[9px] text-slate-500">confidence</p>
+                    </div>
+                    {retry?.status === 'pending' && (
+                      <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                    )}
+                    {retry?.status === 'in_progress' && (
+                      <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin" />
+                    )}
                     </div>
                   </div>
 
@@ -148,36 +157,36 @@ export default function SmartRetryPanel() {
                   {/* Expandable Details */}
                   {selectedRetry?.id === retry.id && (
                     <div className="mt-3 pt-3 border-t border-slate-700 space-y-2">
-                      <div>
-                        <p className="text-[9px] text-slate-400 mb-1">Recovery Actions</p>
-                        <div className="flex flex-wrap gap-1">
-                          {(retry.recovery_actions_taken || []).map((action, idx) => (
+                    <div>
+                      <p className="text-[9px] text-slate-400 mb-1">Recovery Actions</p>
+                      <div className="flex flex-wrap gap-1">
+                        {Array.isArray(retry?.recovery_actions_taken) ? retry.recovery_actions_taken.map((action, idx) => (
                             <Badge
                               key={idx}
                               variant="outline"
                               className="text-[8px] bg-slate-700 text-slate-300"
                             >
-                              {action.action.replace(/_/g, ' ')}
+                              {action?.action?.replace(/_/g, ' ') || 'action'}
                             </Badge>
-                          ))}
+                            )) : <span className="text-[8px] text-slate-500">No actions</span>}
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-[9px]">
                         <div>
                           <p className="text-slate-400">Retry Count</p>
                           <p className="text-white font-semibold">
-                            {(retry.retry_count || 0) + 1} / {retry.max_retries}
+                            {(retry?.retry_count || 0) + 1} / {retry?.max_retries || 3}
                           </p>
                         </div>
                         <div>
                           <p className="text-slate-400">Delay</p>
                           <p className="text-white font-semibold">
-                            {Math.round(retry.calculated_delay_seconds / 60)} min
+                            {typeof retry?.calculated_delay_seconds === 'number' ? Math.round(retry.calculated_delay_seconds / 60) : 0} min
                           </p>
                         </div>
                       </div>
                       <p className="text-[8px] text-slate-500 italic">
-                        {retry.delay_reason}
+                        {retry?.delay_reason || 'Retry scheduled'}
                       </p>
 
                       {/* Action Buttons */}

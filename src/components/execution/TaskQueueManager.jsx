@@ -41,19 +41,27 @@ export default function TaskQueueManager() {
 
   const { data: rawTasks = [], isLoading, refetch } = useQuery({
     queryKey: ['taskQueueManager', 'taskQueue'],
-    queryFn: () => base44.entities.TaskExecutionQueue.filter(
-      { status: { $in: ['queued', 'processing', 'needs_review', 'paused'] } },
-      '-priority',
-      200
-    ),
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.TaskExecutionQueue.filter(
+          { status: { $in: ['queued', 'processing', 'needs_review', 'paused'] } },
+          '-priority',
+          200
+        );
+        return Array.isArray(result) ? result : [];
+      } catch (err) {
+        console.error('Failed to fetch task queue:', err);
+        return [];
+      }
+    },
     refetchInterval: 15000,
     onSuccess: () => { if (!localOrder) return; }, // keep local order until manual refresh
   });
 
   // Use localOrder if set (post-drag), otherwise server order
-  const tasks = localOrder || rawTasks;
+  const tasks = Array.isArray(localOrder) ? localOrder : (Array.isArray(rawTasks) ? rawTasks : []);
 
-  const filtered = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
+  const filtered = filter === 'all' ? tasks : (Array.isArray(tasks) ? tasks.filter(t => t?.status === filter) : []);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const updateTask = useMutation({
@@ -82,16 +90,19 @@ export default function TaskQueueManager() {
     if (src === dst) return;
 
     // Reorder locally (all tasks, not just filtered)
-    const reordered = Array.from(tasks);
-    // Map filtered index back to full tasks index
-    const filteredIds = filtered.map(t => t.id);
-    const movedId = filteredIds[src];
-    const targetId = filteredIds[dst];
-    const srcFull = reordered.findIndex(t => t.id === movedId);
-    const dstFull = reordered.findIndex(t => t.id === targetId);
-    const [moved] = reordered.splice(srcFull, 1);
-    reordered.splice(dstFull, 0, moved);
-    setLocalOrder(reordered);
+      if (!Array.isArray(tasks) || tasks.length === 0 || !Array.isArray(filtered) || filtered.length === 0) return;
+      const reordered = Array.from(tasks);
+      // Map filtered index back to full tasks index
+      const filteredIds = filtered.map(t => t?.id).filter(Boolean);
+      const movedId = filteredIds[src];
+      const targetId = filteredIds[dst];
+      if (!movedId || !targetId) return;
+      const srcFull = reordered.findIndex(t => t?.id === movedId);
+      const dstFull = reordered.findIndex(t => t?.id === targetId);
+      if (srcFull === -1 || dstFull === -1) return;
+      const [moved] = reordered.splice(srcFull, 1);
+      reordered.splice(dstFull, 0, moved);
+      setLocalOrder(reordered);
 
     // Assign new priorities (100 = highest)
     const maxP = reordered.length;
@@ -127,7 +138,7 @@ export default function TaskQueueManager() {
   const clearSelect = () => setSelected(new Set());
 
   const counts = FILTERS.reduce((acc, f) => {
-    acc[f] = f === 'all' ? tasks.length : tasks.filter(t => t.status === f).length;
+    acc[f] = f === 'all' ? (Array.isArray(tasks) ? tasks.length : 0) : (Array.isArray(tasks) ? tasks.filter(t => t?.status === f).length : 0);
     return acc;
   }, {});
 
@@ -264,8 +275,8 @@ export default function TaskQueueManager() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium text-white truncate">
-                                  {task.opportunity_type?.toUpperCase()} · {task.platform || 'Unknown'}
-                                </span>
+                                      {(task?.opportunity_type || 'TASK').toUpperCase()} · {task?.platform || 'Unknown'}
+                                    </span>
                                 {task.identity_name && (
                                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400 shrink-0">
                                     {task.identity_name}
@@ -346,10 +357,10 @@ export default function TaskQueueManager() {
                                   <p className="text-white font-medium">{new Date(task.deadline).toLocaleString()}</p>
                                 </div>
                               )}
-                              {task.retry_count > 0 && (
+                              {(task?.retry_count || 0) > 0 && (
                                 <div>
                                   <p className="text-slate-500 uppercase tracking-wide mb-1">Retries</p>
-                                  <p className="text-amber-400 font-medium">{task.retry_count}/{task.max_retries || 2}</p>
+                                  <p className="text-amber-400 font-medium">{task.retry_count || 0}/{task?.max_retries || 2}</p>
                                 </div>
                               )}
                               <div className="col-span-2 md:col-span-4">

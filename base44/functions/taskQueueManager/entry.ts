@@ -49,11 +49,14 @@ Deno.serve(async (req) => {
 });
 
 async function getQueueStatus(base44) {
-  const queue = await base44.entities.TaskExecutionQueue.list('-priority', 100);
-  const byPlatform = {};
-  const byStatus = {};
+   try {
+     const queue = await base44.entities.TaskExecutionQueue.list('-priority', 100);
+     const safeTasks = Array.isArray(queue) ? queue : [];
+     const byPlatform = {};
+     const byStatus = {};
 
-  queue.forEach(task => {
+     safeTasks.forEach(task => {
+       if (!task || !task.id) return;
     // Group by platform
     if (!byPlatform[task.platform]) {
       byPlatform[task.platform] = [];
@@ -70,7 +73,7 @@ async function getQueueStatus(base44) {
   // Check for overlapping executions
   const conflicts = [];
   Object.entries(byPlatform).forEach(([platform, tasks]) => {
-    const executing = tasks.filter(t => t.status === 'processing' || t.status === 'navigating');
+    const executing = (Array.isArray(tasks) ? tasks : []).filter(t => t?.status === 'processing' || t?.status === 'navigating');
     if (executing.length > 1) {
       conflicts.push({
         platform,
@@ -81,66 +84,80 @@ async function getQueueStatus(base44) {
   });
 
   return Response.json({
-    total_queued: queue.filter(t => t.status === 'queued').length,
-    total_processing: queue.filter(t => ['processing', 'navigating', 'understanding', 'filling', 'submitting'].includes(t.status)).length,
-    total_completed: queue.filter(t => t.status === 'completed').length,
-    total_failed: queue.filter(t => t.status === 'failed').length,
+    total_queued: safeTasks.filter(t => t?.status === 'queued').length,
+    total_processing: safeTasks.filter(t => t && ['processing', 'navigating', 'understanding', 'filling', 'submitting'].includes(t.status)).length,
+    total_completed: safeTasks.filter(t => t?.status === 'completed').length,
+    total_failed: safeTasks.filter(t => t?.status === 'failed').length,
     by_platform: Object.keys(byPlatform).map(p => ({
       platform: p,
-      queued: byPlatform[p].filter(t => t.status === 'queued').length,
-      processing: byPlatform[p].filter(t => ['processing', 'navigating', 'understanding', 'filling', 'submitting'].includes(t.status)).length
+      queued: (Array.isArray(byPlatform[p]) ? byPlatform[p] : []).filter(t => t?.status === 'queued').length,
+      processing: (Array.isArray(byPlatform[p]) ? byPlatform[p] : []).filter(t => t && ['processing', 'navigating', 'understanding', 'filling', 'submitting'].includes(t.status)).length
     })),
     platform_conflicts: conflicts,
-    queue: queue.slice(0, 20)
+    queue: safeTasks.slice(0, 20)
   });
+  } catch (err) {
+  console.error('Error getting queue status:', err);
+  return Response.json({ error: err.message }, { status: 500 });
+  }
 }
 
 async function checkPlatformConflicts(base44, payload) {
-  const { platform } = payload;
-  const queue = await base44.entities.TaskExecutionQueue.filter({
-    platform: platform,
-    status: { $in: ['processing', 'navigating', 'understanding', 'filling', 'submitting'] }
-  });
+   const { platform } = payload;
+   if (!platform) return Response.json({ error: 'platform required' }, { status: 400 });
+   try {
+     const queue = await base44.entities.TaskExecutionQueue.filter({
+       platform: platform,
+       status: { $in: ['processing', 'navigating', 'understanding', 'filling', 'submitting'] }
+     });
 
-  return Response.json({
-    platform,
-    is_conflict: queue.length > 1,
-    executing_count: queue.length,
-    executing_tasks: queue.map(t => ({
-      id: t.id,
-      opportunity_id: t.opportunity_id,
-      status: t.status,
-      started_at: t.start_timestamp
-    }))
-  });
-}
+     const safeTasks = Array.isArray(queue) ? queue : [];
+     return Response.json({
+       platform,
+       is_conflict: safeTasks.length > 1,
+       executing_count: safeTasks.length,
+       executing_tasks: safeTasks.map(t => ({
+         id: t?.id,
+         opportunity_id: t?.opportunity_id,
+         status: t?.status,
+         started_at: t?.start_timestamp
+       }))
+     });
+   } catch (err) {
+     console.error('Error checking platform conflicts:', err);
+     return Response.json({ error: err.message }, { status: 500 });
+   }
+ }
 
 async function recalculatePriorities(base44, payload) {
-  const { force_recalc } = payload || {};
-  
-  // Fetch all queued tasks
-  const queue = await base44.entities.TaskExecutionQueue.filter({
-    status: 'queued'
-  }, '', 100);
+   const { force_recalc } = payload || {};
+   try {
+     // Fetch all queued tasks
+     const queue = await base44.entities.TaskExecutionQueue.filter({
+       status: 'queued'
+     }, '', 100);
 
-  const opportunities = await base44.entities.Opportunity.list('', 100);
-  const oppMap = {};
-  opportunities.forEach(o => oppMap[o.id] = o);
+     const opportunities = await base44.entities.Opportunity.list('', 100);
+     const safeTasks = Array.isArray(queue) ? queue : [];
+     const safeOpps = Array.isArray(opportunities) ? opportunities : [];
+     const oppMap = {};
+     safeOpps.forEach(o => { if (o && o.id) oppMap[o.id] = o; });
 
-  let updated = 0;
-  for (const task of queue) {
-    const opp = oppMap[task.opportunity_id];
-    if (!opp) continue;
+     let updated = 0;
+     for (const task of safeTasks) {
+       if (!task || !task.id) continue;
+       const opp = oppMap[task.opportunity_id];
+       if (!opp || !opp.deadline) continue;
 
-    // Recalculate based on:
-    // 1. Deadline urgency (high if < 24 hours)
-    // 2. Estimated value
-    // 3. Historical success rate
-    const now = new Date();
-    const deadline = new Date(opp.deadline);
-    const hoursUntilDeadline = (deadline - now) / (1000 * 60 * 60);
+       // Recalculate based on:
+       // 1. Deadline urgency (high if < 24 hours)
+       // 2. Estimated value
+       // 3. Historical success rate
+       const now = new Date();
+       const deadline = new Date(opp.deadline);
+       const hoursUntilDeadline = (deadline - now) / (1000 * 60 * 60);
 
-    let newPriority = opp.overall_score || 50;
+       let newPriority = typeof opp.overall_score === 'number' ? opp.overall_score : 50;
 
     // Boost urgency if deadline approaching
     if (hoursUntilDeadline < 24 && hoursUntilDeadline > 0) {
@@ -150,12 +167,12 @@ async function recalculatePriorities(base44, payload) {
     }
 
     // Boost if high value
-    if (opp.profit_estimate_high > 1000) {
+    if (typeof opp.profit_estimate_high === 'number' && opp.profit_estimate_high > 1000) {
       newPriority = Math.min(100, newPriority + 10);
     }
 
     // Apply historical success rate
-    const successRate = task.success_rate_for_platform || 0.5;
+    const successRate = typeof task.success_rate_for_platform === 'number' ? task.success_rate_for_platform : 0.5;
     newPriority = Math.round(newPriority * (0.5 + successRate * 0.5));
 
     if (newPriority !== task.priority) {
@@ -164,125 +181,157 @@ async function recalculatePriorities(base44, payload) {
       });
       updated++;
     }
-  }
+    }
 
-  return Response.json({
+    return Response.json({
     success: true,
     tasks_updated: updated,
-    total_queued: queue.length
-  });
-}
+    total_queued: safeTasks.length
+    });
+    } catch (err) {
+    console.error('Error recalculating priorities:', err);
+    return Response.json({ error: err.message }, { status: 500 });
+    }
+    }
 
 async function pauseLowPriority(base44, payload) {
-  const { threshold, max_pause_count } = payload;
-  const pauseThreshold = threshold || 40;
-  const maxPause = max_pause_count || 3;
+   const { threshold, max_pause_count } = payload || {};
+   const pauseThreshold = typeof threshold === 'number' ? threshold : 40;
+   const maxPause = typeof max_pause_count === 'number' ? max_pause_count : 3;
 
-  const queue = await base44.entities.TaskExecutionQueue.filter({
-    status: 'queued',
-    priority: { $lt: pauseThreshold }
-  }, '-priority', 100);
+   try {
+     const queue = await base44.entities.TaskExecutionQueue.filter({
+       status: 'queued',
+       priority: { $lt: pauseThreshold }
+     }, '-priority', 100);
 
-  let paused = 0;
-  for (const task of queue.slice(0, maxPause)) {
-    await base44.entities.TaskExecutionQueue.update(task.id, {
-      status: 'needs_review',
-      manual_review_reason: `Auto-paused: priority ${task.priority} below threshold ${pauseThreshold}`
-    });
-    paused++;
-  }
+     const safeTasks = Array.isArray(queue) ? queue : [];
+     let paused = 0;
+     for (const task of safeTasks.slice(0, maxPause)) {
+       if (!task || !task.id) continue;
+       await base44.entities.TaskExecutionQueue.update(task.id, {
+         status: 'needs_review',
+         manual_review_reason: `Auto-paused: priority ${task.priority} below threshold ${pauseThreshold}`
+       }).catch(() => {});
+       paused++;
+     }
 
-  return Response.json({
-    success: true,
-    tasks_paused: paused,
-    threshold: pauseThreshold
-  });
-}
+     return Response.json({
+       success: true,
+       tasks_paused: paused,
+       threshold: pauseThreshold
+     });
+   } catch (err) {
+     console.error('Error pausing low priority tasks:', err);
+     return Response.json({ error: err.message }, { status: 500 });
+   }
+ }
 
 async function resumePausedTasks(base44, payload) {
-  const { priority_threshold } = payload;
-  const minPriority = priority_threshold || 50;
+   const { priority_threshold } = payload || {};
+   const minPriority = typeof priority_threshold === 'number' ? priority_threshold : 50;
 
-  const paused = await base44.entities.TaskExecutionQueue.filter({
-    status: 'needs_review',
-    manual_review_reason: { $regex: 'Auto-paused' },
-    priority: { $gte: minPriority }
-  }, '-priority', 100);
+   try {
+     const paused = await base44.entities.TaskExecutionQueue.filter({
+       status: 'needs_review',
+       manual_review_reason: { $regex: 'Auto-paused' },
+       priority: { $gte: minPriority }
+     }, '-priority', 100);
 
-  let resumed = 0;
-  for (const task of paused) {
-    await base44.entities.TaskExecutionQueue.update(task.id, {
-      status: 'queued',
-      manual_review_reason: null
-    });
-    resumed++;
-  }
+     const safeTasks = Array.isArray(paused) ? paused : [];
+     let resumed = 0;
+     for (const task of safeTasks) {
+       if (!task || !task.id) continue;
+       await base44.entities.TaskExecutionQueue.update(task.id, {
+         status: 'queued',
+         manual_review_reason: null
+       }).catch(() => {});
+       resumed++;
+     }
 
-  return Response.json({
-    success: true,
-    tasks_resumed: resumed,
-    priority_threshold: minPriority
-  });
-}
+     return Response.json({
+       success: true,
+       tasks_resumed: resumed,
+       priority_threshold: minPriority
+     });
+   } catch (err) {
+     console.error('Error resuming paused tasks:', err);
+     return Response.json({ error: err.message }, { status: 500 });
+   }
+ }
 
 async function getNextExecutable(base44, payload) {
-  const { platform } = payload;
+   const { platform } = payload;
+   if (!platform) return Response.json({ error: 'platform required' }, { status: 400 });
 
-  // Check if platform has executing tasks
-  const executing = await base44.entities.TaskExecutionQueue.filter({
-    platform: platform,
-    status: { $in: ['processing', 'navigating', 'understanding', 'filling', 'submitting'] }
-  });
+   try {
+     // Check if platform has executing tasks
+     const executing = await base44.entities.TaskExecutionQueue.filter({
+       platform: platform,
+       status: { $in: ['processing', 'navigating', 'understanding', 'filling', 'submitting'] }
+     });
 
-  if (executing.length > 0) {
-    return Response.json({
-      can_execute: false,
-      reason: `${executing.length} task(s) already executing on ${platform}`,
-      platform_busy: true,
-      executing_count: executing.length
-    });
-  }
+     const safeExecuting = Array.isArray(executing) ? executing : [];
+     if (safeExecuting.length > 0) {
+       return Response.json({
+         can_execute: false,
+         reason: `${safeExecuting.length} task(s) already executing on ${platform}`,
+         platform_busy: true,
+         executing_count: safeExecuting.length
+       });
+     }
 
-  // Get highest priority queued task
-  const candidates = await base44.entities.TaskExecutionQueue.filter({
-    platform: platform,
-    status: 'queued'
-  }, '-priority', 1);
+     // Get highest priority queued task
+     const candidates = await base44.entities.TaskExecutionQueue.filter({
+       platform: platform,
+       status: 'queued'
+     }, '-priority', 1);
 
-  if (candidates.length === 0) {
-    return Response.json({
-      can_execute: false,
-      reason: 'No queued tasks for this platform',
-      next_task: null
-    });
-  }
+     const safeCandidates = Array.isArray(candidates) ? candidates : [];
+     if (safeCandidates.length === 0) {
+       return Response.json({
+         can_execute: false,
+         reason: 'No queued tasks for this platform',
+         next_task: null
+       });
+     }
 
-  return Response.json({
-    can_execute: true,
-    next_task: candidates[0],
-    priority: candidates[0].priority
-  });
-}
+     return Response.json({
+       can_execute: true,
+       next_task: safeCandidates[0],
+       priority: safeCandidates[0]?.priority || 0
+     });
+   } catch (err) {
+     console.error('Error getting next executable:', err);
+     return Response.json({ error: err.message }, { status: 500 });
+   }
+ }
 
 async function optimizeQueue(base44, payload) {
-  // 1. Recalculate priorities
-  await recalculatePriorities(base44, {});
+   try {
+     // 1. Recalculate priorities
+     await recalculatePriorities(base44, {});
 
-  // 2. Pause very low priority tasks if high-urgency exists
-  const allQueue = await base44.entities.TaskExecutionQueue.filter({
-    status: 'queued'
-  }, '-priority', 100);
+     // 2. Pause very low priority tasks if high-urgency exists
+     const allQueue = await base44.entities.TaskExecutionQueue.filter({
+       status: 'queued'
+     }, '-priority', 100);
 
-  const maxPriority = Math.max(...allQueue.map(t => t.priority), 50);
-  
-  if (maxPriority > 80) {
-    // High-urgency task exists, pause low-priority tasks
-    await pauseLowPriority(base44, { threshold: 35, max_pause_count: 5 });
-  } else if (maxPriority < 50) {
-    // No urgent tasks, resume paused tasks
-    await resumePausedTasks(base44, { priority_threshold: 40 });
-  }
+     const safeTasks = Array.isArray(allQueue) ? allQueue : [];
+     const maxPriority = safeTasks.length > 0 ? Math.max(...safeTasks.map(t => typeof t?.priority === 'number' ? t.priority : 50)) : 50;
 
-  // 3. Get updated status
-  return await getQueueStatus(base44);
+     if (maxPriority > 80) {
+       // High-urgency task exists, pause low-priority tasks
+       await pauseLowPriority(base44, { threshold: 35, max_pause_count: 5 });
+     } else if (maxPriority < 50) {
+       // No urgent tasks, resume paused tasks
+       await resumePausedTasks(base44, { priority_threshold: 40 });
+     }
+
+     // 3. Get updated status
+     return await getQueueStatus(base44);
+   } catch (err) {
+     console.error('Error optimizing queue:', err);
+     return Response.json({ error: err.message }, { status: 500 });
+   }
 }

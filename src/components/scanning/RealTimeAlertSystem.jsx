@@ -60,7 +60,7 @@ export default function RealTimeAlertSystem() {
   if (error) {
     const errorMsg = error?.message || 'Unable to fetch alerts. Please try again.';
     return (
-      <Card className="bg-slate-900/50 border-slate-700">
+      <Card className="bg-slate-900/50 border-slate-700 rounded-2xl">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-red-400" />

@@ -1,141 +1,118 @@
 class BridgeAlertSystem {
-  constructor(particleManager, audioEngine, onHUDUpdate) {
+  constructor(particleManager, audioEngine, onAlertsChange) {
     this.particleManager = particleManager;
     this.audioEngine = audioEngine;
-    this.onHUDUpdate = onHUDUpdate;
+    this.onAlertsChange = onAlertsChange;
+    
     this.alerts = [];
-    this.alertId = 0;
+    this.maxVisibleAlerts = 5;
+    this.eventMap = {
+      'notification.created': { severity: 'info', duration: 4000 },
+      'notification.read': { severity: 'info', duration: 3000 },
+      'rule.triggered': { severity: 'warning', duration: 5000 },
+      'rule.completed': { severity: 'success', duration: 4000 },
+      'rule.failed': { severity: 'critical', duration: 6000 },
+      'account.verified': { severity: 'success', duration: 4000 },
+      'account.failed': { severity: 'critical', duration: 6000 }
+    };
   }
 
-  handleAlert(event) {
-    const alertType = this.mapEventToAlertType(event.type);
+  handleAlert(eventData) {
+    const eventType = eventData.type || 'notification.created';
+    const config = this.eventMap[eventType] || { severity: 'info', duration: 4000 };
+    
     const alert = {
-      id: this.alertId++,
-      type: alertType.type,
-      message: event.message || this.getDefaultMessage(alertType.type),
-      severity: alertType.severity,
+      id: Math.random().toString(36).substr(2, 9),
+      type: eventType,
+      message: eventData.message || this.generateMessage(eventType),
+      severity: config.severity,
+      duration: config.duration,
       timestamp: Date.now(),
-      duration: alertType.duration,
-      station: event.station || null
+      station: eventData.station || 'log'
     };
-
-    // Queue alert
-    this.alerts.push(alert);
-
-    // Trigger effects
-    this.triggerVisualEffects(alert, event);
-    this.triggerAudio(alert);
-
-    // Update HUD
-    this.onHUDUpdate?.(this.getAlerts());
-
-    // Auto-dismiss
-    setTimeout(() => {
-      this.alerts = this.alerts.filter(a => a.id !== alert.id);
-      this.onHUDUpdate?.(this.getAlerts());
-    }, alert.duration);
+    
+    this.addAlert(alert);
+    this.triggerVisualEffects(alert);
   }
 
-  mapEventToAlertType(eventType) {
-    const typeMap = {
-      'task_completed': { type: 'success', severity: 'success', duration: 2000 },
-      'task_failed': { type: 'warning', severity: 'warning', duration: 3000 },
-      'error': { type: 'critical', severity: 'critical', duration: 4000 },
-      'critical_error': { type: 'critical', severity: 'critical', duration: 4000 },
-      'milestone': { type: 'success', severity: 'success', duration: 4000 },
-      'balance_low': { type: 'warning', severity: 'warning', duration: 3000 },
-      'opportunity_found': { type: 'info', severity: 'info', duration: 2000 },
-      'info': { type: 'info', severity: 'info', duration: 2000 }
-    };
-
-    return typeMap[eventType] || { type: 'info', severity: 'info', duration: 2000 };
-  }
-
-  getDefaultMessage(alertType) {
+  generateMessage(eventType) {
     const messages = {
-      'success': '✓ Success',
-      'warning': '⚠ Warning',
-      'critical': '✗ Critical Error',
-      'info': 'ℹ Information'
+      'notification.created': 'New notification received',
+      'notification.read': 'Notification marked as read',
+      'rule.triggered': 'Rule execution initiated',
+      'rule.completed': 'Rule execution completed',
+      'rule.failed': 'Rule execution failed',
+      'account.verified': 'Account verified successfully',
+      'account.failed': 'Account verification failed'
     };
-    return messages[alertType] || 'Alert';
+    return messages[eventType] || 'System alert';
   }
 
-  triggerVisualEffects(alert, event) {
-    // Default position (center)
-    let position = { x: 0, y: 2, z: -2 };
-
-    // Adjust position by station
-    if (event.station === 'tactical') {
-      position = { x: 0, y: 1, z: -2 };
-    } else if (event.station === 'comms') {
-      position = { x: -3, y: 1.2, z: 0 };
-    } else if (event.station === 'log') {
-      position = { x: 3, y: 1.3, z: 0 };
+  addAlert(alert) {
+    this.alerts.push(alert);
+    
+    // Auto-expire alert
+    setTimeout(() => {
+      this.dismissAlert(alert.id);
+    }, alert.duration);
+    
+    // Keep only maxVisibleAlerts
+    if (this.alerts.length > this.maxVisibleAlerts) {
+      this.alerts.shift();
     }
-
-    // Particle count by severity
-    const particleCounts = {
-      'info': 50,
-      'warning': 100,
-      'critical': 300,
-      'success': 200
-    };
-
-    // Colors by severity
-    const colors = {
-      'info': 0x6699ff,      // Blue
-      'warning': 0xffff00,   // Yellow
-      'critical': 0xff0000,  // Red
-      'success': 0x00ff00    // Green
-    };
-
-    const count = particleCounts[alert.severity];
-    const color = colors[alert.severity];
-
-    // Trigger burst
-    if (this.particleManager) {
-      const pos = { x: position.x, y: position.y, z: position.z };
-      const lifespan = alert.severity === 'critical' ? 1000 : 800;
-      this.particleManager.triggerAlertBurst(pos, color, count, lifespan);
-    }
-  }
-
-  triggerAudio(alert) {
-    const soundMap = {
-      'info': 'chime',
-      'warning': 'alert',
-      'critical': 'alarm',
-      'success': 'fanfare'
-    };
-
-    const sound = soundMap[alert.severity];
-    if (this.audioEngine && sound) {
-      this.audioEngine.play(sound);
-    }
-  }
-
-  getAlerts() {
-    return this.alerts.slice(0, 5); // Max 5 visible
-  }
-
-  clearAllAlerts() {
-    this.alerts = [];
-    this.onHUDUpdate?.(this.getAlerts());
+    
+    this.onAlertsChange?.(this.alerts);
   }
 
   dismissAlert(alertId) {
     this.alerts = this.alerts.filter(a => a.id !== alertId);
-    this.onHUDUpdate?.(this.getAlerts());
+    this.onAlertsChange?.(this.alerts);
   }
 
-  getAlertStats() {
+  triggerVisualEffects(alert) {
+    // Determine station position for particle effect
+    const stationPositions = {
+      tactical: { x: 0, y: 1, z: -2 },
+      comms: { x: -3, y: 1.2, z: 0 },
+      log: { x: 3, y: 1.3, z: 0 }
+    };
+    
+    const position = stationPositions[alert.station] || stationPositions.log;
+    
+    // Color based on severity
+    const severityColors = {
+      critical: 0xff6b6b,
+      warning: 0xffd93d,
+      success: 0x6bcf7f,
+      info: 0x00ccff
+    };
+    
+    const color = severityColors[alert.severity];
+    
+    // Trigger particle burst
+    this.particleManager.triggerAlertBurst(position, color);
+    
+    // Trigger audio (Phase 3)
+    if (this.audioEngine) {
+      this.audioEngine.playAlert(alert.severity);
+    }
+  }
+
+  clearAlerts() {
+    this.alerts = [];
+    this.onAlertsChange?.(this.alerts);
+  }
+
+  getAlerts() {
+    return [...this.alerts];
+  }
+
+  getStats() {
     return {
-      total: this.alerts.length,
-      critical: this.alerts.filter(a => a.severity === 'critical').length,
-      warnings: this.alerts.filter(a => a.severity === 'warning').length,
-      info: this.alerts.filter(a => a.severity === 'info').length,
-      success: this.alerts.filter(a => a.severity === 'success').length
+      totalAlerts: this.alerts.length,
+      criticalCount: this.alerts.filter(a => a.severity === 'critical').length,
+      warningCount: this.alerts.filter(a => a.severity === 'warning').length,
+      successCount: this.alerts.filter(a => a.severity === 'success').length
     };
   }
 }

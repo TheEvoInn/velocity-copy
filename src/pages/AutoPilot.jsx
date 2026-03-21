@@ -229,20 +229,29 @@ export default function AutoPilot() {
       {/* ── Tab Navigation ── */}
       <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1 scrollbar-none">
         {TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-orbitron tracking-wide whitespace-nowrap transition-all"
-            style={{
-              background: activeTab === tab.key ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${activeTab === tab.key ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.08)'}`,
-              color: activeTab === tab.key ? '#10b981' : '#94a3b8',
-              boxShadow: activeTab === tab.key ? '0 0 12px rgba(16,185,129,0.2)' : 'none',
-            }}
-          >
-            <span>{tab.icon}</span>
-            {tab.label}
-          </button>
+          tab.link ? (
+            <Link key={tab.key} to={tab.link}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-orbitron tracking-wide whitespace-nowrap transition-all"
+              style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.3)', color: '#a78bfa' }}>
+              <span>{tab.icon}</span>
+              {tab.label}
+            </Link>
+          ) : (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-orbitron tracking-wide whitespace-nowrap transition-all"
+              style={{
+                background: activeTab === tab.key ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${activeTab === tab.key ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                color: activeTab === tab.key ? '#10b981' : '#94a3b8',
+                boxShadow: activeTab === tab.key ? '0 0 12px rgba(16,185,129,0.2)' : 'none',
+              }}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+            </button>
+          )
         ))}
       </div>
 

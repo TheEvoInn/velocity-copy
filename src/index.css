@@ -474,5 +474,27 @@
   background: rgba(10,14,33,0.75) !important;
 }
 
-/* Orbitron display font utility */
+/* Font Utilities */
 .font-orbitron { font-family: 'Orbitron', sans-serif; }
+.font-mono { font-family: 'Space Mono', monospace; }
+
+/* Holographic Text */
+.text-hologram {
+  color: #dde6f2;
+  text-shadow: 0 0 10px rgba(0, 232, 255, 0.4);
+}
+
+.text-cyber-cyan {
+  color: #00e8ff;
+  text-shadow: 0 0 10px rgba(0, 232, 255, 0.6);
+}
+
+.text-cyber-magenta {
+  color: #ff2ec4;
+  text-shadow: 0 0 10px rgba(255, 46, 196, 0.6);
+}
+
+.text-cyber-gold {
+  color: #f9d65c;
+  text-shadow: 0 0 10px rgba(249, 214, 92, 0.6);
+}

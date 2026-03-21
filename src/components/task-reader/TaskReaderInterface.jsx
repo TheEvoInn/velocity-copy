@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { useMutation } from '@tanstack/react-query';
-import { Globe, Zap, CheckCircle2, AlertCircle, Loader, ChevronRight } from 'lucide-react';
+import { Globe, Zap, CheckCircle2, AlertCircle, Loader, ChevronRight, Eye } from 'lucide-react';
 import { toast } from 'sonner';
+import DebugMonitor from './DebugMonitor';
 
 export default function TaskReaderInterface() {
   const [url, setUrl] = useState('');
@@ -17,18 +18,23 @@ export default function TaskReaderInterface() {
   const [analysis, setAnalysis] = useState(null);
   const [selectedExecution, setSelectedExecution] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [enableDebug, setEnableDebug] = useState(false);
+  const [showDebugMonitor, setShowDebugMonitor] = useState(false);
 
   // Read and process mutation
   const readMutation = useMutation({
     mutationFn: async () => {
       const res = await base44.functions.invoke('taskReaderEngine', {
         action: 'read_and_process',
-        payload: { url, task_name: taskName }
+        payload: { url, task_name: taskName, enable_debug: enableDebug }
       });
       return res.data;
     },
     onSuccess: (data) => {
       setAnalysis(data);
+      if (enableDebug) {
+        setShowDebugMonitor(true);
+      }
       toast.success(`Task analyzed: ${data.actions.length} actions compiled`);
     },
     onError: (err) => {
@@ -247,7 +253,7 @@ export default function TaskReaderInterface() {
           </Card>
 
           {/* Execute Options */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-col md:flex-row">
             <Button
               onClick={() => submitToAutopilotMutation.mutate()}
               disabled={submitToAutopilotMutation.isPending}
@@ -264,8 +270,26 @@ export default function TaskReaderInterface() {
               <Zap className="w-4 h-4" />
               Run with Agent Worker
             </Button>
+            {enableDebug && (
+              <Button
+                onClick={() => setShowDebugMonitor(true)}
+                variant="outline"
+                className="flex-1 gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                Open Monitor
+              </Button>
+            )}
           </div>
         </div>
+      )}
+
+      {/* Debug Monitor Modal */}
+      {showDebugMonitor && (
+        <DebugMonitor
+          analysis={analysis}
+          onClose={() => setShowDebugMonitor(false)}
+        />
       )}
     </div>
   );

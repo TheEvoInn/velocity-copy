@@ -115,7 +115,7 @@ export default function NotificationBell() {
             {notifications.length > 0 && (
               <div className="p-2 border-t border-slate-700 text-center">
                 <a
-                  href="/UserAccessPage"
+                  href="/NotificationsDashboard"
                   className="text-xs text-blue-400 hover:text-blue-300 font-medium"
                 >
                   View all notifications →

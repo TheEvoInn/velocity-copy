@@ -7,6 +7,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import TaskReaderHub from './pages/TaskReaderHub';
+import WebhookConfiguration from './pages/WebhookConfiguration';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -50,6 +51,11 @@ const AuthenticatedApp = () => {
       <Route path="/TaskReaderHub" element={
         <LayoutWrapper currentPageName="TaskReaderHub">
           <TaskReaderHub />
+        </LayoutWrapper>
+      } />
+      <Route path="/WebhookConfiguration" element={
+        <LayoutWrapper currentPageName="WebhookConfiguration">
+          <WebhookConfiguration />
         </LayoutWrapper>
       } />
       {Object.entries(Pages).map(([path, Page]) => (

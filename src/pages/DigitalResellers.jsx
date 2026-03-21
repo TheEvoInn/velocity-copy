@@ -12,9 +12,11 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 import { CheckCircle2 } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
+import SocialProofLibrary from '@/components/widgets/SocialProofLibrary';
 
 export default function DigitalResellers() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedStorefrontId, setSelectedStorefrontId] = useState(null);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const queryClient = useQueryClient();

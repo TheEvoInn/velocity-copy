@@ -12,8 +12,7 @@ const DEPARTMENTS = [
     color: '#f59e0b',
     textColor: 'text-amber-400',
     glow: 'rgba(245,158,11,0.4)',
-    name: 'Discovery',
-    stats: { main: '2.8K', label: 'Opportunities Found', sub: '+340 today' }
+    name: 'discovery'
   },
   {
     path: '/Execution',
@@ -23,8 +22,7 @@ const DEPARTMENTS = [
     color: '#3b82f6',
     textColor: 'text-blue-400',
     glow: 'rgba(59,130,246,0.4)',
-    name: 'Autopilot',
-    stats: { main: '847', label: 'Tasks Executed', sub: '+124 today' }
+    name: 'execution'
   },
   {
     path: '/Finance',
@@ -34,8 +32,7 @@ const DEPARTMENTS = [
     color: '#10b981',
     textColor: 'text-emerald-400',
     glow: 'rgba(16,185,129,0.4)',
-    name: 'Finance',
-    stats: { main: '$8.4K', label: 'Wallet Balance', sub: '+$2.3K today' }
+    name: 'finance'
   },
   {
     path: '/Control',
@@ -45,8 +42,7 @@ const DEPARTMENTS = [
     color: '#a855f7',
     textColor: 'text-purple-400',
     glow: 'rgba(168,85,247,0.4)',
-    name: 'Control',
-    stats: { main: '12', label: 'Active Identities', sub: '3 pending approval' }
+    name: 'control'
   }
 ];
 
@@ -65,21 +61,22 @@ export default function PlanetaryNavWithDeepSpace({ stats }) {
           className="group cursor-pointer"
           onClick={() => setDeepSpaceDept(dept.name)}
         >
-          <div
-            className="tilt-card relative rounded-2xl p-4 transition-all overflow-hidden h-full"
-            style={{
-              background: `linear-gradient(135deg, ${dept.color}12, ${dept.color}06, rgba(5,7,20,0.8))`,
-              border: `1px solid ${dept.color}25`,
-            }}
-            onMouseEnter={e => { 
-              e.currentTarget.style.boxShadow = `0 0 30px ${dept.glow}, 0 0 60px ${dept.glow.replace('0.4','0.15')}`; 
-              e.currentTarget.style.borderColor = dept.color + '50'; 
-            }}
-            onMouseLeave={e => { 
-              e.currentTarget.style.boxShadow = 'none'; 
-              e.currentTarget.style.borderColor = dept.color + '25'; 
-            }}
-          >
+          <Link to={dept.path}>
+            <div
+             className="tilt-card relative rounded-2xl p-4 transition-all overflow-hidden h-full cursor-pointer"
+              style={{
+                background: `linear-gradient(135deg, ${dept.color}12, ${dept.color}06, rgba(5,7,20,0.8))`,
+                border: `1px solid ${dept.color}25`,
+              }}
+              onMouseEnter={e => { 
+                e.currentTarget.style.boxShadow = `0 0 30px ${dept.glow}, 0 0 60px ${dept.glow.replace('0.4','0.15')}`; 
+                e.currentTarget.style.borderColor = dept.color + '50'; 
+              }}
+              onMouseLeave={e => { 
+                e.currentTarget.style.boxShadow = 'none'; 
+                e.currentTarget.style.borderColor = dept.color + '25'; 
+              }}
+            >
             {/* Subtle background grid */}
             <div className="absolute inset-0 opacity-5"
               style={{ backgroundImage: `radial-gradient(circle, ${dept.color} 1px, transparent 1px)`, backgroundSize: '20px 20px' }} />
@@ -96,19 +93,20 @@ export default function PlanetaryNavWithDeepSpace({ stats }) {
               </div>
               <p className={`text-2xl font-orbitron font-bold ${dept.textColor} mb-0.5`}
                 style={{ textShadow: `0 0 20px ${dept.color}` }}>
-                {dept.stats.main}
+                {stats?.[dept.name]?.main ?? '—'}
               </p>
-              <p className="text-xs text-slate-300 font-medium">{dept.stats.label}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{dept.stats.sub}</p>
+              <p className="text-xs text-slate-300 font-medium">{stats?.[dept.name]?.label ?? 'Loading'}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{stats?.[dept.name]?.sub ?? ''}</p>
               <div className="mt-3 pt-2.5 border-t" style={{ borderColor: dept.color + '20' }}>
                 <p className={`text-xs font-orbitron font-semibold tracking-wide ${dept.textColor}`}>{dept.label}</p>
                 <p className="text-[10px] text-slate-500 mt-0.5">{dept.subtitle}</p>
                 <p className="text-[10px] text-slate-600 mt-1.5">→ Click to enter Deep Space</p>
               </div>
             </div>
-          </div>
-        </div>
-      ))}
-    </div>
+            </div>
+            </div>
+            </Link>
+            ))}
+            </div>
   );
 }

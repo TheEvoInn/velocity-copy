@@ -168,14 +168,15 @@ async function executeTask(base44, payload) {
       });
     }
 
-    // Update opportunity to executing
-    await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
-      status: 'executing',
-      identity_id: identity.id,
-      identity_name: identity.name
-    });
-
-    log('identity_routing', 'success', `Identity "${identity.name}" assigned to "${opp.title}"`);
+    // Update opportunity to executing (if we have one)
+    if (opp) {
+      await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
+        status: 'executing',
+        identity_id: identity.id,
+        identity_name: identity.name
+      });
+      log('identity_routing', 'success', `Identity "${identity.name}" assigned to "${opp.title}"`);
+    }
 
     // Log identity routing
     await base44.asServiceRole.entities.IdentityRoutingLog.create({
@@ -196,23 +197,32 @@ async function executeTask(base44, payload) {
     log('strategy_select', 'running', `Category: ${opp.category}, Type: ${opp.opportunity_type}`);
     let executionResult = null;
 
-    const titleLower = (opp.title || '').toLowerCase();
-    const isDesign = opp.category === 'contest' || ['logo', 'design', 'brand', 'illustration', 'graphic'].some(k => titleLower.includes(k));
-    const isGrant = opp.category === 'grant' || opp.opportunity_type === 'grant';
-    const isDigital = opp.category === 'digital_flip';
-    const isArbitrage = opp.category === 'arbitrage';
+    if (opp) {
+      // Execute based on opportunity type
+      log('strategy_select', 'running', `Category: ${opp.category}, Type: ${opp.opportunity_type}`);
+      
+      const titleLower = (opp.title || '').toLowerCase();
+      const isDesign = opp.category === 'contest' || ['logo', 'design', 'brand', 'illustration', 'graphic'].some(k => titleLower.includes(k));
+      const isGrant = opp.category === 'grant' || opp.opportunity_type === 'grant';
+      const isDigital = opp.category === 'digital_flip';
+      const isArbitrage = opp.category === 'arbitrage';
 
-    if (isDesign) {
-      executionResult = await executeDesignOpportunity(opp, identity, log);
-    } else if (isGrant) {
-      executionResult = await executeGrantApplication(opp, identity, log);
-    } else if (isDigital) {
-      executionResult = await executeDigitalProduct(opp, identity, log);
-    } else if (isArbitrage) {
-      executionResult = await executeArbitrageOpportunity(opp, identity, log);
+      if (isDesign) {
+        executionResult = await executeDesignOpportunity(opp, identity, log);
+      } else if (isGrant) {
+        executionResult = await executeGrantApplication(opp, identity, log);
+      } else if (isDigital) {
+        executionResult = await executeDigitalProduct(opp, identity, log);
+      } else if (isArbitrage) {
+        executionResult = await executeArbitrageOpportunity(opp, identity, log);
+      } else {
+        // Default: writing/service/freelance
+        executionResult = await executeWritingOpportunity(opp, identity, proposal_content, log);
+      }
     } else {
-      // Default: writing/service/freelance
-      executionResult = await executeWritingOpportunity(opp, identity, proposal_content, log);
+      // No opportunity, just log generic success
+      log('execution_complete', 'success', 'Task processed without specific opportunity data');
+      executionResult = { success: true, message: 'Task processed', deliverable: '', needs_manual_action: false };
     }
 
     const executionTime = Math.round((Date.now() - startTime) / 1000);

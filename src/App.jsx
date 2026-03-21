@@ -37,10 +37,10 @@ import DataPersistenceAudit from './pages/DataPersistenceAudit';
 import PlatformAuditDashboard from './pages/PlatformAuditDashboard';
 import ExchangeConnectivity from './pages/ExchangeConnectivity';
 import AdminControlPanel from './pages/AdminControlPanel';
-import BackgroundExecutionHub from './pages/BackgroundExecutionHub';
+import BackgroundExecutionHub from './pages/BackgroundExecutionHub.jsx';
 import EmailOutreachHub from './pages/EmailOutreachHub';
 import UserAccessPage from './pages/UserAccessPage';
-import TaskQueueApproval from './pages/TaskQueueApproval';
+import TaskQueueApproval from './pages/TaskQueueApproval.jsx';
 import FinancialDashboard from './pages/FinancialDashboard';
 import TemplatesLibrary from './pages/TemplatesLibrary.jsx';
 

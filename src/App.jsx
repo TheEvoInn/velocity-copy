@@ -10,10 +10,6 @@ const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : null;
 
-const LayoutWrapper = ({ children, currentPageName }) => Layout ?
-  <Layout currentPageName={currentPageName}>{children}</Layout>
-  : <>{children}</>;
-
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
@@ -40,25 +36,23 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      <Route path="/" element={
-        MainPage ? (
-          <LayoutWrapper currentPageName={mainPageKey}>
-            <MainPage />
-          </LayoutWrapper>
-        ) : <PageNotFound />
-      } />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
-          }
-        />
-      ))}
-      <Route path="*" element={<PageNotFound />} />
+      {Layout ? (
+        <Route element={<Layout />}>
+          <Route path="/" element={MainPage ? <MainPage /> : <PageNotFound />} />
+          {Object.entries(Pages).map(([path, Page]) => (
+            <Route key={path} path={`/${path}`} element={<Page />} />
+          ))}
+          <Route path="*" element={<PageNotFound />} />
+        </Route>
+      ) : (
+        <>
+          <Route path="/" element={MainPage ? <MainPage /> : <PageNotFound />} />
+          {Object.entries(Pages).map(([path, Page]) => (
+            <Route key={path} path={`/${path}`} element={<Page />} />
+          ))}
+          <Route path="*" element={<PageNotFound />} />
+        </>
+      )}
     </Routes>
   );
 };

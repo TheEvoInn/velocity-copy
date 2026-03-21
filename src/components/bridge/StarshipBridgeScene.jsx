@@ -18,6 +18,7 @@ import BridgePerformanceTracker from './BridgePerformanceTracker';
 import KeyboardControlScheme from './KeyboardControlScheme';
 import CockpitEnvironment from './CockpitEnvironment';
 import CockpitDataBinding from './CockpitDataBinding';
+import HolographicCommsHub from './HolographicCommsHub';
 
 export default function StarshipBridgeScene() {
   const canvasRef = useRef(null);
@@ -334,6 +335,7 @@ export default function StarshipBridgeScene() {
         particleCount={particleCount}
         performanceStats={performanceStats}
       />
+      <HolographicCommsHub />
       <BridgeSystemRefinements 
         audioEngine={audioEngineRef.current}
         postProcessing={postProcessingRef.current}

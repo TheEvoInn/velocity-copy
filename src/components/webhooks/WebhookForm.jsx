@@ -198,7 +198,7 @@ export default function WebhookForm({ webhook, onSubmit, isLoading, lastDelivery
                 className="font-mono text-xs h-40"
               />
               <p className="text-xs text-slate-400 mt-2">
-                Available variables: {{'{{'}}event_type{{'}}'}}, {{'{{'}}timestamp{{'}}'}}, and any fields from event data
+                Available variables: {"{'{'}event_type{'}'}, {'{'}timestamp{'}'}, and any fields from event data"}
               </p>
             </div>
           )}

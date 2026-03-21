@@ -114,10 +114,10 @@ export default function Execution() {
             <div className="text-xs text-slate-400 mb-1">Review</div>
             <div className="text-xl font-bold text-amber-400">{stats.review}</div>
           </Card>
-        </div>
+           </div>
 
-        {/* Active Tasks */}
-        <Card className="glass-card p-4 mb-6">
+           {/* Active Tasks */}
+           <Card className="glass-card p-4">
           <h3 className="font-orbitron text-sm font-bold text-white mb-4 flex items-center gap-2">
             <Play className="w-4 h-4 text-blue-400" />
             Active Tasks ({stats.running})

@@ -45,8 +45,9 @@ export default function ActivityFeed({ logs: propLogs }) {
   });
 
   const logs = propLogs ?? fetchedLogs;
+  const safeLogs = Array.isArray(logs) ? logs : [];
 
-  if (logs.length === 0) {
+   if (safeLogs.length === 0) {
     return (
       <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-6">
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
@@ -68,27 +69,27 @@ export default function ActivityFeed({ logs: propLogs }) {
       <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
         <Zap className="w-4 h-4 text-amber-400" />
         Activity Feed
-        <span className="ml-auto text-[10px] text-slate-600">{logs.length} entries</span>
+        <span className="ml-auto text-[10px] text-slate-600">{safeLogs.length} entries</span>
       </h3>
       <div className="space-y-3 max-h-80 overflow-y-auto">
-        {logs.slice(0, 30).map((log) => {
-          const Icon = actionIcons[log.action_type] || Settings;
-          const sColor = severityColors[log.severity] || severityColors.info;
-          const sBg = severityBg[log.severity] || severityBg.info;
-          return (
-            <div key={log.id} className="flex items-start gap-3">
-              <div className={`p-1.5 rounded-lg ${sBg} border mt-0.5 shrink-0`}>
-                <Icon className={`w-3 h-3 ${sColor}`} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-slate-300 leading-relaxed">{log.message}</p>
-                <p className="text-[10px] text-slate-600 mt-0.5">
-                  {log.created_date ? format(new Date(log.created_date), 'MMM d, h:mm a') : ''}
-                </p>
-              </div>
-            </div>
-          );
-        })}
+         {safeLogs.slice(0, 30).map((log) => {
+           const Icon = actionIcons[log.action_type] || Settings;
+           const sColor = severityColors[log.severity] || severityColors.info;
+           const sBg = severityBg[log.severity] || severityBg.info;
+           return (
+             <div key={log.id} className="flex items-start gap-3">
+               <div className={`p-1.5 rounded-lg ${sBg} border mt-0.5 shrink-0`}>
+                 <Icon className={`w-3 h-3 ${sColor}`} />
+               </div>
+               <div className="min-w-0 flex-1">
+                 <p className="text-xs text-slate-300 leading-relaxed">{log.message}</p>
+                 <p className="text-[10px] text-slate-600 mt-0.5">
+                   {log.created_date ? format(new Date(log.created_date), 'MMM d, h:mm a') : ''}
+                 </p>
+               </div>
+             </div>
+           );
+         })}
       </div>
     </div>
   );

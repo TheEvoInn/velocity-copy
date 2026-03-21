@@ -120,19 +120,17 @@ export default function InstantTaskPanel({ opportunities = [], onTaskComplete })
 
       const res = await base44.functions.invoke('instantTask', {
         action: 'run_instant_task',
-        payload: {
-          task_type: taskType,
-          url: targetUrl,
-          context: context || selectedOpp?.description || '',
-          task_id: taskId,
-          identity: identity ? {
-            name: identity.name,
-            email: identity.email,
-            skills: identity.skills,
-            bio: identity.bio,
-          } : null,
-          opportunity_id: selectedOpp?.id || null,
-        },
+        task_type: taskType,
+        url: targetUrl,
+        context: context || selectedOpp?.description || '',
+        task_id: taskId,
+        identity: identity ? {
+          name: identity.name,
+          email: identity.email,
+          skills: identity.skills,
+          bio: identity.bio,
+        } : null,
+        opportunity_id: selectedOpp?.id || null,
       });
       setResult(res.data);
       onTaskComplete?.();

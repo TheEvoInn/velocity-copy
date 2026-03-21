@@ -169,9 +169,9 @@ export default function Dashboard() {
         reviewTasks={reviewTasks}
       />
 
-      {/* ── Planetary Navigation System ── */}
+      {/* ── Planetary Navigation System (with Deep Space) ── */}
       <div className="mt-6">
-        <PlanetaryNav stats={deptStats} />
+        <PlanetaryNavWithDeepSpace stats={deptStats} />
       </div>
 
       {/* ── Department Activity Vitals ── */}

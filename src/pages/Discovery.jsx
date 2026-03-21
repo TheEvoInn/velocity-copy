@@ -200,6 +200,11 @@ export default function Discovery() {
         <GlobalOpportunityDiscovery />
       </div>
 
+      {/* Workflow Automation Control */}
+      <div className="mb-5">
+        <WorkflowAutomationControl />
+      </div>
+
       {/* Deep Analysis Panel */}
       <OpportunityAnalysisPanel />
     </div>

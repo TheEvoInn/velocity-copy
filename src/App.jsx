@@ -38,6 +38,7 @@ const AuthenticatedApp = () => {
     <Routes>
       {/* Dashboard/Landing Page - No layout wrapper */}
       <Route path="/" element={MainPage ? <MainPage /> : <PageNotFound />} />
+      <Route path="/Dashboard" element={MainPage ? <MainPage /> : <PageNotFound />} />
       
       {/* Starship Bridge - Full immersive (no nav) */}
       <Route path="/StarshipBridge" element={Pages.StarshipBridge ? <Pages.StarshipBridge /> : <PageNotFound />} />

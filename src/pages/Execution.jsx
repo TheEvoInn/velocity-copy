@@ -92,8 +92,8 @@ export default function Execution() {
           {/* Task Queue Tab */}
           <TabsContent value="queue" className="space-y-4">
 
-        {/* Status Grid */}
-        <div className="grid grid-cols-5 gap-2 mb-6">
+            {/* Status Grid */}
+            <div className="grid grid-cols-5 gap-2">
           <Card className="glass-card p-3">
             <div className="text-xs text-slate-400 mb-1">Queued</div>
             <div className="text-xl font-bold text-cyan-400">{stats.queued}</div>

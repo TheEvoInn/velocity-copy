@@ -335,6 +335,11 @@ export default function AdminKYCReview() {
       <div className="space-y-2">
         {isLoading ? (
           <div className="text-center py-8 text-slate-500 text-sm">Loading KYC submissions...</div>
+        ) : error ? (
+          <div className="text-center py-8 text-red-400 text-sm">
+            Error loading KYC records: {error.message}
+            <button onClick={refetch} className="block mx-auto mt-2 text-xs text-slate-400 underline">Retry</button>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-8 text-slate-500 text-sm">No KYC records in this category.</div>
         ) : (

@@ -77,6 +77,35 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (action === 'mark_check_again_acknowledged' && id) {
+      try {
+        const record = await base44.asServiceRole.entities.KYCVerification.update(id, {
+          admin_status: 'submitted',
+          check_again_fields: [],
+        });
+        console.log(`[kycAdminService] marked check_again acknowledged for ${id}`);
+        return Response.json({ record });
+      } catch (err) {
+        console.error(`[kycAdminService] mark_check_again_acknowledged failed: ${err.message}`);
+        throw err;
+      }
+    }
+
+    if (action === 'reapply_kyc' && id) {
+      try {
+        const record = await base44.asServiceRole.entities.KYCVerification.update(id, {
+          admin_status: 'submitted',
+          status: 'submitted',
+          check_again_fields: [],
+        });
+        console.log(`[kycAdminService] reapplied KYC ${id}`);
+        return Response.json({ record });
+      } catch (err) {
+        console.error(`[kycAdminService] reapply_kyc failed: ${err.message}`);
+        throw err;
+      }
+    }
+
     if (action === 'get_access_log' && id) {
       let record = null;
       try {

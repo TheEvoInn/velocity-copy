@@ -103,13 +103,18 @@ export default function KYCManagement() {
                 <p className="text-xs text-slate-500 mb-3">Deleting your KYC data will reset verification status and lock identity-dependent features.</p>
                 <Button
                   onClick={async () => {
-                    if (!confirm('Delete all KYC data? This cannot be undone.')) return;
-                    const records = await base44.entities.KYCVerification.filter({}, '-created_date', 1);
-                    if (records[0]) {
-                      await base44.entities.KYCVerification.delete(records[0].id);
-                      queryClient.invalidateQueries({ queryKey: ['kyc'] });
-                      toast.success('KYC data deleted');
-                    }
+                   if (!confirm('Delete all KYC data? This cannot be undone.')) return;
+                   try {
+                     const records = await base44.entities.KYCVerification.filter({}, '-created_date', 1);
+                     if (records[0]) {
+                       await base44.entities.KYCVerification.delete(records[0].id);
+                       queryClient.invalidateQueries({ queryKey: ['kyc_my'] });
+                       queryClient.invalidateQueries({ queryKey: ['kyc_admin_notifications'] });
+                       toast.success('KYC data deleted');
+                     }
+                   } catch (err) {
+                     toast.error(`Failed to delete KYC data: ${err.message || 'Unknown error'}`);
+                   }
                   }}
                   variant="outline"
                   className="w-full text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"

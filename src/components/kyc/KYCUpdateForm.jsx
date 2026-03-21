@@ -47,6 +47,7 @@ export default function KYCUpdateForm({ kycRecord, onClose }) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['kyc_my'] });
+      qc.invalidateQueries({ queryKey: ['kyc_admin_notifications'] });
       toast.success('KYC information updated successfully — submitted for review.');
       onClose();
     },

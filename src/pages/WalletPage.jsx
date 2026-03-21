@@ -3,6 +3,7 @@
  * Real-time wallet balance, transactions, payouts, and financial management
  */
 import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
 import { useUserGoalsV2, useTransactionsV2 } from '@/lib/velocityHooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

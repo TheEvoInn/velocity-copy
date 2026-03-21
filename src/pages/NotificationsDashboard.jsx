@@ -3,6 +3,7 @@
  * Real-time alerts, system messages, and event tracking
  */
 import React from 'react';
+import { base44 } from '@/api/base44Client';
 import { useActivityLogsV2 } from '@/lib/velocityHooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

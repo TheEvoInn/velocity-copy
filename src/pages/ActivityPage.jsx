@@ -3,6 +3,7 @@
  * Comprehensive audit log and real-time event tracking
  */
 import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
 import { useActivityLogsV2 } from '@/lib/velocityHooks';
 import { Card } from '@/components/ui/card';
 import { Clock, Filter } from 'lucide-react';

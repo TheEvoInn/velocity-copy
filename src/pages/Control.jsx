@@ -3,6 +3,7 @@
  * System administration, identity management, security, and compliance
  */
 import React from 'react';
+import { base44 } from '@/api/base44Client';
 import { useAIIdentitiesV2, useWorkflowsV2 } from '@/lib/velocityHooks';
 import { getDeptStyle } from '@/lib/galaxyTheme';
 import { Link } from 'react-router-dom';

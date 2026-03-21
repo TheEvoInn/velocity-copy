@@ -3,6 +3,7 @@
  * Real-time opportunity scanning, analysis, and categorization
  */
 import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
 import { useOpportunitiesV2, useUserGoalsV2, useActivityLogsV2 } from '@/lib/velocityHooks';
 import { getDeptStyle } from '@/lib/galaxyTheme';
 import { Link } from 'react-router-dom';

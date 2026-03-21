@@ -3,6 +3,7 @@
  * Real-time earnings, wallet, transactions, and financial analytics
  */
 import React from 'react';
+import { base44 } from '@/api/base44Client';
 import { useTransactionsV2, useUserGoalsV2 } from '@/lib/velocityHooks';
 import { getDeptStyle } from '@/lib/galaxyTheme';
 import { Link } from 'react-router-dom';

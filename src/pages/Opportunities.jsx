@@ -3,6 +3,7 @@
  * Comprehensive opportunity management with real-time filtering and analytics
  */
 import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
 import { useOpportunitiesV2, useUserGoalsV2 } from '@/lib/velocityHooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

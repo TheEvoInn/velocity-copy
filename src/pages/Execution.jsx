@@ -3,6 +3,7 @@
  * Real-time task queue, autopilot monitoring, and completion tracking
  */
 import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
 import { useTasksV2, useOpportunitiesV2, useUserGoalsV2, useActivityLogsV2 } from '@/lib/velocityHooks';
 import { getDeptStyle } from '@/lib/galaxyTheme';
 import { Link } from 'react-router-dom';

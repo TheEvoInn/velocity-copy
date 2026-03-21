@@ -185,7 +185,7 @@ async function executeInstantTask(base44, payload, log) {
       success: true,
       submitted,
       session_id: sessionId,
-      debug_url: session.debuggerFullscreenUrl || null,
+      debug_url: session.debuggerFullscreenUrl || `https://www.browserbase.com/sessions/${sessionId}`,
       final_url: fill.finalUrl,
       deliverable,
       snapshot_title: snapshot.title,

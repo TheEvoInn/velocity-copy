@@ -24,7 +24,7 @@ import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import TransactionForm from '@/components/wallet/TransactionForm';
 import NotificationPermissionBanner from '@/components/notifications/NotificationPermissionBanner';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
-import N8nMcpPanel from '@/components/n8n/N8nMcpPanel';
+
 import SystemAuditChecker from '@/components/audit/SystemAuditChecker';
 import GalaxyCommandHUD from '@/components/command-center/GalaxyCommandHUD';
 import PlanetaryNavWithDeepSpace from '@/components/command-center/PlanetaryNavWithDeepSpace';
@@ -282,7 +282,6 @@ export default function Dashboard() {
             </h3>
             <ActivityFeed logs={activityLogs} />
           </div>
-          <N8nMcpPanel />
         </div>
       </div>
     </div>

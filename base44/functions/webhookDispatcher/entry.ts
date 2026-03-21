@@ -1,192 +1,267 @@
+/**
+ * WEBHOOK DISPATCHER
+ * Receives incoming webhooks, validates signatures, maps payloads, and syncs to entities
+ */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
-// Dispatch webhook events to configured external endpoints
 Deno.serve(async (req) => {
   try {
+    // Extract webhook ID from URL
+    const url = new URL(req.url);
+    const pathParts = url.pathname.split('/');
+    const webhookId = pathParts[pathParts.length - 1];
+
+    if (!webhookId || req.method !== 'POST') {
+      return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+    }
+
     const base44 = createClientFromRequest(req);
-    const { event_type, event_data, run_async } = await req.json();
+    const user = await base44.auth.me();
 
-    if (!event_type || !event_data) {
-      return Response.json({ error: 'event_type and event_data required' }, { status: 400 });
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
-    // Get all active webhooks matching this event type (use service role for background dispatch)
-    const webhooks = await base44.asServiceRole.entities.WebhookConfig.filter({
-      is_active: true,
-      events: { $in: [event_type] }
-    }).catch(() => []);
+    // Fetch webhook config
+    const webhook = await base44.entities.WebhookConfig.read(webhookId);
 
-    if (!webhooks || webhooks.length === 0) {
-      return Response.json({ 
-        success: true, 
-        message: 'No webhooks configured for this event',
-        dispatched: 0 
-      });
+    if (!webhook || webhook.created_by !== user.email) {
+      return new Response(JSON.stringify({ error: 'Webhook not found' }), { status: 404 });
     }
 
-    const results = [];
+    if (!webhook.is_active) {
+      return new Response(JSON.stringify({ error: 'Webhook is inactive' }), { status: 403 });
+    }
 
-    for (const webhook of webhooks) {
-      if (webhook.test_mode) {
-        console.log(`[TEST MODE] Would dispatch to ${webhook.endpoint_url}`);
-        continue;
+    // Parse incoming payload
+    const rawBody = await req.text();
+    let payload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON payload' }), { status: 400 });
+    }
+
+    // Validate auth if configured
+    if (webhook.auth_type !== 'none') {
+      const authHeader = req.headers.get('authorization');
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: 'Missing authorization' }), { status: 401 });
       }
 
-      const payload = buildPayload(webhook, event_type, event_data);
-      const headers = buildHeaders(webhook);
+      if (webhook.auth_type === 'bearer_token' && !authHeader.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Invalid bearer token' }), { status: 401 });
+      }
+
+      const token = authHeader.split(' ')[1];
+      if (token !== webhook.auth_value) {
+        return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
+      }
+    }
+
+    // Log delivery attempt
+    const startTime = Date.now();
+    let syncResult = { success: false, entity_id: null, error: null };
+
+    // Apply payload mapping if configured
+    if (webhook.payload_mapping && webhook.payload_mapping.field_mappings) {
+      const mappedPayload = applyMapping(payload, webhook.payload_mapping.field_mappings);
+      const entityType = webhook.payload_mapping.target_entity;
 
       try {
-        const startTime = Date.now();
-        const response = await fetch(webhook.endpoint_url, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(webhook.timeout_seconds * 1000)
-        });
-
-        const responseTime = Date.now() - startTime;
-        const success = response.ok;
-        
-        // Record delivery (use service role)
-        await recordDelivery(base44.asServiceRole, webhook.id, event_type, success, response.status, responseTime, null);
-        
-        results.push({
-          webhook_id: webhook.id,
-          webhook_name: webhook.name,
-          endpoint: webhook.endpoint_url,
-          success,
-          status_code: response.status,
-          response_time_ms: responseTime
-        });
-
-      } catch (error) {
-        // Record failed delivery (use service role)
-        await recordDelivery(base44.asServiceRole, webhook.id, event_type, false, null, null, error.message);
-        
-        results.push({
-          webhook_id: webhook.id,
-          webhook_name: webhook.name,
-          endpoint: webhook.endpoint_url,
-          success: false,
-          error: error.message
-        });
+        syncResult = await syncToEntity(base44, user, entityType, mappedPayload, webhookId);
+      } catch (syncErr) {
+        syncResult.error = syncErr.message;
       }
     }
 
-    return Response.json({
-      success: true,
-      dispatched: webhooks.length,
-      results
+    const responseTime = Date.now() - startTime;
+
+    // Update webhook stats
+    const delivery = {
+      timestamp: new Date().toISOString(),
+      event: webhook.events?.[0] || 'webhook.received',
+      status: syncResult.success ? 'success' : 'failed',
+      response_code: syncResult.success ? 200 : 400,
+      response_time_ms: responseTime,
+      error_message: syncResult.error,
+    };
+
+    // Push to recent_deliveries
+    const recentDeliveries = webhook.recent_deliveries || [];
+    recentDeliveries.unshift(delivery);
+
+    await base44.entities.WebhookConfig.update(webhookId, {
+      last_triggered_at: new Date().toISOString(),
+      last_status: delivery.status,
+      recent_deliveries: recentDeliveries.slice(0, 50),
+      delivery_stats: {
+        total_deliveries: (webhook.delivery_stats?.total_deliveries || 0) + 1,
+        successful_deliveries: (webhook.delivery_stats?.successful_deliveries || 0) + (syncResult.success ? 1 : 0),
+        failed_deliveries: (webhook.delivery_stats?.failed_deliveries || 0) + (syncResult.success ? 0 : 1),
+        success_rate: ((webhook.delivery_stats?.successful_deliveries || 0) + (syncResult.success ? 1 : 0)) / ((webhook.delivery_stats?.total_deliveries || 0) + 1) * 100,
+      },
     });
 
+    // Log to ActivityLog
+    await base44.asServiceRole.entities.ActivityLog.create({
+      action_type: 'webhook_received',
+      message: `Webhook '${webhook.name}' received and processed`,
+      severity: syncResult.success ? 'success' : 'warning',
+      metadata: {
+        webhook_id: webhookId,
+        entity_type: webhook.payload_mapping?.target_entity,
+        entity_id: syncResult.entity_id,
+        response_time_ms: responseTime,
+        success: syncResult.success,
+      },
+      created_by: user.email,
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: syncResult.success,
+        entity_id: syncResult.entity_id,
+        message: syncResult.success ? 'Payload synced' : 'Sync failed',
+      }),
+      { status: syncResult.success ? 200 : 400 }
+    );
   } catch (error) {
     console.error('Webhook dispatcher error:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 });
 
-// Build payload based on webhook configuration
-function buildPayload(webhook, eventType, eventData) {
-  const timestamp = new Date().toISOString();
+/**
+ * Apply field mappings to incoming payload
+ */
+function applyMapping(payload, mappings) {
+  const result = {};
+  mappings.forEach(({ source, target, transform }) => {
+    let value = getNestedValue(payload, source);
 
-  if (webhook.payload_format === 'custom' && webhook.custom_payload_template) {
-    try {
-      let template = webhook.custom_payload_template;
-      
-      // Replace variables
-      template = template.replace(/\{\{event_type\}\}/g, eventType);
-      template = template.replace(/\{\{timestamp\}\}/g, timestamp);
-      
-      // Replace event data variables
-      for (const [key, value] of Object.entries(eventData)) {
-        const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-        template = template.replace(regex, JSON.stringify(value));
+    if (transform && value !== undefined) {
+      try {
+        value = new Function('val', `return ${transform}`)(value);
+      } catch (e) {
+        console.warn(`Transform failed for ${source}:`, e);
       }
-      
-      return JSON.parse(template);
-    } catch (e) {
-      console.error('Custom payload template error:', e);
-      return defaultPayload(eventType, eventData, timestamp);
     }
+
+    setNestedValue(result, target, value);
+  });
+  return result;
+}
+
+function getNestedValue(obj, path) {
+  return path.split('.').reduce((current, prop) => current?.[prop], obj);
+}
+
+function setNestedValue(obj, path, value) {
+  const parts = path.split('.');
+  let current = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    current[parts[i]] = current[parts[i]] || {};
+    current = current[parts[i]];
   }
-
-  return defaultPayload(eventType, eventData, timestamp);
+  current[parts[parts.length - 1]] = value;
 }
 
-// Default payload structure
-function defaultPayload(eventType, eventData, timestamp) {
-  return {
-    event: eventType,
-    timestamp,
-    data: eventData
-  };
-}
-
-// Build HTTP headers
-function buildHeaders(webhook) {
-  const headers = {
-    'Content-Type': 'application/json',
-    'User-Agent': 'Base44-WebhookDispatcher/1.0',
-    ...webhook.headers
-  };
-
-  // Add authentication
-  if (webhook.auth_type === 'bearer_token' && webhook.auth_value) {
-    headers['Authorization'] = `Bearer ${webhook.auth_value}`;
-  } else if (webhook.auth_type === 'api_key' && webhook.auth_value) {
-    headers['X-API-Key'] = webhook.auth_value;
-  } else if (webhook.auth_type === 'basic' && webhook.auth_value) {
-    headers['Authorization'] = `Basic ${webhook.auth_value}`;
-  }
-
-  return headers;
-}
-
-// Record delivery attempt
-async function recordDelivery(base44Client, webhookId, eventType, success, statusCode, responseTime, errorMessage) {
+/**
+ * Sync mapped payload to target entity
+ */
+async function syncToEntity(base44, user, entityType, payload, webhookId) {
   try {
-    const delivery = {
-      timestamp: new Date().toISOString(),
-      event: eventType,
-      status: success ? 'success' : 'failed',
-      response_code: statusCode,
-      response_time_ms: responseTime,
-      error_message: errorMessage
-    };
-
-    // Get current webhook (use appropriate base44 client method)
-    const webhook = await base44Client.entities.WebhookConfig.get(webhookId);
-    
-    // Add delivery to recent list (keep last 50)
-    const recentDeliveries = webhook.recent_deliveries || [];
-    recentDeliveries.unshift(delivery);
-    recentDeliveries.splice(50); // Keep only last 50
-
-    // Update delivery stats
-    const stats = webhook.delivery_stats || {
-      total_deliveries: 0,
-      successful_deliveries: 0,
-      failed_deliveries: 0,
-      success_rate: 0
-    };
-
-    stats.total_deliveries++;
-    if (success) {
-      stats.successful_deliveries++;
-    } else {
-      stats.failed_deliveries++;
+    // Validate required fields exist
+    if (!payload || Object.keys(payload).length === 0) {
+      throw new Error('Payload is empty after mapping');
     }
-    stats.success_rate = Math.round((stats.successful_deliveries / stats.total_deliveries) * 100);
 
-    // Update webhook
-    await base44Client.entities.WebhookConfig.update(webhookId, {
-      last_triggered_at: new Date().toISOString(),
-      last_status: success ? 'success' : 'failed',
-      recent_deliveries: recentDeliveries,
-      delivery_stats: stats
-    });
+    // Create or update entity based on type
+    let entity;
+    switch (entityType) {
+      case 'Opportunity':
+        entity = await base44.entities.Opportunity.create({
+          title: payload.title || 'Webhook Import',
+          description: payload.description,
+          platform: payload.platform,
+          category: payload.category || 'arbitrage',
+          profit_estimate_low: payload.profit_estimate_low,
+          profit_estimate_high: payload.profit_estimate_high,
+          url: payload.url,
+          deadline: payload.deadline,
+          status: 'new',
+          source: `webhook:${webhookId}`,
+        });
+        break;
 
+      case 'Transaction':
+        entity = await base44.entities.Transaction.create({
+          transaction_type: payload.transaction_type || 'reward_earned',
+          amount: payload.amount,
+          value_usd: payload.value_usd,
+          wallet_address: payload.wallet_address,
+          status: payload.status || 'completed',
+          timestamp: new Date().toISOString(),
+          source: `webhook:${webhookId}`,
+        });
+        break;
+
+      case 'CryptoWallet':
+        entity = await base44.entities.CryptoWallet.create({
+          wallet_name: payload.wallet_name,
+          wallet_type: payload.wallet_type || 'ethereum',
+          address: payload.address,
+          status: 'active',
+          source: `webhook:${webhookId}`,
+        });
+        break;
+
+      case 'StakingPosition':
+        entity = await base44.entities.StakingPosition.create({
+          token_symbol: payload.token_symbol,
+          platform: payload.platform,
+          amount_staked: payload.amount_staked,
+          apy_percentage: payload.apy_percentage,
+          status: 'active',
+          source: `webhook:${webhookId}`,
+        });
+        break;
+
+      case 'TaskExecutionQueue':
+        entity = await base44.entities.TaskExecutionQueue.create({
+          url: payload.url,
+          opportunity_type: payload.opportunity_type || 'other',
+          platform: payload.platform,
+          identity_id: payload.identity_id || 'default',
+          status: 'queued',
+          priority: payload.priority || 50,
+          source: `webhook:${webhookId}`,
+        });
+        break;
+
+      case 'ActivityLog':
+        entity = await base44.entities.ActivityLog.create({
+          action_type: payload.action_type || 'system',
+          message: payload.message || 'Webhook event',
+          severity: payload.severity || 'info',
+          metadata: payload.metadata,
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown entity type: ${entityType}`);
+    }
+
+    return {
+      success: true,
+      entity_id: entity.id,
+    };
   } catch (error) {
-    console.error('Failed to record delivery:', error);
+    return {
+      success: false,
+      entity_id: null,
+      error: error.message,
+    };
   }
 }

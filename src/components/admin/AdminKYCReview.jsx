@@ -254,10 +254,11 @@ export default function AdminKYCReview() {
   const [filter, setFilter] = useState('pending');
   const qc = useQueryClient();
 
-  const { data: kycs = [], isLoading, refetch } = useQuery({
+  const { data: kycs = [], isLoading, error, refetch } = useQuery({
     queryKey: ['admin_kyc_list'],
     queryFn: async () => {
       const res = await base44.functions.invoke('kycAdminService', { action: 'list' });
+      if (res.data?.error) throw new Error(res.data.error);
       return res.data?.records || [];
     },
     refetchInterval: 20000,

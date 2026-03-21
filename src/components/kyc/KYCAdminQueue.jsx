@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Shield, Clock, CheckCircle2, XCircle, AlertTriangle, Eye, EyeOff,
-  MessageSquare, Flag, User, FileText, ChevronDown, ChevronUp, RefreshCw
+  MessageSquare, Flag, User, FileText, ChevronDown, ChevronUp, RefreshCw, Upload, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,10 +23,42 @@ function KYCReviewCard({ record, onAction }) {
   const [expanded, setExpanded] = useState(false);
   const [showSensitive, setShowSensitive] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [actionMode, setActionMode] = useState(null); // 'deny' | 'request' | 'flag'
+  const [actionMode, setActionMode] = useState(null); // 'deny' | 'request' | 'flag' | 'upload'
+  const [uploadingDocs, setUploadingDocs] = useState({});
+  const [uploadedDocs, setUploadedDocs] = useState({});
 
   const statusKey = record.admin_status || record.status || 'submitted';
   const style = STATUS_STYLES[statusKey] || STATUS_STYLES.submitted;
+
+  const handleDocUpload = async (docType, file) => {
+    if (!file) return;
+    setUploadingDocs((p) => ({ ...p, [docType]: true }));
+    try {
+      const res = await base44.integrations.Core.UploadFile({ file });
+      setUploadedDocs((p) => ({ ...p, [docType]: res.file_url }));
+      toast.success(`${docType.replace(/_/g, ' ')} uploaded.`);
+    } catch (err) {
+      toast.error(`Upload failed: ${err.message}`);
+    } finally {
+      setUploadingDocs((p) => ({ ...p, [docType]: false }));
+    }
+  };
+
+  const handleSubmitDocuments = async () => {
+    if (Object.keys(uploadedDocs).length === 0) {
+      toast.error('Please upload at least one document.');
+      return;
+    }
+
+    const updates = {};
+    if (uploadedDocs.id_front) updates.id_document_front_url = uploadedDocs.id_front;
+    if (uploadedDocs.id_back) updates.id_document_back_url = uploadedDocs.id_back;
+    if (uploadedDocs.selfie) updates.selfie_url = uploadedDocs.selfie;
+
+    onAction(record.id, 'submit_docs', { docUpdates: updates });
+    setActionMode(null);
+    setUploadedDocs({});
+  };
 
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
@@ -89,15 +121,15 @@ function KYCReviewCard({ record, onAction }) {
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Documents</p>
             <div className="grid grid-cols-3 gap-2">
               {[
-                ['ID Front', record.id_document_front_url],
-                ['ID Back', record.id_document_back_url],
-                ['Selfie', record.selfie_url],
-              ].map(([label, url]) => (
+                ['ID Front', record.id_document_front_url, 'id_front'],
+                ['ID Back', record.id_document_back_url, 'id_back'],
+                ['Selfie', record.selfie_url, 'selfie'],
+              ].map(([label, url, key]) => (
                 <div key={label} className="bg-slate-800 rounded-lg p-2 text-center">
-                  {url ? (
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      <img src={url} alt={label} className="w-full h-20 object-cover rounded mb-1 border border-slate-600" />
-                      <p className="text-xs text-blue-400 hover:underline">{label} ↗</p>
+                  {url || uploadedDocs[key] ? (
+                    <a href={uploadedDocs[key] || url} target="_blank" rel="noopener noreferrer">
+                      <img src={uploadedDocs[key] || url} alt={label} className="w-full h-20 object-cover rounded mb-1 border border-slate-600" />
+                      <p className="text-xs text-blue-400 hover:underline">{uploadedDocs[key] ? '✓ ' : ''}{label} ↗</p>
                     </a>
                   ) : (
                     <>
@@ -111,6 +143,31 @@ function KYCReviewCard({ record, onAction }) {
               ))}
             </div>
           </div>
+
+          {/* Admin Document Upload Mode */}
+          {actionMode === 'upload' && (
+            <div className="bg-blue-950/30 border border-blue-800/30 rounded-lg p-3 space-y-3">
+              <p className="text-xs font-semibold text-blue-300">Upload Documents on Behalf of User</p>
+              {[
+                ['ID Front', 'id_front'],
+                ['ID Back', 'id_back'],
+                ['Selfie', 'selfie'],
+              ].map(([label, key]) => (
+                <div key={key} className="flex items-center gap-2">
+                  <label className="text-xs text-slate-300 flex-1">{label}</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleDocUpload(key, e.target.files?.[0])}
+                    disabled={uploadingDocs[key]}
+                    className="text-xs text-slate-400 file:bg-slate-700 file:border file:border-slate-600 file:rounded file:px-2 file:py-1 file:text-xs file:text-white cursor-pointer flex-1"
+                  />
+                  {uploadingDocs[key] && <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />}
+                  {uploadedDocs[key] && <span className="text-xs text-emerald-400">✓</span>}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Existing Admin Notes */}
           {record.admin_notes && (
@@ -202,25 +259,44 @@ function KYCReviewCard({ record, onAction }) {
             )}
 
             {/* Flag as Suspicious */}
-            {['submitted', 'under_review'].includes(statusKey) && (
-              actionMode === 'flag' ? (
-                <Button
-                  onClick={() => { onAction(record.id, 'flag', { note: noteText }); setActionMode(null); setNoteText(''); }}
-                  disabled={!noteText.trim()}
-                  className="text-xs bg-orange-600 hover:bg-orange-500"
-                >
-                  <Flag className="w-3 h-3 mr-1" /> Confirm Flag
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => setActionMode('flag')}
-                  variant="outline"
-                  className="text-xs border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
-                >
-                  <Flag className="w-3 h-3 mr-1" /> Flag Suspicious
-                </Button>
-              )
-            )}
+             {['submitted', 'under_review'].includes(statusKey) && (
+               actionMode === 'flag' ? (
+                 <Button
+                   onClick={() => { onAction(record.id, 'flag', { note: noteText }); setActionMode(null); setNoteText(''); }}
+                   disabled={!noteText.trim()}
+                   className="text-xs bg-orange-600 hover:bg-orange-500"
+                 >
+                   <Flag className="w-3 h-3 mr-1" /> Confirm Flag
+                 </Button>
+               ) : (
+                 <Button
+                   onClick={() => setActionMode('flag')}
+                   variant="outline"
+                   className="text-xs border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                 >
+                   <Flag className="w-3 h-3 mr-1" /> Flag Suspicious
+                 </Button>
+               )
+             )}
+
+             {/* Submit for User */}
+             {actionMode === 'upload' ? (
+               <Button
+                 onClick={handleSubmitDocuments}
+                 disabled={Object.keys(uploadedDocs).length === 0}
+                 className="text-xs bg-blue-600 hover:bg-blue-500 col-span-2"
+               >
+                 <CheckCircle2 className="w-3 h-3 mr-1" /> Submit Documents
+               </Button>
+             ) : (
+               <Button
+                 onClick={() => setActionMode('upload')}
+                 variant="outline"
+                 className="text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10 col-span-2"
+               >
+                 <Upload className="w-3 h-3 mr-1" /> Submit for User
+               </Button>
+             )}
           </div>
 
           {actionMode && (
@@ -248,7 +324,7 @@ export default function KYCAdminQueue() {
   });
 
   const actionMutation = useMutation({
-    mutationFn: async ({ id, action, note }) => {
+    mutationFn: async ({ id, action, note, docUpdates }) => {
       const now = new Date().toISOString();
       const updates = { admin_notes: note || undefined };
 
@@ -278,6 +354,13 @@ export default function KYCAdminQueue() {
         Object.assign(updates, { status: 'submitted', admin_status: 'additional_info', admin_request_note: note });
       } else if (action === 'flag') {
         Object.assign(updates, { admin_status: 'flagged', admin_notes: `[FLAGGED] ${note}` });
+      } else if (action === 'submit_docs') {
+        Object.assign(updates, {
+          ...docUpdates,
+          status: 'submitted',
+          admin_status: 'submitted',
+          admin_notes: 'Documents uploaded by admin'
+        });
       }
 
       // Append to access log via service role
@@ -301,14 +384,15 @@ export default function KYCAdminQueue() {
         under_review: '🔍 Marked under review',
         request_info: '📋 Additional info requested',
         flag: '🚩 Submission flagged',
+        submit_docs: '📤 Documents submitted for user',
       };
       toast.success(messages[action] || 'Updated');
     },
     onError: (err) => toast.error(`Error: ${err.message}`),
   });
 
-  const handleAction = (id, action, { note } = {}) => {
-    actionMutation.mutate({ id, action, note });
+  const handleAction = (id, action, { note, docUpdates } = {}) => {
+    actionMutation.mutate({ id, action, note, docUpdates });
   };
 
   const filtered = allKYC.filter(r => {

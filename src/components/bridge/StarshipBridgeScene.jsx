@@ -160,6 +160,7 @@ export default function StarshipBridgeScene() {
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
+      postProcessingRef.current.onWindowResize(width, height);
     };
 
     window.addEventListener('resize', onWindowResize);

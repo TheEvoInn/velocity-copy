@@ -98,12 +98,31 @@ export default function InstantTaskPanel({ opportunities = [], onTaskComplete })
     setResult(null);
     setError(null);
     try {
+      // Create or get task record first
+      let taskId = null;
+      if (selectedOpp?.id) {
+        const task = await base44.entities.TaskExecutionQueue.create({
+          opportunity_id: selectedOpp.id,
+          url: targetUrl,
+          opportunity_type: 'instant_task',
+          platform: selectedOpp.platform || 'manual',
+          identity_id: identity?.id || '',
+          identity_name: identity?.name || '',
+          status: 'processing',
+          queue_timestamp: new Date().toISOString(),
+          priority: 100,
+          estimated_value: selectedOpp.profit_estimate_high || 50,
+        });
+        taskId = task.id;
+      }
+
       const res = await base44.functions.invoke('instantTask', {
         action: 'run_instant_task',
         payload: {
           task_type: taskType,
           url: targetUrl,
           context: context || selectedOpp?.description || '',
+          task_id: taskId,
           identity: identity ? {
             name: identity.name,
             email: identity.email,

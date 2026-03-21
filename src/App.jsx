@@ -47,6 +47,7 @@ import DigitalResellers from './pages/DigitalResellers';
 import EmailMarketing from './pages/EmailMarketing';
 import PageCustomizer from './pages/PageCustomizer';
 import CryptoProfitSystems from './pages/CryptoProfitSystems';
+import GlobalTaskOrchestrator from './pages/GlobalTaskOrchestrator';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -110,6 +111,7 @@ const AuthenticatedApp = () => {
         <Route path="/PageCustomizer" element={<PageCustomizer />} />
         <Route path="/EmailMarketing" element={<EmailMarketing />} />
         <Route path="/CryptoProfitSystems" element={<CryptoProfitSystems />} />
+        <Route path="/GlobalTaskOrchestrator" element={<GlobalTaskOrchestrator />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

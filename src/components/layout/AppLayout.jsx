@@ -204,11 +204,31 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
           );
         })}
 
-        <div className="mt-auto pt-4 border-t border-slate-800/60 space-y-2">
+        <div className="mt-auto pt-4 border-t border-slate-800/60 space-y-1.5">
           <Link to="/Chat" onClick={onClose}
             className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all">
             <MessageSquare className="w-4 h-4 text-violet-400" />
-            <span className="text-sm text-slate-300">AI Mission Control</span>
+            <span className="text-sm text-slate-300">Mission AI</span>
+          </Link>
+          <Link to="/AutoPilot" onClick={onClose}
+            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all">
+            <span className="text-base">🛰️</span>
+            <span className="text-sm text-slate-300">Autopilot</span>
+          </Link>
+          <Link to="/TaskQueueApproval" onClick={onClose}
+            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all">
+            <span className="text-base">📋</span>
+            <span className="text-sm text-slate-300">Task Queue</span>
+          </Link>
+          <Link to="/TemplatesLibrary" onClick={onClose}
+            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all">
+            <span className="text-base">📚</span>
+            <span className="text-sm text-slate-300">Templates</span>
+          </Link>
+          <Link to="/UserAccessPage" onClick={onClose}
+            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all">
+            <Settings className="w-4 h-4 text-cyan-400" />
+            <span className="text-sm text-slate-300">Settings</span>
           </Link>
         </div>
       </nav>
@@ -276,9 +296,9 @@ export default function AppLayout() {
             <NotificationBell />
             <Link to="/UserAccessPage"
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/20 text-cyan-400 hover:text-cyan-300 hover:border-cyan-400/40 hover:bg-cyan-500/10 transition-all text-xs"
-              style={{ boxShadow: '0 0 12px rgba(6,182,212,0.15)' }}
-              title="User Access Page">
+              style={{ boxShadow: '0 0 12px rgba(6,182,212,0.15)' }}>
               <Settings className="w-3.5 h-3.5" />
+              <span className="hidden lg:block font-orbitron text-[10px] tracking-wide">SETTINGS</span>
             </Link>
             <Link to="/Chat"
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-violet-500/20 text-violet-400 hover:text-violet-300 hover:border-violet-400/40 hover:bg-violet-500/10 transition-all text-xs"

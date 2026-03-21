@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, AlertCircle, Clock, Lock, Shield, FileText, XCircle, MessageSquare, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import KYCUpdateForm from './KYCUpdateForm';
 
 const STATUS_CONFIG = {
   pending:             { icon: Clock,         color: 'text-slate-400',   bg: 'bg-slate-700/30',     border: 'border-slate-700',   label: 'Not Submitted' },
@@ -17,6 +18,7 @@ const STATUS_CONFIG = {
 };
 
 export default function KYCStatusPanel({ onStartKYC }) {
+  const [showUpdateForm, setShowUpdateForm] = useState(false);
   const { data: kycRecord = null, isLoading } = useQuery({
     queryKey: ['kyc_my'],
     queryFn: async () => {
@@ -65,6 +67,10 @@ export default function KYCStatusPanel({ onStartKYC }) {
         </CardContent>
       </Card>
     );
+  }
+
+  if (showUpdateForm) {
+    return <KYCUpdateForm kycRecord={kycRecord} onClose={() => setShowUpdateForm(false)} />;
   }
 
   const statusKey = kycRecord.admin_status || kycRecord.status || 'pending';
@@ -164,12 +170,17 @@ export default function KYCStatusPanel({ onStartKYC }) {
           </div>
         )}
 
-        {/* Resubmit if denied/expired */}
+        {/* Resubmit if denied/expired/additional info */}
         {(statusKey === 'rejected' || statusKey === 'expired' || statusKey === 'additional_info') && (
-          <Button onClick={onStartKYC} className="w-full text-xs bg-blue-600 hover:bg-blue-500">
-            <FileText className="w-3 h-3 mr-1" />
-            {statusKey === 'additional_info' ? 'Resubmit with Additional Info' : 'Resubmit Application'}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowUpdateForm(true)} className="flex-1 text-xs bg-blue-600 hover:bg-blue-500 gap-1.5">
+              <FileText className="w-3 h-3" />
+              Update Information
+            </Button>
+            <Button onClick={onStartKYC} variant="outline" className="flex-1 text-xs border-slate-600 text-slate-300">
+              New Submission
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

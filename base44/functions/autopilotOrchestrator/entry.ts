@@ -250,18 +250,22 @@ Deno.serve(async (req) => {
         );
 
         for (const opp of opportunitiesForExecution.slice(0, 10)) {
+          if (!opp || !opp.id) continue;
           try {
             const queueRes = await base44.asServiceRole.functions.invoke('autopilotRealExecution', {
               action: 'queue_task_for_execution',
               opportunity: opp,
               identity_id: cycleResults.identity_ready?.id
-            }).catch(e => ({ data: { success: false, error: e.message } }));
+            }).catch(e => {
+              console.error(`Queue error for ${opp.id}:`, e.message);
+              return { data: { task: null } };
+            });
             
-            if (queueRes?.data?.success) {
+            if (queueRes?.data?.task && queueRes.data.task.id) {
               cycleResults.tasks_executed++;
             }
           } catch (e) {
-            console.error(`Error queueing opportunity ${opp?.id}:`, e.message);
+            console.error(`Error queueing opp ${opp.id}:`, e.message);
           }
         }
 

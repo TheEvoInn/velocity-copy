@@ -4,11 +4,12 @@
  * Communicates with: Execution (sends tasks), Finance (estimates value),
  * Control (reads identity requirements), Command Center (shows summary).
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useDepartmentSync } from '@/hooks/useDepartmentSync';
-import { Telescope, Zap, Target, Clock, TrendingUp, Search, Filter, RefreshCw, Send, BarChart2 } from 'lucide-react';
+import { platformComm, PLATFORM_EVENTS } from '@/services/platformCrossComm';
+import { Telescope, Zap, Target, Clock, TrendingUp, Search, Filter, RefreshCw, Send, BarChart2, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
@@ -40,6 +41,23 @@ export default function Discovery() {
   const [filter, setFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active');
   const [scanning, setScanning] = useState(false);
+  const [platformStats, setPlatformStats] = useState(null);
+
+  // Listen to cross-platform events
+  useEffect(() => {
+    const unsub1 = platformComm.subscribe(PLATFORM_EVENTS.OPPORTUNITY_FOUND, () => {
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+    });
+    const unsub2 = platformComm.subscribe(PLATFORM_EVENTS.SCAN_COMPLETED, (data) => {
+      setPlatformStats(data);
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+    });
+    
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [queryClient]);
 
   const filtered = (Array.isArray(opportunities) ? opportunities : []).filter(o => {
     if (!o || !o.id) return false;
@@ -73,6 +91,8 @@ export default function Discovery() {
         queue_timestamp: new Date().toISOString(),
       });
       await base44.entities.Opportunity.update(opp.id, { status: 'queued' }).catch(() => {});
+      // Emit cross-platform event
+      await platformComm.notifyQueueing(opp, identity);
       DeptBus.emit(DEPT_EVENTS.TASK_QUEUED, { opportunity: opp, identity, task_id: task?.id });
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
@@ -102,25 +122,32 @@ export default function Discovery() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button size="sm"
-            onClick={async () => {
-              setScanning(true);
-              try {
-                await base44.functions.invoke('unifiedOrchestrator', { action: 'scan_opportunities' });
-                queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-              } finally {
-                setScanning(false);
-              }
-            }}
-            disabled={scanning}
-            className="bg-amber-600/80 hover:bg-amber-500 text-white text-xs h-8 gap-1.5">
-            <RefreshCw className={`w-3.5 h-3.5 ${scanning ? 'animate-spin' : ''}`} />
-            {scanning ? 'Scanning...' : 'Scan Markets'}
-          </Button>
-        </div>
+           <Button size="sm"
+             onClick={async () => {
+               setScanning(true);
+               try {
+                 await platformComm.emit(PLATFORM_EVENTS.SCAN_STARTED, { source: 'discovery_ui' });
+                 const result = await base44.functions.invoke('unifiedOrchestrator', { action: 'scan_opportunities' });
+                 await platformComm.emit(PLATFORM_EVENTS.SCAN_COMPLETED, { 
+                   total_found: result?.data?.grand_total_saved || 0,
+                   sources: result?.data?.sources || []
+                 });
+                 queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+               } catch (err) {
+                 console.error('Scan failed:', err.message);
+               } finally {
+                 setScanning(false);
+               }
+             }}
+             disabled={scanning}
+             className="bg-amber-600/80 hover:bg-amber-500 text-white text-xs h-8 gap-1.5">
+             <Radio className={`w-3.5 h-3.5 ${scanning ? 'animate-spin' : ''}`} />
+             {scanning ? 'Scanning Markets...' : 'Scan All Markets'}
+           </Button>
+         </div>
       </div>
 
-      {/* Stats Row */}
+      {/* Stats Row with Cross-Platform Data */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Total Found', value: stats.total, icon: Target, color: 'text-amber-400' },
@@ -134,6 +161,9 @@ export default function Discovery() {
               <span className="text-xs text-slate-500">{label}</span>
             </div>
             <div className={`text-xl font-bold ${color}`}>{value}</div>
+            {platformStats && label === 'Total Found' && (
+              <p className="text-[10px] text-slate-600 mt-1">Last scan: +{platformStats.total_found}</p>
+            )}
           </div>
         ))}
       </div>

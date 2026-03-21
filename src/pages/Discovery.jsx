@@ -18,6 +18,7 @@ import RealTimeAlertSystem from '@/components/scanning/RealTimeAlertSystem';
 import OpportunityAnalysisPanel from '@/components/scanning/OpportunityAnalysisPanel';
 import RealJobScanPanel from '@/components/discovery/RealJobScanPanel';
 import GlobalOpportunityDiscovery from '@/components/discovery/GlobalOpportunityDiscovery';
+import WorkflowAutomationControl from '@/components/automation/WorkflowAutomationControl';
 
 const STATUS_COLORS = {
   new: 'bg-amber-500/20 text-amber-300 border-amber-500/30',

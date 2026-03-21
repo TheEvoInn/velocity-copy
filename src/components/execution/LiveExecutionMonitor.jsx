@@ -41,7 +41,7 @@ export default function LiveExecutionMonitor() {
       try {
         const res = await base44.functions.invoke('agentWorker', {
           action: 'get_live_session',
-          task_id: selectedSession.id,
+          payload: { task_id: selectedSession.id },
         });
         return res.data || null;
       } catch (err) {

@@ -25,14 +25,15 @@ export default function BrowserbaseExecutionWorker() {
   // Execute single task
   const executeMutation = useMutation({
     mutationFn: async (taskId) => {
+      const task = tasks.find(t => t.id === taskId) || selectedTask;
       const res = await base44.functions.invoke('agentWorker', {
         action: 'execute_task',
         payload: {
           task_id: taskId,
-          url: selectedTask?.url,
-          opportunity_id: selectedTask?.opportunity_id,
-          identity_id: selectedTask?.identity_id,
-          platform: selectedTask?.platform,
+          url: task?.url,
+          opportunity_id: task?.opportunity_id,
+          identity_id: task?.identity_id,
+          platform: task?.platform,
         }
       });
       return res.data;

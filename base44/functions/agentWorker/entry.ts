@@ -119,16 +119,8 @@ async function executeTask(base44, payload) {
       const opps = await base44.asServiceRole.entities.Opportunity.filter({ id: opportunity_id }, null, 1);
       opp = opps?.[0];
     }
-    if (!opp && !task_id) {
-      log('load_opportunity', 'failed', 'Opportunity not found and no task_id provided');
-      if (task_id) {
-        await base44.asServiceRole.entities.TaskExecutionQueue.update(task_id, {
-          status: 'failed',
-          error_message: 'Opportunity not found',
-          execution_log: execLog
-        }).catch(() => {});
-      }
-      return Response.json({ success: false, error: 'Opportunity not found' }, { status: 404 });
+    if (!opp && opportunity_id) {
+      log('load_opportunity', 'failed', 'Opportunity not found but proceeding with task');
     }
     if (opp) {
       log('load_opportunity', 'success', `${opp.title} on ${opp.platform || platform}`);
@@ -185,19 +177,21 @@ async function executeTask(base44, payload) {
     }
 
     // Log identity routing
-    await base44.asServiceRole.entities.IdentityRoutingLog.create({
-      opportunity_id: opp.id,
-      task_id: task_id || '',
-      identity_used: 'persona',
-      identity_name: identity.name,
-      routing_reason: 'Auto-selected active identity',
-      required_kyc: false,
-      kyc_verified: false,
-      auto_detected: true,
-      platform: opp.platform,
-      opportunity_category: opp.category,
-      status: 'executed'
-    }).catch(() => {});
+    if (opp) {
+      await base44.asServiceRole.entities.IdentityRoutingLog.create({
+        opportunity_id: opp.id,
+        task_id: task_id || '',
+        identity_used: 'persona',
+        identity_name: identity.name,
+        routing_reason: 'Auto-selected active identity',
+        required_kyc: false,
+        kyc_verified: false,
+        auto_detected: true,
+        platform: opp.platform,
+        opportunity_category: opp.category,
+        status: 'executed'
+      }).catch(() => {});
+    }
 
     // Determine execution strategy
     log('strategy_select', 'running', `Category: ${opp.category}, Type: ${opp.opportunity_type}`);
@@ -254,7 +248,7 @@ async function executeTask(base44, payload) {
     }
 
     // Update opportunity (if we have one)
-    if (opp) {
+    if (opp && opportunity_id) {
       await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
         status: executionResult.success ? 'submitted' : 'reviewing',
         submission_timestamp: new Date().toISOString(),
@@ -310,7 +304,7 @@ async function executeTask(base44, payload) {
       message: executionResult.message,
       deliverable_preview: (executionResult.deliverable || '').substring(0, 400),
       needs_manual_action: executionResult.needs_manual_action,
-      manual_action_url: opp.url,
+      manual_action_url: opp?.url || url,
       execution_log: execLog
     });
 
@@ -327,12 +321,12 @@ async function executeTask(base44, payload) {
         retry_count: 0
       }).catch(() => {});
     }
-    if (opportunity_id) {
-      await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
-        status: 'failed',
-        notes: error.message
-      }).catch(() => {});
-    }
+    if (opportunity_id && opp) {
+       await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
+         status: 'failed',
+         notes: error.message
+       }).catch(() => {});
+     }
     await base44.asServiceRole.entities.ActivityLog.create({
       action_type: 'alert',
       message: `❌ Task execution failed: ${error.message}`,

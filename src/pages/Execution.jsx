@@ -61,6 +61,7 @@ export default function Execution() {
       });
       queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
       queryClient.invalidateQueries({ queryKey: ['taskQueueManager'] });
+      queryClient.invalidateQueries({ queryKey: ['live_sessions', 'live_session_data'] });
     } catch (e) {
       console.error('Retry failed:', e);
     }

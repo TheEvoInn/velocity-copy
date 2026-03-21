@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Shield, Settings, Zap, Lock } from 'lucide-react';
+import SubPageNav from '@/components/layout/SubPageNav';
 
 const style = getDeptStyle('control');
 
@@ -21,8 +22,9 @@ export default function Control() {
   const activeWorkflows = workflows.filter(w => w.status === 'active').length;
 
   return (
-    <div className="min-h-screen galaxy-bg p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen galaxy-bg">
+      <SubPageNav />
+      <div className="max-w-7xl mx-auto p-4 md:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">

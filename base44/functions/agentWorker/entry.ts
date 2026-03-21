@@ -1,6 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 import OpenAI from 'npm:openai@4.47.1';
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 /**
  * Agent Worker v3.0 — Real Execution Engine
@@ -24,7 +23,6 @@ async function llmComplete(messages, maxTokens = 1500) {
     return res.choices[0].message.content;
   } catch (e) {
     console.log(`[AgentWorker] OpenAI failed (${e.message}), trying fallback`);
-    // Use Gemini as fallback via geminiAI function
     throw new Error(`LLM unavailable: ${e.message}`);
   }
 }
@@ -34,14 +32,10 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
 
-    // --- Entity automation trigger: TaskExecutionQueue updated ---
     if (body.event && body.event.entity_name === 'TaskExecutionQueue') {
       return await handleTaskQueueTrigger(base44, body);
     }
 
-    // --- Direct invocation ---
-    // execute_task and execute_next_task can be called by the orchestrator (service role)
-    // so we allow them without user auth but use asServiceRole for entity ops
     const { action, payload } = body;
 
     if (action === 'execute_task') return await executeTask(base44, payload);
@@ -52,7 +46,6 @@ Deno.serve(async (req) => {
     if (action === 'stop_execution') return await stopExecution(base44, payload);
     if (action === 'intervene') return await interveneExecution(base44, payload);
     
-    // Remaining actions require user auth
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -69,9 +62,6 @@ Deno.serve(async (req) => {
   }
 });
 
-/**
- * Entity automation handler — fires when TaskExecutionQueue record is created or updated
- */
 async function handleTaskQueueTrigger(base44, body) {
   const { event, data } = body;
 
@@ -85,7 +75,6 @@ async function handleTaskQueueTrigger(base44, body) {
 
   if (!task) return Response.json({ skipped: true, reason: 'Task not found' });
 
-  // Only auto-execute when status becomes 'queued'
   if (task.status !== 'queued') {
     return Response.json({ skipped: true, reason: `Status is ${task.status}, not queued` });
   }
@@ -100,9 +89,6 @@ async function handleTaskQueueTrigger(base44, body) {
   });
 }
 
-/**
- * Core task execution — loads opportunity + identity, generates content, updates status
- */
 async function executeTask(base44, payload) {
   const { task_id, opportunity_id, url, identity_id, platform, proposal_content } = payload || {};
   const startTime = Date.now();
@@ -114,7 +100,6 @@ async function executeTask(base44, payload) {
   };
 
   try {
-    // Load opportunity
     let opp = null;
     if (opportunity_id) {
       const opps = await base44.asServiceRole.entities.Opportunity.filter({ id: opportunity_id }, null, 1);
@@ -129,7 +114,6 @@ async function executeTask(base44, payload) {
       log('load_opportunity', 'skipped', 'No opportunity_id, proceeding with task_id only');
     }
 
-    // Load identity
     let identity = null;
     if (identity_id) {
       const ids = await base44.asServiceRole.entities.AIIdentity.filter({ id: identity_id }, null, 1);
@@ -151,15 +135,12 @@ async function executeTask(base44, payload) {
           execution_log: execLog
         });
       }
-      // Notify via Mission AI if possible
       await requestMissionAIHelp(base44, opp, 'No active identity configured for autopilot execution.');
       return Response.json({ success: false, error: 'No active identity found' });
     }
     log('load_identity', 'success', `Using identity: ${identity.name}`);
 
-    // Mark task as processing
     if (task_id) {
-      // Clear previous logs for fresh retry
       const clearedLog = execLog.slice(-1);
       await base44.asServiceRole.entities.TaskExecutionQueue.update(task_id, {
         status: 'processing',
@@ -169,7 +150,6 @@ async function executeTask(base44, payload) {
       });
     }
 
-    // Update opportunity to executing (if we have one)
     if (opp) {
       await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
         status: 'executing',
@@ -179,7 +159,6 @@ async function executeTask(base44, payload) {
       log('identity_routing', 'success', `Identity "${identity.name}" assigned to "${opp.title}"`);
     }
 
-    // Log identity routing
     if (opp) {
       await base44.asServiceRole.entities.IdentityRoutingLog.create({
         opportunity_id: opp.id,
@@ -196,14 +175,10 @@ async function executeTask(base44, payload) {
       }).catch(() => {});
     }
 
-    // Determine execution strategy
-    log('strategy_select', 'running', `Category: ${opp.category}, Type: ${opp.opportunity_type}`);
+    log('strategy_select', 'running', `Category: ${opp?.category}, Type: ${opp?.opportunity_type}`);
     let executionResult = null;
 
     if (opp) {
-      // Execute based on opportunity type
-      log('strategy_select', 'running', `Category: ${opp.category}, Type: ${opp.opportunity_type}`);
-      
       const titleLower = (opp.title || '').toLowerCase();
       const isDesign = opp.category === 'contest' || ['logo', 'design', 'brand', 'illustration', 'graphic'].some(k => titleLower.includes(k));
       const isGrant = opp.category === 'grant' || opp.opportunity_type === 'grant';
@@ -219,11 +194,9 @@ async function executeTask(base44, payload) {
       } else if (isArbitrage) {
         executionResult = await executeArbitrageOpportunity(opp, identity, log);
       } else {
-        // Default: writing/service/freelance
         executionResult = await executeWritingOpportunity(opp, identity, proposal_content, log);
       }
     } else {
-      // No opportunity, just log generic success
       log('execution_complete', 'success', 'Task processed without specific opportunity data');
       executionResult = { success: true, message: 'Task processed', deliverable: '', needs_manual_action: false };
     }
@@ -232,7 +205,6 @@ async function executeTask(base44, payload) {
     log('execution_complete', executionResult.success ? 'success' : 'needs_review',
       `Completed in ${executionTime}s — ${executionResult.message}`);
 
-    // Update task record
     if (task_id) {
       await base44.asServiceRole.entities.TaskExecutionQueue.update(task_id, {
         status: executionResult.success ? 'completed' : 'needs_review',
@@ -250,21 +222,18 @@ async function executeTask(base44, payload) {
       });
     }
 
-    // Update opportunity (if we have one)
     if (opp && opportunity_id) {
-     await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
-       status: executionResult.success ? 'submitted' : 'reviewing',
-       submission_timestamp: new Date().toISOString(),
-       submission_confirmed: executionResult.success && !executionResult.needs_manual_action,
-       confirmation_number: `EXEC-${(task_id || opportunity_id || '').slice(0, 8).toUpperCase()}`,
-       notes: executionResult.message
-     }).catch((e) => console.error('Opp update failed:', e.message));
+      await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
+        status: executionResult.success ? 'submitted' : 'reviewing',
+        submission_timestamp: new Date().toISOString(),
+        submission_confirmed: executionResult.success && !executionResult.needs_manual_action,
+        confirmation_number: `EXEC-${(task_id || opportunity_id || '').slice(0, 8).toUpperCase()}`,
+        notes: executionResult.message
+      }).catch((e) => console.error('Opp update failed:', e.message));
     } else if (!opp && opportunity_id) {
-     // Log missing opportunity but continue
-     log('opp_update_skipped', 'warning', 'Opportunity ID provided but record not found');
+      log('opp_update_skipped', 'warning', 'Opportunity ID provided but record not found');
     }
 
-    // Save deliverable to AIWorkLog
     if (executionResult.deliverable) {
       await base44.asServiceRole.entities.AIWorkLog.create({
         log_type: 'proposal_submitted',
@@ -286,7 +255,6 @@ async function executeTask(base44, payload) {
       }).catch(() => {});
     }
 
-    // Activity log
     await base44.asServiceRole.entities.ActivityLog.create({
       action_type: executionResult.success ? 'opportunity_found' : 'alert',
       message: `${executionResult.success ? '✅' : '⚠️'} Task executed${opp ? ': "' + opp.title + '"' : ''} (${executionTime}s)${executionResult.needs_manual_action ? ' — Manual submission needed' : ''}`,
@@ -344,47 +312,22 @@ async function executeTask(base44, payload) {
   }
 }
 
-// ─── Execution strategies ────────────────────────────────────────────────────
-
 async function executeWritingOpportunity(opp, identity, existingProposal, log) {
   log('generate_content', 'running', 'Generating written deliverable with AI');
-
   const systemPrompt = buildIdentitySystemPrompt(identity, 'writer/content creator');
-
   let content;
   try {
     content = await llmComplete([
       { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: `You have been assigned this writing/service task:
-
-Title: ${opp.title}
-Platform: ${opp.platform}
-Description: ${opp.description || 'No description provided'}
-Category: ${opp.category}
-Profit Range: $${opp.profit_estimate_low || 0}–$${opp.profit_estimate_high || 0}
-URL: ${opp.url}
-
-Produce the complete deliverable now. This is a REAL paid assignment.
-Include:
-1. A brief cover note explaining your approach
-2. The full content/deliverable (publication-ready)
-3. Next steps for submission
-
-Be professional, specific, and high-quality.`
-      }
+      { role: 'user', content: `You have been assigned this writing/service task:\n\nTitle: ${opp.title}\nPlatform: ${opp.platform}\nDescription: ${opp.description || 'No description provided'}\nCategory: ${opp.category}\nProfit Range: $${opp.profit_estimate_low || 0}–$${opp.profit_estimate_high || 0}\nURL: ${opp.url}\n\nProduce the complete deliverable now. This is a REAL paid assignment.\nInclude:\n1. A brief cover note explaining your approach\n2. The full content/deliverable (publication-ready)\n3. Next steps for submission\n\nBe professional, specific, and high-quality.` }
     ], 2000);
   } catch (e) {
     log('generate_content', 'fallback', `LLM error: ${e.message} — using structured template`);
     content = buildFallbackDeliverable(opp, identity);
   }
-
   log('content_generated', 'success', `Generated ${content.length} character deliverable`);
-
   const proposal = existingProposal || await generateCoverLetter(opp, identity);
   log('proposal_ready', 'success', 'Cover letter ready');
-
   return {
     success: true,
     message: `Deliverable generated for "${opp.title}". Content ready for submission at ${opp.url}`,
@@ -396,33 +339,15 @@ Be professional, specific, and high-quality.`
 
 async function executeDesignOpportunity(opp, identity, log) {
   log('design_brief', 'running', 'Generating design concept and entry brief');
-
   let content;
   try {
     content = await llmComplete([
       { role: 'system', content: buildIdentitySystemPrompt(identity, 'professional designer') },
-      {
-        role: 'user',
-        content: `Design opportunity:
-Title: ${opp.title}
-Platform: ${opp.platform}
-Description: ${opp.description || 'No description provided'}
-URL: ${opp.url}
-
-Produce:
-1. Complete design concept (colors, typography, layout, style rationale)
-2. Specific technical specifications
-3. Contest entry statement to submit with the design
-4. Step-by-step creation guide using Canva or Adobe Express
-5. File format and submission checklist
-
-This is a real contest entry — be specific and actionable.`
-      }
+      { role: 'user', content: `Design opportunity:\nTitle: ${opp.title}\nPlatform: ${opp.platform}\nDescription: ${opp.description || 'No description provided'}\nURL: ${opp.url}\n\nProduce:\n1. Complete design concept (colors, typography, layout, style rationale)\n2. Specific technical specifications\n3. Contest entry statement to submit with the design\n4. Step-by-step creation guide using Canva or Adobe Express\n5. File format and submission checklist\n\nThis is a real contest entry — be specific and actionable.` }
     ], 1800);
   } catch (e) {
     content = buildFallbackDeliverable(opp, identity);
   }
-
   log('design_brief_ready', 'success', 'Design concept and entry statement ready');
   return {
     success: true,
@@ -434,50 +359,20 @@ This is a real contest entry — be specific and actionable.`
 
 async function executeGrantApplication(opp, identity, log) {
   log('grant_application', 'running', 'Drafting full grant application');
-
   const kyc = identity.kyc_verified_data;
   const hasKYC = kyc && kyc.kyc_tier !== 'none' && kyc.autopilot_clearance?.can_submit_grant_applications;
   if (hasKYC) {
     log('kyc_inject', 'success', `Using verified KYC identity: ${kyc.full_legal_name} (Tier: ${kyc.kyc_tier})`);
   }
-
   let content;
   try {
     content = await llmComplete([
       { role: 'system', content: buildIdentitySystemPrompt(identity, 'grant writer') },
-      {
-        role: 'user',
-        content: `Grant opportunity:
-Title: ${opp.title}
-Platform: ${opp.platform}
-Description: ${opp.description || 'No description provided'}
-URL: ${opp.url}
-${hasKYC ? `
-APPLICANT DETAILS (use these exactly on all forms):
-- Name: ${kyc.full_legal_name}
-- DOB: ${kyc.date_of_birth}
-- Address: ${[kyc.residential_address, kyc.city, kyc.state, kyc.postal_code].filter(Boolean).join(', ')}
-- Phone: ${kyc.phone_number || '—'}
-- Email: ${kyc.email || '—'}
-${kyc.tax_id ? `- Tax ID / EIN: ${kyc.tax_id}` : ''}
-` : ''}
-Write a complete, compelling grant application:
-1. Executive Summary (2 paragraphs)
-2. Project Description and Statement of Need
-3. Goals and Measurable Objectives
-4. Implementation Plan with timeline
-5. Budget narrative
-6. Organizational capacity statement
-7. Conclusion and call to action
-${hasKYC ? '8. Pre-filled applicant information section using the verified details above' : ''}
-
-Make it professional, specific, and ready to submit.`
-      }
+      { role: 'user', content: `Grant opportunity:\nTitle: ${opp.title}\nPlatform: ${opp.platform}\nDescription: ${opp.description || 'No description provided'}\nURL: ${opp.url}\n${hasKYC ? `\nAPPLICANT DETAILS (use these exactly on all forms):\n- Name: ${kyc.full_legal_name}\n- DOB: ${kyc.date_of_birth}\n- Address: ${[kyc.residential_address, kyc.city, kyc.state, kyc.postal_code].filter(Boolean).join(', ')}\n- Phone: ${kyc.phone_number || '—'}\n- Email: ${kyc.email || '—'}\n${kyc.tax_id ? `- Tax ID / EIN: ${kyc.tax_id}` : ''}\n` : ''}Write a complete, compelling grant application:\n1. Executive Summary (2 paragraphs)\n2. Project Description and Statement of Need\n3. Goals and Measurable Objectives\n4. Implementation Plan with timeline\n5. Budget narrative\n6. Organizational capacity statement\n7. Conclusion and call to action\n${hasKYC ? '8. Pre-filled applicant information section using the verified details above' : ''}\n\nMake it professional, specific, and ready to submit.` }
     ], 2500);
   } catch (e) {
     content = buildFallbackDeliverable(opp, identity);
   }
-
   log('grant_application_ready', 'success', 'Grant application drafted');
   return {
     success: true,
@@ -489,34 +384,15 @@ Make it professional, specific, and ready to submit.`
 
 async function executeDigitalProduct(opp, identity, log) {
   log('digital_product', 'running', 'Creating digital product');
-
   let content;
   try {
     content = await llmComplete([
       { role: 'system', content: buildIdentitySystemPrompt(identity, 'digital product creator') },
-      {
-        role: 'user',
-        content: `Digital product opportunity:
-Title: ${opp.title}
-Platform: ${opp.platform}
-Description: ${opp.description || 'No description provided'}
-URL: ${opp.url}
-
-Create the complete product:
-1. Optimized product title and SEO description
-2. Full content/template/pages
-3. Metadata: keywords, categories, tags
-4. Pricing recommendation with justification
-5. Step-by-step upload instructions for ${opp.platform}
-6. Marketing copy for the listing
-
-Make it publication-ready.`
-      }
+      { role: 'user', content: `Digital product opportunity:\nTitle: ${opp.title}\nPlatform: ${opp.platform}\nDescription: ${opp.description || 'No description provided'}\nURL: ${opp.url}\n\nCreate the complete product:\n1. Optimized product title and SEO description\n2. Full content/template/pages\n3. Metadata: keywords, categories, tags\n4. Pricing recommendation with justification\n5. Step-by-step upload instructions for ${opp.platform}\n6. Marketing copy for the listing\n\nMake it publication-ready.` }
     ], 2000);
   } catch (e) {
     content = buildFallbackDeliverable(opp, identity);
   }
-
   log('digital_product_ready', 'success', 'Digital product created');
   return {
     success: true,
@@ -528,33 +404,15 @@ Make it publication-ready.`
 
 async function executeArbitrageOpportunity(opp, identity, log) {
   log('arbitrage_analysis', 'running', 'Analyzing arbitrage opportunity');
-
   let content;
   try {
     content = await llmComplete([
       { role: 'system', content: 'You are an expert arbitrage analyst and trader.' },
-      {
-        role: 'user',
-        content: `Arbitrage opportunity:
-Title: ${opp.title}
-Description: ${opp.description || ''}
-Platform: ${opp.platform}
-Estimated profit: $${opp.profit_estimate_low}–$${opp.profit_estimate_high}
-URL: ${opp.url}
-
-Provide:
-1. Detailed execution plan (step by step)
-2. Risk assessment and mitigation
-3. Estimated capital required and ROI
-4. Best timing and execution window
-5. Exact URLs and platforms to use
-6. Checklist for completing this arbitrage`
-      }
+      { role: 'user', content: `Arbitrage opportunity:\nTitle: ${opp.title}\nDescription: ${opp.description || ''}\nPlatform: ${opp.platform}\nEstimated profit: $${opp.profit_estimate_low}–$${opp.profit_estimate_high}\nURL: ${opp.url}\n\nProvide:\n1. Detailed execution plan (step by step)\n2. Risk assessment and mitigation\n3. Estimated capital required and ROI\n4. Best timing and execution window\n5. Exact URLs and platforms to use\n6. Checklist for completing this arbitrage` }
     ], 1500);
   } catch (e) {
     content = buildFallbackDeliverable(opp, identity);
   }
-
   log('arbitrage_plan_ready', 'success', 'Arbitrage execution plan ready');
   return {
     success: true,
@@ -564,66 +422,26 @@ Provide:
   };
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function buildIdentitySystemPrompt(identity, fallbackRole) {
   const brandAssets = identity.brand_assets || {};
   const kyc = identity.kyc_verified_data || null;
-  const rules = [
-    ...(brandAssets.always_rules || []),
-    ...(brandAssets.writing_rules || [])
-  ].join('. ');
+  const rules = [...(brandAssets.always_rules || []), ...(brandAssets.writing_rules || [])].join('. ');
   const forbidden = (brandAssets.forbidden_phrases || []).join(', ');
 
   let kycBlock = '';
   if (kyc && kyc.kyc_tier && kyc.kyc_tier !== 'none') {
     const clearance = kyc.autopilot_clearance || {};
-    kycBlock = `
-
-VERIFIED LEGAL IDENTITY (KYC Tier: ${kyc.kyc_tier.toUpperCase()}) — Use ONLY when the task explicitly requires it:
-- Full Legal Name: ${kyc.full_legal_name || identity.name}
-- Date of Birth: ${kyc.date_of_birth || '—'}
-- Address: ${[kyc.residential_address, kyc.city, kyc.state, kyc.postal_code, kyc.country].filter(Boolean).join(', ') || '—'}
-- Phone: ${kyc.phone_number || '—'}
-- Email: ${kyc.email || identity.email || '—'}
-- Government ID Type: ${kyc.government_id_type || '—'}
-- Government ID Number: ${kyc.government_id_number || '—'}
-- Government ID Expiry: ${kyc.government_id_expiry || '—'}
-${kyc.tax_id ? `- Tax ID / SSN: ${kyc.tax_id}` : ''}
-${kyc.ssn_last4 ? `- SSN Last 4: ${kyc.ssn_last4}` : ''}
-
-AUTHORIZED TASK TYPES for this identity:
-${clearance.can_submit_w9 ? '✓ W-9 and tax form submissions\n' : ''}${clearance.can_submit_1099_forms ? '✓ 1099 form submissions\n' : ''}${clearance.can_submit_grant_applications ? '✓ Grant applications (use legal name and address)\n' : ''}${clearance.can_use_government_portals ? '✓ Government portal registrations and applications\n' : ''}${clearance.can_submit_financial_onboarding ? '✓ Financial platform onboarding (Stripe, PayPal, etc.)\n' : ''}${clearance.can_attach_id_documents ? '✓ Tasks requiring identity document uploads\n' : ''}
-
-IMPORTANT: Only use the verified identity data above when the task specifically requires real legal identity information (e.g., tax forms, grant applications, financial onboarding). For regular freelance proposals, use the persona identity instead.`;
+    kycBlock = `\n\nVERIFIED LEGAL IDENTITY (KYC Tier: ${kyc.kyc_tier.toUpperCase()}) — Use ONLY when the task explicitly requires it:\n- Full Legal Name: ${kyc.full_legal_name || identity.name}\n- Date of Birth: ${kyc.date_of_birth || '—'}\n- Address: ${[kyc.residential_address, kyc.city, kyc.state, kyc.postal_code, kyc.country].filter(Boolean).join(', ') || '—'}\n- Phone: ${kyc.phone_number || '—'}\n- Email: ${kyc.email || identity.email || '—'}\n- Government ID Type: ${kyc.government_id_type || '—'}\n- Government ID Number: ${kyc.government_id_number || '—'}\n- Government ID Expiry: ${kyc.government_id_expiry || '—'}\n${kyc.tax_id ? `- Tax ID / SSN: ${kyc.tax_id}` : ''}${kyc.ssn_last4 ? `\n- SSN Last 4: ${kyc.ssn_last4}` : ''}\n\nAUTHORIZED TASK TYPES for this identity:\n${clearance.can_submit_w9 ? '✓ W-9 and tax form submissions\n' : ''}${clearance.can_submit_1099_forms ? '✓ 1099 form submissions\n' : ''}${clearance.can_submit_grant_applications ? '✓ Grant applications (use legal name and address)\n' : ''}${clearance.can_use_government_portals ? '✓ Government portal registrations and applications\n' : ''}${clearance.can_submit_financial_onboarding ? '✓ Financial platform onboarding (Stripe, PayPal, etc.)\n' : ''}${clearance.can_attach_id_documents ? '✓ Tasks requiring identity document uploads\n' : ''}\nIMPORTANT: Only use the verified identity data above when the task specifically requires real legal identity information (e.g., tax forms, grant applications, financial onboarding). For regular freelance proposals, use the persona identity instead.`;
   }
 
-  return `You are ${identity.name}, a ${identity.role_label || fallbackRole}.
-Bio: ${identity.bio || 'Experienced professional with expertise in delivering high-quality results.'}
-Skills: ${(identity.skills || ['problem-solving', 'communication', 'research']).join(', ')}
-Communication tone: ${identity.communication_tone || 'professional'}
-Tagline: ${identity.tagline || ''}
-${rules ? `Style rules: ${rules}` : ''}
-${forbidden ? `Avoid: ${forbidden}` : ''}
-${brandAssets.ai_persona_instructions ? `Instructions: ${brandAssets.ai_persona_instructions}` : ''}
-${kycBlock}
-
-Always produce complete, high-quality, professional work ready for immediate use.`.trim();
+  return `You are ${identity.name}, a ${identity.role_label || fallbackRole}.\nBio: ${identity.bio || 'Experienced professional with expertise in delivering high-quality results.'}\nSkills: ${(identity.skills || ['problem-solving', 'communication', 'research']).join(', ')}\nCommunication tone: ${identity.communication_tone || 'professional'}\nTagline: ${identity.tagline || ''}\n${rules ? `Style rules: ${rules}` : ''}\n${forbidden ? `Avoid: ${forbidden}` : ''}\n${brandAssets.ai_persona_instructions ? `Instructions: ${brandAssets.ai_persona_instructions}` : ''}${kycBlock}\n\nAlways produce complete, high-quality, professional work ready for immediate use.`.trim();
 }
 
 async function generateCoverLetter(opp, identity) {
   try {
     return await llmComplete([
       { role: 'system', content: buildIdentitySystemPrompt(identity, 'professional') },
-      {
-        role: 'user',
-        content: `Write a concise, compelling cover letter/proposal for:
-Title: ${opp.title}
-Platform: ${opp.platform}
-Description: ${opp.description || ''}
-
-Under 200 words. Focus on value delivery and relevant expertise. Clear call to action.`
-      }
+      { role: 'user', content: `Write a concise, compelling cover letter/proposal for:\nTitle: ${opp.title}\nPlatform: ${opp.platform}\nDescription: ${opp.description || ''}\n\nUnder 200 words. Focus on value delivery and relevant expertise. Clear call to action.` }
     ], 400);
   } catch (e) {
     return `Dear Hiring Manager,\n\nI am ${identity.name}, a ${identity.role_label || 'professional'} with expertise in ${(identity.skills || ['relevant skills']).slice(0, 3).join(', ')}. I am excited about the opportunity "${opp.title}" and am confident I can deliver exceptional results.\n\nLet's connect to discuss this further.\n\nBest regards,\n${identity.name}`;
@@ -631,35 +449,7 @@ Under 200 words. Focus on value delivery and relevant expertise. Clear call to a
 }
 
 function buildFallbackDeliverable(opp, identity) {
-  return `# ${opp.title} — Execution Brief
-Generated by: ${identity.name} (${identity.role_label || 'AI Agent'})
-Platform: ${opp.platform}
-Date: ${new Date().toISOString()}
-
-## Overview
-This deliverable was prepared for the opportunity: "${opp.title}"
-
-## Description
-${opp.description || 'Please review the opportunity details at the provided URL.'}
-
-## Action Required
-Visit: ${opp.url}
-
-## Identity Details
-- Name: ${identity.name}
-- Role: ${identity.role_label || 'Professional'}
-- Skills: ${(identity.skills || []).join(', ')}
-- Email: ${identity.email || 'See identity profile'}
-
-## Next Steps
-1. Review this brief
-2. Visit the opportunity URL above
-3. Submit using the identity credentials
-4. Log the outcome in the system
-
----
-Note: AI content generation encountered an issue. This template was generated as a fallback.
-Please use the Mission AI chat to request a full deliverable.`;
+  return `# ${opp.title} — Execution Brief\nGenerated by: ${identity.name} (${identity.role_label || 'AI Agent'})\nPlatform: ${opp.platform}\nDate: ${new Date().toISOString()}\n\n## Overview\nThis deliverable was prepared for the opportunity: "${opp.title}"\n\n## Description\n${opp.description || 'Please review the opportunity details at the provided URL.'}\n\n## Action Required\nVisit: ${opp.url}\n\n## Identity Details\n- Name: ${identity.name}\n- Role: ${identity.role_label || 'Professional'}\n- Skills: ${(identity.skills || []).join(', ')}\n- Email: ${identity.email || 'See identity profile'}\n\n## Next Steps\n1. Review this brief\n2. Visit the opportunity URL above\n3. Submit using the identity credentials\n4. Log the outcome in the system\n\n---\nNote: AI content generation encountered an issue. This template was generated as a fallback.\nPlease use the Mission AI chat to request a full deliverable.`;
 }
 
 async function requestMissionAIHelp(base44, opp, issue) {
@@ -674,8 +464,6 @@ async function requestMissionAIHelp(base44, opp, issue) {
     console.error('[AgentWorker] Could not log Mission AI request:', e.message);
   }
 }
-
-// ─── Other actions ────────────────────────────────────────────────────────────
 
 async function executeNextTask(base44) {
   const tasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
@@ -719,18 +507,7 @@ async function generateProposal(base44, payload) {
   try {
     proposalText = await llmComplete([
       { role: 'system', content: buildIdentitySystemPrompt(identity, 'professional') },
-      {
-        role: 'user',
-        content: `Write a winning proposal for:
-Title: ${opp.title}
-Platform: ${opp.platform}
-Description: ${opp.description}
-Category: ${opp.category}
-Value: $${opp.profit_estimate_low}–$${opp.profit_estimate_high}
-${custom_instructions ? `\nExtra instructions: ${custom_instructions}` : ''}
-
-Complete, compelling, ready to submit. Include: why you're the right choice, your approach, timeline, and pricing.`
-      }
+      { role: 'user', content: `Write a winning proposal for:\nTitle: ${opp.title}\nPlatform: ${opp.platform}\nDescription: ${opp.description}\nCategory: ${opp.category}\nValue: $${opp.profit_estimate_low}–$${opp.profit_estimate_high}\n${custom_instructions ? `\nExtra instructions: ${custom_instructions}` : ''}\n\nComplete, compelling, ready to submit. Include: why you're the right choice, your approach, timeline, and pricing.` }
     ], 800);
   } catch (e) {
     proposalText = await generateCoverLetter(opp, identity || { name: 'Professional', role_label: 'Specialist', skills: ['relevant skills'] });
@@ -818,8 +595,6 @@ async function getStats(base44) {
   stats.success_rate = allTasks.length > 0 ? Math.round((successCount / allTasks.length) * 100) : 0;
   return Response.json({ success: true, stats });
 }
-
-// ─── Live Monitoring ────────────────────────────────────────────────────────
 
 async function getLiveSession(base44, payload) {
   const { task_id } = payload;

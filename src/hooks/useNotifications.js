@@ -1,61 +1,80 @@
-import { useEffect, useCallback } from 'react';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import NotificationService from '@/services/notificationService';
 
-/**
- * Hook to fetch, manage, and subscribe to real-time notifications
- */
-export function useNotifications() {
-  const qc = useQueryClient();
+export function useNotifications(autoRefresh = true) {
+  const queryClient = useQueryClient();
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Fetch all notifications for current user
-  const { data: notifications = [], refetch, isLoading } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: async () => {
-      const notifs = await base44.entities.Notification.list('-priority_index', 100);
-      return notifs.sort((a, b) => {
-        // Unread first, then by priority
-        if (a.is_read !== b.is_read) return a.is_read ? 1 : -1;
-        return (b.priority_index || 0) - (a.priority_index || 0);
-      });
-    },
-    refetchInterval: 30000, // Refresh every 30s
+  // Fetch unread notifications
+  const { data: unreadNotifications = [], isLoading: unreadLoading, refetch: refetchUnread } = useQuery({
+    queryKey: ['unreadNotifications'],
+    queryFn: () => NotificationService.getUnreadNotifications(),
+    refetchInterval: autoRefresh ? 30000 : false, // Refetch every 30 seconds
+    staleTime: 5000
   });
 
-  // Mark notification as read
+  // Fetch all notifications
+  const { data: allNotifications = [], isLoading: allLoading, refetch: refetchAll } = useQuery({
+    queryKey: ['allNotifications'],
+    queryFn: () => NotificationService.getNotifications(null, null, 100),
+    refetchInterval: autoRefresh ? 60000 : false,
+    staleTime: 10000
+  });
+
+  // Mark as read mutation
   const markAsReadMutation = useMutation({
-    mutationFn: (notifId) =>
-      base44.entities.Notification.update(notifId, { is_read: true, read_at: new Date().toISOString() }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+    mutationFn: (notificationId) => NotificationService.markAsRead(notificationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unreadNotifications'] });
+      queryClient.invalidateQueries({ queryKey: ['allNotifications'] });
+    }
   });
 
-  // Dismiss notification
+  // Dismiss mutation
   const dismissMutation = useMutation({
-    mutationFn: (notifId) =>
-      base44.entities.Notification.update(notifId, { is_dismissed: true, dismissed_at: new Date().toISOString() }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+    mutationFn: (notificationId) => NotificationService.dismiss(notificationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unreadNotifications'] });
+      queryClient.invalidateQueries({ queryKey: ['allNotifications'] });
+    }
   });
 
-  // Subscribe to real-time notification updates
+  // Dismiss all by type mutation
+  const dismissAllMutation = useMutation({
+    mutationFn: (notificationType) => NotificationService.dismissAllByType(notificationType),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unreadNotifications'] });
+      queryClient.invalidateQueries({ queryKey: ['allNotifications'] });
+    }
+  });
+
+  // Update unread count
   useEffect(() => {
-    const unsubscribe = base44.entities.Notification.subscribe((event) => {
-      if (event.type === 'create' || event.type === 'update') {
-        refetch();
-      }
-    });
+    setUnreadCount(unreadNotifications.length);
+  }, [unreadNotifications]);
 
-    return unsubscribe;
-  }, [refetch]);
+  const markAsRead = useCallback((notificationId) => {
+    markAsReadMutation.mutate(notificationId);
+  }, [markAsReadMutation]);
 
-  const unreadCount = notifications.filter((n) => !n.is_read && !n.is_dismissed).length;
-  const visibleNotifications = notifications.filter((n) => !n.is_dismissed);
+  const dismiss = useCallback((notificationId) => {
+    dismissMutation.mutate(notificationId);
+  }, [dismissMutation]);
+
+  const dismissAll = useCallback((notificationType) => {
+    dismissAllMutation.mutate(notificationType);
+  }, [dismissAllMutation]);
 
   return {
-    notifications: visibleNotifications,
+    unreadNotifications,
+    allNotifications,
     unreadCount,
-    isLoading,
-    markAsRead: (notifId) => markAsReadMutation.mutate(notifId),
-    dismiss: (notifId) => dismissMutation.mutate(notifId),
-    refetch,
+    isLoading: unreadLoading || allLoading,
+    markAsRead,
+    dismiss,
+    dismissAll,
+    refetchUnread,
+    refetchAll
   };
 }

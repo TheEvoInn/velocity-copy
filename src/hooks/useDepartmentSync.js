@@ -14,7 +14,7 @@ export function useDepartmentSync() {
   const { data: goals = [] }        = useQuery({ queryKey: ['userGoals'],     queryFn: () => base44.entities.UserGoals.list(),                    initialData: [], refetchInterval: 30000 });
   const { data: opportunities = [] } = useQuery({ queryKey: ['opportunities'], queryFn: () => base44.entities.Opportunity.list('-created_date', 200), initialData: [], refetchInterval: 10000 });
   const { data: transactions = [] }  = useQuery({ queryKey: ['transactions'],  queryFn: () => base44.entities.Transaction.list('-created_date', 200), initialData: [], refetchInterval: 10000 });
-  const { data: tasks = [] }         = useQuery({ queryKey: ['taskQueue'],     queryFn: () => base44.entities.TaskExecutionQueue.list('-created_date', 100), initialData: [], refetchInterval: 8000 });
+  const { data: tasks = [] }         = useQuery({ queryKey: ['taskQueue', 'taskQueueManager'], queryFn: () => base44.entities.TaskExecutionQueue.list('-created_date', 100), initialData: [], refetchInterval: 8000 });
   const { data: identities = [] }    = useQuery({ queryKey: ['aiIdentities'],  queryFn: () => base44.entities.AIIdentity.list(),                   initialData: [], refetchInterval: 30000 });
   const { data: activityLogs = [] }  = useQuery({ queryKey: ['activityLogs'], queryFn: () => base44.entities.ActivityLog.list('-created_date', 50), initialData: [], refetchInterval: 15000 });
 
@@ -29,7 +29,7 @@ export function useDepartmentSync() {
   const activeIdentity = identities.find(i => i.is_active) || identities[0];
 
   const invalidateAll = () => {
-    ['userGoals', 'opportunities', 'transactions', 'taskQueue', 'aiIdentities', 'activityLogs'].forEach(k =>
+    ['userGoals', 'opportunities', 'transactions', 'taskQueue', 'taskQueueManager', 'aiIdentities', 'activityLogs'].forEach(k =>
       queryClient.invalidateQueries({ queryKey: [k] })
     );
   };

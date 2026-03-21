@@ -143,7 +143,7 @@ function buildHeaders(webhook) {
 }
 
 // Record delivery attempt
-async function recordDelivery(base44, webhookId, eventType, success, statusCode, responseTime, errorMessage) {
+async function recordDelivery(base44Client, webhookId, eventType, success, statusCode, responseTime, errorMessage) {
   try {
     const delivery = {
       timestamp: new Date().toISOString(),
@@ -154,8 +154,8 @@ async function recordDelivery(base44, webhookId, eventType, success, statusCode,
       error_message: errorMessage
     };
 
-    // Get current webhook
-    const webhook = await base44.entities.WebhookConfig.get(webhookId);
+    // Get current webhook (use appropriate base44 client method)
+    const webhook = await base44Client.entities.WebhookConfig.get(webhookId);
     
     // Add delivery to recent list (keep last 50)
     const recentDeliveries = webhook.recent_deliveries || [];
@@ -179,7 +179,7 @@ async function recordDelivery(base44, webhookId, eventType, success, statusCode,
     stats.success_rate = Math.round((stats.successful_deliveries / stats.total_deliveries) * 100);
 
     // Update webhook
-    await base44.entities.WebhookConfig.update(webhookId, {
+    await base44Client.entities.WebhookConfig.update(webhookId, {
       last_triggered_at: new Date().toISOString(),
       last_status: success ? 'success' : 'failed',
       recent_deliveries: recentDeliveries,

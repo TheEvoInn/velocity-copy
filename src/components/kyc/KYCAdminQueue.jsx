@@ -39,6 +39,11 @@ function KYCReviewCard({ record, onAction }) {
     government_id_expiry: record.government_id_expiry || '',
     tax_id: record.tax_id || '',
   });
+  const fileRefs = {
+    id_front: React.useRef(null),
+    id_back: React.useRef(null),
+    selfie: React.useRef(null),
+  };
 
   const statusKey = record.admin_status || record.status || 'submitted';
   const style = STATUS_STYLES[statusKey] || STATUS_STYLES.submitted;
@@ -49,6 +54,9 @@ function KYCReviewCard({ record, onAction }) {
     try {
       const res = await base44.integrations.Core.UploadFile({ file });
       setUploadedDocs((p) => ({ ...p, [docType]: res.file_url }));
+      if (fileRefs[docType]?.current) {
+        fileRefs[docType].current.value = '';
+      }
       toast.success(`${docType.replace(/_/g, ' ')} uploaded.`);
     } catch (err) {
       toast.error(`Upload failed: ${err.message}`);
@@ -221,23 +229,24 @@ function KYCReviewCard({ record, onAction }) {
               <div className="space-y-2 border-t border-slate-600 pt-2">
                 <p className="text-xs text-blue-200 font-semibold">Documents (Optional)</p>
                 {[
-                  ['ID Front', 'id_front'],
-                  ['ID Back', 'id_back'],
-                  ['Selfie', 'selfie'],
-                ].map(([label, key]) => (
-                  <div key={key} className="flex items-center gap-2 text-xs">
-                    <label className="text-slate-300 flex-1">{label}</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleDocUpload(key, e.target.files?.[0])}
-                      disabled={uploadingDocs[key]}
-                      className="text-xs text-slate-400 file:bg-slate-600 file:border file:border-slate-500 file:rounded file:px-1.5 file:py-0.5 file:text-xs file:text-white cursor-pointer"
-                    />
-                    {uploadingDocs[key] && <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />}
-                    {uploadedDocs[key] && <span className="text-emerald-400">✓</span>}
-                  </div>
-                ))}
+                    ['ID Front', 'id_front'],
+                    ['ID Back', 'id_back'],
+                    ['Selfie', 'selfie'],
+                  ].map(([label, key]) => (
+                    <div key={key} className="flex items-center gap-2 text-xs">
+                      <label className="text-slate-300 flex-1">{label}</label>
+                      <input
+                        ref={fileRefs[key]}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleDocUpload(key, e.target.files?.[0])}
+                        disabled={uploadingDocs[key]}
+                        className="text-xs text-slate-400 file:bg-slate-600 file:border file:border-slate-500 file:rounded file:px-1.5 file:py-0.5 file:text-xs file:text-white cursor-pointer"
+                      />
+                      {uploadingDocs[key] && <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />}
+                      {uploadedDocs[key] && <span className="text-emerald-400">✓</span>}
+                    </div>
+                  ))}
               </div>
             </div>
           )}

@@ -42,6 +42,7 @@ import EmailOutreachHub from './pages/EmailOutreachHub';
 import UserAccessPage from './pages/UserAccessPage';
 import TaskQueueApproval from './pages/TaskQueueApproval';
 import FinancialDashboard from './pages/FinancialDashboard';
+import TemplatesLibrary from './pages/TemplatesLibrary';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -100,6 +101,7 @@ const AuthenticatedApp = () => {
         <Route path="/UserAccessPage" element={<UserAccessPage />} />
         <Route path="/TaskQueueApproval" element={<TaskQueueApproval />} />
         <Route path="/FinancialDashboard" element={<FinancialDashboard />} />
+        <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

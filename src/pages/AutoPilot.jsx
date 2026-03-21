@@ -20,6 +20,7 @@ const TABS = [
   { key: 'targets', label: 'Profit Targets', icon: '🎯' },
   { key: 'risk', label: 'Risk Controls', icon: '🛡️' },
   { key: 'feed', label: 'Task Feed', icon: '⚡' },
+  { key: 'templates', label: 'Templates', icon: '📚', link: '/TemplatesLibrary' },
 ];
 
 export default function AutoPilot() {

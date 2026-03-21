@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Globe, Lock, Activity } from 'lucide-react';
 import TaskReaderInterface from '@/components/task-reader/TaskReaderInterface';
 import CredentialManager from '@/components/CredentialManager';
+import CaptchaMonitor from '@/components/CaptchaMonitor';
 
 export default function TaskReaderHub() {
   const [activeTab, setActiveTab] = useState('reader');
+  const [lastTaskAnalysis, setLastTaskAnalysis] = useState(null);
 
   return (
     <div className="min-h-screen galaxy-bg p-4 md:p-6">
@@ -35,6 +37,9 @@ export default function TaskReaderHub() {
           >
             <Globe className="w-4 h-4" />
             Task Reader
+            {lastTaskAnalysis?.metadata?.captcha_encountered && (
+              <span className="inline-block w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+            )}
           </button>
           <button
             onClick={() => setActiveTab('credentials')}
@@ -56,12 +61,17 @@ export default function TaskReaderHub() {
               <Card className="p-6 bg-gradient-to-r from-violet-600/10 to-purple-600/10 border-violet-500/30">
                 <h2 className="text-xl font-semibold text-white mb-2">3rd-Party Task Reader</h2>
                 <p className="text-slate-300">
-                  Submit external website URLs for intelligent analysis. The system will detect forms, 
-                  extract fields, identify validation rules, and prepare for automatic execution with 
-                  credential auto-injection.
+                  Submit external website URLs for intelligent analysis. Automatic CAPTCHA detection and solving,
+                  form field extraction, credential injection, and workflow generation.
                 </p>
               </Card>
-              <TaskReaderInterface />
+              
+              {/* CAPTCHA Monitor */}
+              {lastTaskAnalysis && (
+                <CaptchaMonitor taskAnalysis={lastTaskAnalysis} />
+              )}
+              
+              <TaskReaderInterface onAnalysisComplete={setLastTaskAnalysis} />
             </div>
           )}
 

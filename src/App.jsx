@@ -77,6 +77,16 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/Dashboard" replace />} />
+      {/* 4 Core Departments */}
+      <Route path="/Discovery" element={<Discovery />} />
+      <Route path="/Execution" element={<Execution />} />
+      <Route path="/Finance" element={<Finance />} />
+      <Route path="/Control" element={<Control />} />
+      {/* New Departments */}
+      <Route path="/VIPZ" element={<CryptoProfitSystems />} />
+      <Route path="/NED" element={<CryptoProfitSystems />} />
+      <Route path="/DigitalResellers" element={<DigitalResellers />} />
+      <Route path="/CryptoProfitSystems" element={<CryptoProfitSystems />} />
       <Route element={<AppLayout />}>
         {/* Command Center */}
         <Route path="/Dashboard" element={<Dashboard />} />

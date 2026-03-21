@@ -211,6 +211,13 @@ function KYCCard({ kyc, onUpdate, allIdentities }) {
             </div>
           )}
 
+          {/* AI Document Analysis */}
+          <KYCAIAnalysisPanel
+            kyc={kyc}
+            identities={allIdentities}
+            onUpdated={() => qc.invalidateQueries({ queryKey: ['admin_kyc_list'] })}
+          />
+
           {/* Document Verification Tracker */}
           <DocVerificationTracker kyc={kyc} onKycUpdated={() => qc.invalidateQueries({ queryKey: ['admin_kyc_list'] })} />
 

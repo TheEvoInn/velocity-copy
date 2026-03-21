@@ -840,6 +840,7 @@ async function getLiveSession(base44, payload) {
     fields_filled: task.form_fields_detected?.filter(f => f.value_filled)?.length || 0,
     total_fields: task.form_fields_detected?.length || 0,
     screenshot_url: task.screenshot_url || null,
+    debug_url: task.debug_url || null,
     current_interaction: task.current_interaction || null,
     execution_log: task.execution_log || [],
     alerts: task.error_message ? [task.error_message] : [],

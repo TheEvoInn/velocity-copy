@@ -4,8 +4,9 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Monitor, Play, Pause, Square, Hand, AlertCircle, Loader2, Eye, ChevronDown } from 'lucide-react';
+import { Monitor, Play, Pause, Square, Hand, AlertCircle, Loader2, Eye, ChevronDown, Rewind } from 'lucide-react';
 import { toast } from 'sonner';
+import SessionReplayPlayer from './SessionReplayPlayer';
 
 export default function LiveExecutionMonitor() {
   const [selectedSession, setSelectedSession] = useState(null);

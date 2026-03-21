@@ -286,6 +286,7 @@ Deno.serve(async (req) => {
           submission_success: result.submitted,
           confirmation_text: result.message,
           deep_link_for_manual: result.final_url,
+          debug_url: result.debug_url || null,
           execution_log: execLog,
           needs_manual_review: !result.submitted,
           manual_review_reason: result.submitted ? null : 'Manual review needed',

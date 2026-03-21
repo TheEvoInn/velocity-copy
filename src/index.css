@@ -379,26 +379,46 @@
 .float-anim { animation: float 6s ease-in-out infinite; }
 .float-anim-slow { animation: float 10s ease-in-out infinite; }
 
-/* ─── Cosmic Button ───────────────────────────────────────────────────────── */
+/* ─── Cyberpunk Button ────────────────────────────────────────────────────── */
 .btn-cosmic {
-  background: linear-gradient(135deg, #7c3aed, #2563eb);
-  border: 1px solid rgba(124,58,237,0.5);
-  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #00e8ff, #ff2ec4);
+  border: 2px solid rgba(0, 232, 255, 0.6);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  color: #000;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
+
 .btn-cosmic::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
   transform: translateX(-100%);
   transition: transform 0.6s ease;
 }
+
+.btn-cosmic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0, 232, 255, 0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
 .btn-cosmic:hover::before { transform: translateX(100%); }
+.btn-cosmic:hover::after { opacity: 1; }
 .btn-cosmic:hover {
-  box-shadow: 0 0 30px rgba(124,58,237,0.6), 0 0 60px rgba(124,58,237,0.3);
-  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(0, 232, 255, 0.8), 0 0 40px rgba(255, 46, 196, 0.4), inset 0 0 10px rgba(0, 232, 255, 0.2);
+  transform: translateY(-2px);
+  border-color: rgba(0, 232, 255, 1);
+}
+
+.btn-cosmic:active {
+  transform: translateY(0);
 }
 
 /* ─── Orbit Ring Decorative ───────────────────────────────────────────────── */

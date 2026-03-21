@@ -4,9 +4,9 @@ import SubPageNav from './SubPageNav';
 
 export default function PlatformLayout() {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen">
       <SubPageNav />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-background">
         <Outlet />
       </main>
     </div>

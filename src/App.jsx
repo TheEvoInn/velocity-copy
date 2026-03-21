@@ -47,11 +47,13 @@ const AuthenticatedApp = () => {
         {Object.entries(Pages)
           .filter(([path]) => !['Dashboard', 'StarshipBridge'].includes(path))
           .map(([path, Page]) => (
-            <Route key={path} path={`/${path}`} element={<Page />} />
+            <Route key={path} path={`/${path}`} element={Page ? <Page /> : <PageNotFound />} />
           ))}
+        {/* Nested 404 for module paths */}
+        <Route path="*" element={<PageNotFound />} />
       </Route>
       
-      {/* Catch-all 404 */}
+      {/* Root catch-all 404 */}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

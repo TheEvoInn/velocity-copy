@@ -45,6 +45,7 @@ import FinancialDashboard from './pages/FinancialDashboard';
 import TemplatesLibrary from './pages/TemplatesLibrary.jsx';
 import DigitalResellers from './pages/DigitalResellers';
 import EmailMarketing from './pages/EmailMarketing';
+import PageCustomizer from './pages/PageCustomizer';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -105,6 +106,7 @@ const AuthenticatedApp = () => {
         <Route path="/FinancialDashboard" element={<FinancialDashboard />} />
         <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
         <Route path="/DigitalResellers" element={<DigitalResellers />} />
+        <Route path="/PageCustomizer" element={<PageCustomizer />} />
         <Route path="/EmailMarketing" element={<EmailMarketing />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

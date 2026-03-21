@@ -42,7 +42,7 @@ import EmailOutreachHub from './pages/EmailOutreachHub';
 import UserAccessPage from './pages/UserAccessPage';
 import TaskQueueApproval from './pages/TaskQueueApproval';
 import FinancialDashboard from './pages/FinancialDashboard';
-import TemplatesLibrary from './pages/TemplatesLibrary';
+import TemplatesLibrary from './pages/TemplatesLibrary.jsx';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

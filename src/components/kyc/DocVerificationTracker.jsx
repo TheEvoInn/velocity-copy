@@ -189,8 +189,8 @@ export default function DocVerificationTracker({ kyc, onKycUpdated }) {
                     {label}
                   </span>
 
-                  {/* Approve / Reject buttons */}
-                  {hasContent && status !== 'approved' && (
+                  {/* Approve / Reject buttons — always visible for admin action */}
+                  {status !== 'approved' && (
                     <Button size="sm"
                       onClick={() => handleDocAction(doc.key, true)}
                       disabled={updateMutation.isPending}
@@ -198,7 +198,7 @@ export default function DocVerificationTracker({ kyc, onKycUpdated }) {
                       <CheckCircle2 className="w-3 h-3 mr-0.5" /> Approve
                     </Button>
                   )}
-                  {hasContent && status !== 'rejected' && (
+                  {status !== 'rejected' && (
                     <Button size="sm"
                       onClick={() => handleDocAction(doc.key, false)}
                       disabled={updateMutation.isPending}

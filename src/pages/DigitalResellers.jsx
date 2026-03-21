@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function DigitalResellers() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -208,11 +209,30 @@ export default function DigitalResellers() {
             </div>
             <Button
               onClick={() => launchAutopilotMutation.mutate()}
-              disabled={launchAutopilotMutation.isPending}
+              disabled={launchAutopilotMutation.isPending || !activeIdentity || autopilotConfig?.autopilot_enabled}
               className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 gap-2"
             >
-              <Zap className="w-4 h-4" />
-              {launchAutopilotMutation.isPending ? 'Launching...' : 'Launch Now'}
+              {!activeIdentity ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  Activate Identity First
+                </>
+              ) : autopilotConfig?.autopilot_enabled ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Running
+                </>
+              ) : launchAutopilotMutation.isPending ? (
+                <>
+                  <Zap className="w-4 h-4 animate-spin" />
+                  Launching...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4" />
+                  Launch Now
+                </>
+              )}
             </Button>
           </div>
         </CardContent>

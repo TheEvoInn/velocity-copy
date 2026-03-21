@@ -28,22 +28,47 @@ export default function EmailOutreachHub() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-5">
         {/* Header */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-              <Mail className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white font-orbitron">Email Outreach Hub</h1>
-              <p className="text-sm text-slate-400">AI-powered drafting with autopilot scheduling</p>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+            <Mail className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h1 className="font-orbitron text-lg font-bold text-white tracking-wide">EMAIL OUTREACH HUB</h1>
+            <p className="text-xs text-slate-500">AI drafting · Template builder · Autopilot scheduling</p>
           </div>
         </div>
 
-        {/* Main Grid */}
+        {/* Tabs */}
+        <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-xl p-1 w-fit">
+          {TABS.map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                activeTab === tab ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}>
+              {tab === 'Template Builder' && <LayoutTemplate className="w-3.5 h-3.5" />}
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Template Builder Tab */}
+        {activeTab === 'Template Builder' && (
+          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 md:p-5">
+            <TemplateBuilder
+              opportunity={selectedOpp}
+              onUseTemplate={(draft) => {
+                setInjectedDraft(draft);
+                setActiveTab('Compose');
+              }}
+            />
+          </div>
+        )}
+
+        {/* Compose Tab */}
+        {activeTab === 'Compose' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Opportunity Selection & Draft */}
           <div className="lg:col-span-2 space-y-4">

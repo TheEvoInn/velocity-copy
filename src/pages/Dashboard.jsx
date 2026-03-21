@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useDepartmentSync } from '@/hooks/useDepartmentSync';
+import { useAutoInvalidateCache } from '@/lib/cacheInvalidationHook';
 import { Zap, Plus, AlertTriangle, Clock, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -28,6 +29,9 @@ import AIInsightsPanel from '@/components/command-center/AIInsightsPanel';
 
 
 export default function Dashboard() {
+  // FIX #1: Enable real-time cache invalidation on entity updates
+  useAutoInvalidateCache();
+  
   const {
     userGoals, opportunities, transactions, tasks, identities, activityLogs,
     todayEarned, totalEarned, walletBalance, activeOpps, activeTasks, activeIdentity,

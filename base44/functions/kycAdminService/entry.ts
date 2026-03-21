@@ -14,22 +14,21 @@ Deno.serve(async (req) => {
     const { action, id, updates } = body;
 
     if (action === 'list') {
-      // Fetch all statuses in a targeted way to avoid CPU timeout
-      const [submitted, under_review, approved, rejected, flagged] = await Promise.all([
-        base44.asServiceRole.entities.KYCVerification.filter({ status: 'submitted' }, '-created_date', 100),
-        base44.asServiceRole.entities.KYCVerification.filter({ admin_status: 'under_review' }, '-created_date', 50),
-        base44.asServiceRole.entities.KYCVerification.filter({ status: 'approved' }, '-created_date', 50),
-        base44.asServiceRole.entities.KYCVerification.filter({ status: 'rejected' }, '-created_date', 50),
-        base44.asServiceRole.entities.KYCVerification.filter({ admin_status: 'flagged' }, '-created_date', 50),
-      ]);
-      // Merge and deduplicate by id
+      const records = await base44.asServiceRole.entities.KYCVerification.filter({ status: 'submitted' }, '-created_date', 200);
+      console.log(`[kycAdminService] fetched ${records.length} submitted KYC records`);
+      return Response.json({ records });
+    }
+
+    if (action === 'list_all') {
+      const submitted = await base44.asServiceRole.entities.KYCVerification.filter({ status: 'submitted' }, '-created_date', 100);
+      const approved  = await base44.asServiceRole.entities.KYCVerification.filter({ status: 'approved' }, '-created_date', 100);
+      const rejected  = await base44.asServiceRole.entities.KYCVerification.filter({ status: 'rejected' }, '-created_date', 100);
       const seen = new Set();
-      const records = [...submitted, ...under_review, ...approved, ...rejected, ...flagged].filter(r => {
+      const records = [...submitted, ...approved, ...rejected].filter(r => {
         if (seen.has(r.id)) return false;
         seen.add(r.id);
         return true;
-      });
-      records.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+      }).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
       console.log(`[kycAdminService] fetched ${records.length} total KYC records`);
       return Response.json({ records });
     }

@@ -10,6 +10,8 @@ import EnhancedBridgeHUD from './EnhancedBridgeHUD.jsx';
 import AudioEngine from './AudioEngine';
 import AudioUIFeedback from './AudioUIFeedback';
 import BridgeAudioIntegration from './BridgeAudioIntegration';
+import BridgeSystemRefinements from './BridgeSystemRefinements';
+import BridgePerformanceMonitor from './BridgePerformanceMonitor';
 
 export default function StarshipBridgeScene() {
   const canvasRef = useRef(null);
@@ -234,6 +236,13 @@ export default function StarshipBridgeScene() {
         alerts={alerts}
         focusedStation={focusedStation}
         particleCount={particleCount}
+      />
+      <BridgeSystemRefinements 
+        audioEngine={audioEngineRef.current}
+        postProcessing={postProcessingRef.current}
+      />
+      <BridgePerformanceMonitor 
+        audioEngine={audioEngineRef.current}
       />
     </div>
   );

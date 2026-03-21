@@ -156,7 +156,7 @@ export default function OnboardingModal({ onComplete }) {
       // 7. Activity log
       await base44.entities.ActivityLog.create({
         action_type: 'system',
-        message: `🚀 Onboarding complete — MISSION activated for ${identityData.name || user?.email}`,
+        message: `🚀 Onboarding complete — VELOCITY activated for ${identityData.name || user?.email}`,
         severity: 'success',
         metadata: { identity_id: identity?.id, kyc_submitted: !!kycData.full_legal_name },
       }).catch(() => {});
@@ -164,7 +164,7 @@ export default function OnboardingModal({ onComplete }) {
       queryClient.invalidateQueries({ queryKey: ['aiIdentities'] });
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });
 
-      toast.success('🚀 MISSION activated! Autopilot is now running.');
+      toast.success('🚀 VELOCITY activated! Autopilot is now running.');
       onComplete();
     } catch (err) {
       toast.error(`Launch failed: ${err.message}`);

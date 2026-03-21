@@ -1,24 +1,28 @@
 import React from 'react';
+import { Zap } from 'lucide-react';
 
 const UserNotRegisteredError = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-white to-slate-50">
-      <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-lg border border-slate-100">
+    <div className="flex flex-col items-center justify-center min-h-screen"
+      style={{ background: 'var(--galaxy-deep)' }}>
+      <div className="max-w-md w-full p-8 rounded-2xl border border-violet-500/20"
+        style={{ background: 'rgba(15,21,53,0.85)', boxShadow: '0 0 60px rgba(124,58,237,0.2)' }}>
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-full bg-orange-100">
-            <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-2xl"
+            style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.3), rgba(6,182,212,0.2))', border: '1px solid rgba(124,58,237,0.4)' }}>
+            <Zap className="w-8 h-8 text-violet-400" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">Access Restricted</h1>
-          <p className="text-slate-600 mb-8">
-            You are not registered to use this application. Please contact the app administrator to request access.
+          <p className="font-orbitron text-xs tracking-[0.3em] text-violet-400/70 mb-2">VELOCITY · PROFIT ENGINE</p>
+          <h1 className="text-2xl font-bold text-white mb-4 font-orbitron tracking-wide">Access Restricted</h1>
+          <p className="text-slate-400 mb-8 text-sm leading-relaxed">
+            You are not registered on the VELOCITY platform. Please contact the administrator to request access.
           </p>
-          <div className="p-4 bg-slate-50 rounded-md text-sm text-slate-600">
-            <p>If you believe this is an error, you can:</p>
-            <ul className="list-disc list-inside mt-2 space-y-1">
+          <div className="p-4 rounded-xl border border-slate-700/50 text-sm text-slate-500 text-left"
+            style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <p className="text-slate-400 font-medium mb-2">To gain access:</p>
+            <ul className="list-disc list-inside space-y-1">
               <li>Verify you are logged in with the correct account</li>
-              <li>Contact the app administrator for access</li>
+              <li>Contact your VELOCITY administrator</li>
               <li>Try logging out and back in again</li>
             </ul>
           </div>

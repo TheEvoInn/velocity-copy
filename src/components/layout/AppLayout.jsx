@@ -208,7 +208,7 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
           <Link to="/Chat" onClick={onClose}
             className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all">
             <MessageSquare className="w-4 h-4 text-violet-400" />
-            <span className="text-sm text-slate-300">Mission AI</span>
+            <span className="text-sm text-slate-300">VELOCITY AI</span>
           </Link>
           <Link to="/AutoPilot" onClick={onClose}
             className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all">
@@ -304,7 +304,7 @@ export default function AppLayout() {
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-violet-500/20 text-violet-400 hover:text-violet-300 hover:border-violet-400/40 hover:bg-violet-500/10 transition-all text-xs"
               style={{ boxShadow: '0 0 12px rgba(124,58,237,0.15)' }}>
               <MessageSquare className="w-3.5 h-3.5" />
-              <span className="hidden lg:block font-orbitron text-[10px] tracking-wide">MISSION AI</span>
+              <span className="hidden lg:block font-orbitron text-[10px] tracking-wide">VELOCITY AI</span>
             </Link>
             {user?.role === 'admin' && (
               <Link to="/AdminControlPanel"

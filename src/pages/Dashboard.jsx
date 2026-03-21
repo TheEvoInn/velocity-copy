@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useDepartmentSync } from '@/hooks/useDepartmentSync';
-import { Zap, Plus } from 'lucide-react';
+import { Zap, Plus, AlertTriangle, Clock, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import OnboardingModal from '@/components/onboarding/OnboardingModal';

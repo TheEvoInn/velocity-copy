@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useDepartmentSync } from '@/hooks/useDepartmentSync';
-import { LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal, Zap, Target, TrendingUp, Bot, Activity, ChevronRight, Plus, DollarSign, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Zap, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import OnboardingModal from '@/components/onboarding/OnboardingModal';
@@ -18,7 +18,12 @@ import NotificationPermissionBanner from '@/components/notifications/Notificatio
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import N8nMcpPanel from '@/components/n8n/N8nMcpPanel';
 import SystemAuditChecker from '@/components/audit/SystemAuditChecker';
-import { Workflow } from 'lucide-react';
+import GalaxyCommandHUD from '@/components/command-center/GalaxyCommandHUD';
+import PlanetaryNav from '@/components/command-center/PlanetaryNav';
+import DepartmentActivityRings from '@/components/command-center/DepartmentActivityRings';
+import RealtimeOpportunitiesViewer from '@/components/command-center/RealtimeOpportunitiesViewer';
+import ExecutionPipelineMonitor from '@/components/command-center/ExecutionPipelineMonitor';
+import AIInsightsPanel from '@/components/command-center/AIInsightsPanel';
 
 const DEPT_CARDS = [
   {

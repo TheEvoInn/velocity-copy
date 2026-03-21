@@ -36,13 +36,13 @@ import AIInsightsPanel from '@/components/command-center/AIInsightsPanel';
 
 
 export default function Dashboard() {
-  const { goals: userGoals } = useUserGoalsV2();
-  const { opportunities } = useOpportunitiesV2();
-  const { tasks } = useTasksV2();
-  const { transactions } = useTransactionsV2();
-  const { logs: activityLogs } = useActivityLogsV2(20);
-  const { identities } = useAIIdentitiesV2();
-  const { workflows } = useWorkflowsV2();
+  const { goals: userGoals = {} } = useUserGoalsV2();
+  const { opportunities = [] } = useOpportunitiesV2();
+  const { tasks = [] } = useTasksV2();
+  const { transactions = [] } = useTransactionsV2();
+  const { logs: activityLogs = [] } = useActivityLogsV2(20);
+  const { identities = [] } = useAIIdentitiesV2();
+  const { workflows = [] } = useWorkflowsV2();
   
   // Calculate derived metrics
   const todayEarned = transactions
@@ -96,11 +96,11 @@ export default function Dashboard() {
     queryClient.invalidateQueries();
   };
 
-  const hasOnboarded = userGoals?.id || userGoals?.onboarded;
+  const hasOnboarded = userGoals?.id || userGoals?.onboarded || false;
   // Auto-show onboarding for new users
   const [showOnboarding, setShowOnboarding] = useState(false);
   React.useEffect(() => {
-    if (!hasOnboarded && Object.keys(userGoals).length === 0) {
+    if (!hasOnboarded && userGoals && Object.keys(userGoals).length === 0) {
       const timer = setTimeout(() => setShowOnboarding(true), 800);
       return () => clearTimeout(timer);
     }

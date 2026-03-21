@@ -292,6 +292,7 @@ export default function StarshipBridgeScene() {
         alerts={alerts}
         focusedStation={focusedStation}
         particleCount={particleCount}
+        performanceStats={performanceStats}
       />
       <BridgeSystemRefinements 
         audioEngine={audioEngineRef.current}

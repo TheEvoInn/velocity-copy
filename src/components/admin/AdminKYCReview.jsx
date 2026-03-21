@@ -150,36 +150,49 @@ function KYCCard({ kyc, onUpdate }) {
             ))}
           </div>
 
-          {/* Documents — secure view toggle */}
-          {(kyc.id_document_front_url || kyc.id_document_back_url || kyc.selfie_url) && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-white">Identity Documents</p>
-                <Button size="sm" variant="outline" onClick={() => setShowDocs(p => !p)}
-                  className="border-slate-700 text-slate-400 text-xs h-7 gap-1">
-                  {showDocs ? <><EyeOff className="w-3 h-3" /> Hide</> : <><Eye className="w-3 h-3" /> View Securely</>}
-                </Button>
-              </div>
-              {showDocs && (
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: 'ID Front', url: kyc.id_document_front_url },
-                    { label: 'ID Back',  url: kyc.id_document_back_url },
-                    { label: 'Selfie',   url: kyc.selfie_url },
-                  ].filter(d => d.url).map(doc => (
-                    <div key={doc.label} className="rounded-lg overflow-hidden border border-slate-700">
-                      <img src={doc.url} alt={doc.label}
-                        className="w-full h-24 object-cover" />
-                      <p className="text-[10px] text-slate-500 p-1.5 text-center">{doc.label}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {!showDocs && (
-                <p className="text-xs text-slate-600">Documents hidden for privacy. Click "View Securely" to review.</p>
-              )}
+          {/* Documents — always show section */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-white">Identity Documents</p>
+              <Button size="sm" variant="outline" onClick={() => setShowDocs(p => !p)}
+                className="border-slate-700 text-slate-400 text-xs h-7 gap-1">
+                {showDocs ? <><EyeOff className="w-3 h-3" /> Hide</> : <><Eye className="w-3 h-3" /> View Securely</>}
+              </Button>
             </div>
-          )}
+            {showDocs && (
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'ID Front', url: kyc.id_document_front_url },
+                  { label: 'ID Back',  url: kyc.id_document_back_url },
+                  { label: 'Selfie',   url: kyc.selfie_url },
+                ].map(doc => (
+                  <div key={doc.label} className="rounded-lg overflow-hidden border border-slate-700">
+                    {doc.url ? (
+                      <img
+                        src={doc.url}
+                        alt={doc.label}
+                        className="w-full h-24 object-cover"
+                        onError={e => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className="w-full h-24 bg-slate-800 items-center justify-center text-[10px] text-slate-500"
+                      style={{ display: doc.url ? 'none' : 'flex' }}
+                    >
+                      Not uploaded
+                    </div>
+                    <p className="text-[10px] text-slate-500 p-1.5 text-center">{doc.label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!showDocs && (
+              <p className="text-xs text-slate-600">Documents hidden for privacy. Click "View Securely" to review.</p>
+            )}
+          </div>
 
           {/* Supporting documents */}
           {kyc.supporting_documents?.length > 0 && (

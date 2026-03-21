@@ -46,17 +46,6 @@ Deno.serve(async (req) => {
       return Response.json({ access_log: records[0]?.access_log || [] });
     }
 
-    // Allow regular users to look up their own KYC record by email
-    if (action === 'get_my_kyc') {
-      const userEmail = user.email;
-      // Try both created_by and email_verified fields
-      let records = await base44.asServiceRole.entities.KYCVerification.filter({ created_by: userEmail }, '-created_date', 1);
-      if (!records.length) {
-        records = await base44.asServiceRole.entities.KYCVerification.filter({ email_verified: userEmail }, '-created_date', 1);
-      }
-      return Response.json({ record: records[0] || null });
-    }
-
     return Response.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

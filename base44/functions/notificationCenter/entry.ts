@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
 
     // ── ONBOARDING ERROR NOTIFICATION ───────────────────────────────────────
     if (action === 'onboarding_error') {
-      const { account_id, platform, step_id, error_message, error_type, recovery_action } = await req.json().catch(() => ({}));
+      const { account_id, platform, step_id, error_message, error_type, recovery_action } = body;
 
       if (!account_id || !platform || !error_message) {
         return Response.json({ error: 'account_id, platform, and error_message required' }, { status: 400 });

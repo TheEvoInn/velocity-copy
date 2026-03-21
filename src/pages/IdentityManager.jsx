@@ -11,6 +11,8 @@ import AutoAccountCreator from '../components/identity/AutoAccountCreator';
 import IdentityAuditLog from '../components/identity/IdentityAuditLog';
 import AccountLinker from '../components/identity/AccountLinker';
 import IdentityManagementDashboard from '../components/identity/IdentityManagementDashboard';
+import IdentityRoutingPolicyBuilder from '../components/identity/IdentityRoutingPolicyBuilder';
+import IntelligentIdentityRouter from '../components/identity/IntelligentIdentityRouter';
 
 export default function IdentityManager() {
   const qc = useQueryClient();
@@ -221,6 +223,27 @@ export default function IdentityManager() {
 
       {/* Phase 6: New Identity Management Dashboard */}
       <IdentityManagementDashboard />
+
+      {/* Intelligent Routing System */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-white flex items-center gap-2 font-orbitron tracking-wide mb-1">
+            <Zap className="w-4 h-4 text-cyan-400" />
+            Intelligent Identity Router
+          </h2>
+          <p className="text-xs text-slate-500">Automatically select optimal identities for tasks based on skills, platform experience, and requirements</p>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">Routing Policies</h3>
+            <IdentityRoutingPolicyBuilder />
+          </div>
+          <div>
+            <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">Test Router</h3>
+            <p className="text-xs text-slate-500 mb-3">Demo intelligent identity selection (integrate with Execution dept)</p>
+          </div>
+        </div>
+      </div>
 
       {/* Form */}
       {showForm && (

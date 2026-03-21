@@ -15,10 +15,24 @@ Deno.serve(async (req) => {
     // Allow regular users to fetch their own KYC record
     if (action === 'get_my_kyc') {
       const userEmail = user.email;
-      const all = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
-      const record = all.find(r => r.created_by === userEmail || r.email_verified === userEmail) || null;
-      console.log(`[kycAdminService] get_my_kyc for ${userEmail}: found=${!!record}`);
-      return Response.json({ record });
+      // First try user-scoped (works if they own the record)
+      let records = [];
+      try {
+        records = await base44.entities.KYCVerification.list('-created_date', 10);
+      } catch(_) {}
+      
+      // Fall back to service role list and filter
+      if (!records.length) {
+        try {
+          const all = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
+          records = all.filter(r => r.created_by === userEmail || r.email_verified === userEmail);
+        } catch(_) {}
+      } else {
+        records = records.filter(r => r.created_by === userEmail || r.email_verified === userEmail);
+      }
+
+      console.log(`[kycAdminService] get_my_kyc for ${userEmail}: found=${records.length}`);
+      return Response.json({ record: records[0] || null });
     }
 
     // All other actions require admin
@@ -27,9 +41,28 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'list' || action === 'list_all') {
-      // Use asServiceRole to bypass RLS and fetch ALL users' KYC records
-      const records = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
-      console.log(`[kycAdminService] fetched ${records.length} KYC records`);
+      // Try multiple approaches to get all KYC records
+      let records = [];
+      
+      // Approach 1: asServiceRole list
+      try {
+        records = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
+        console.log(`[kycAdminService] asServiceRole.list returned ${records.length}`);
+      } catch(e) {
+        console.log(`[kycAdminService] asServiceRole.list failed: ${e.message}`);
+      }
+
+      // Approach 2: regular list (will be RLS-filtered but better than nothing)
+      if (!records.length) {
+        try {
+          records = await base44.entities.KYCVerification.list('-created_date', 500);
+          console.log(`[kycAdminService] regular list returned ${records.length}`);
+        } catch(e) {
+          console.log(`[kycAdminService] regular list failed: ${e.message}`);
+        }
+      }
+
+      console.log(`[kycAdminService] final fetched ${records.length} KYC records`);
       return Response.json({ records });
     }
 
@@ -39,8 +72,11 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'get_access_log' && id) {
-      const all = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
-      const record = all.find(r => r.id === id);
+      let record = null;
+      try {
+        const all = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
+        record = all.find(r => r.id === id);
+      } catch(_) {}
       return Response.json({ access_log: record?.access_log || [] });
     }
 

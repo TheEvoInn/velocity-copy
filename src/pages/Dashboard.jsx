@@ -110,12 +110,28 @@ export default function Dashboard() {
   const failedTasks = tasks.filter(t => t.status === 'failed').length;
   const reviewTasks = tasks.filter(t => t.status === 'needs_review').length;
 
-  // Per-department stat summaries
+  // Per-department stat summaries (real-time synced)
   const deptStats = {
-    discovery: { main: activeOpps.length, label: 'active opps', sub: `${opportunities.length} total found`, color: '#f59e0b' },
-    execution: { main: activeTasks.length, label: 'running tasks', sub: `${completedToday} completed today`, color: '#3b82f6' },
-    finance: { main: `$${todayEarned.toFixed(0)}`, label: 'earned today', sub: `$${walletBalance.toFixed(0)} wallet`, color: '#10b981' },
-    control: { main: identities.length, label: 'identities', sub: activeIdentity ? `Active: ${activeIdentity.name}` : 'None active', color: '#a855f7' },
+    discovery: { 
+      main: activeOpps.length, 
+      label: 'active opportunities', 
+      sub: `${opportunities.length} total discovered` 
+    },
+    execution: { 
+      main: activeTasks.length, 
+      label: 'tasks executing', 
+      sub: `${completedToday} completed today` 
+    },
+    finance: { 
+      main: `$${todayEarned.toFixed(0)}`, 
+      label: 'earned today', 
+      sub: `$${walletBalance.toFixed(0)} available` 
+    },
+    control: { 
+      main: identities.length, 
+      label: `active identities`, 
+      sub: activeIdentity ? `Running: ${activeIdentity.name}` : 'None active' 
+    },
   };
 
   return (

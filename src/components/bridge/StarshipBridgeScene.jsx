@@ -126,6 +126,7 @@ export default function StarshipBridgeScene() {
           setFocusedStation(station.name);
           povControllerRef.current.focusStation(station.mesh);
           particleManagerRef.current.focusStation(station.mesh, station.color);
+          stationScreensRef.current.focusScreen(station.name);
         }
       } else {
         // Clicked background - return to center
@@ -133,6 +134,7 @@ export default function StarshipBridgeScene() {
           setFocusedStation(null);
           povControllerRef.current.returnToCenter();
           particleManagerRef.current.unfocusStation();
+          stationScreensRef.current.unfocusScreen();
         }
       }
     };

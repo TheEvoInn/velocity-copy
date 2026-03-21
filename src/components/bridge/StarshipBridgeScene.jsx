@@ -4,7 +4,7 @@ import BridgePOVController from './BridgePOVController';
 import BridgeParticleManager from './BridgeParticleManager';
 import BridgeAlertSystem from './BridgeAlertSystem';
 import { useBridgeAlerts } from '@/hooks/useBridgeAlerts';
-import BridgeHUDOverlay from './BridgeHUDOverlay';
+import BridgeHUDOverlay from './BridgeHUDOverlay.jsx';
 
 export default function StarshipBridgeScene() {
   const canvasRef = useRef(null);

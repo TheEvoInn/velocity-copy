@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 // Unified orchestrator: discovers opportunities, queues agent tasks, generates proposals, executes autonomously
 Deno.serve(async (req) => {
@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
 
     // --- Scheduled automation trigger: "Auto-Execute Batch - High Priority Queue" ---
     // Runs every 15 min; body may be empty {} or { automation: {...} }
-    if (!action || body.automation) {
+    if ((!action || body.automation) && action !== 'autopilot_full_cycle' && action !== 'full_cycle') {
       return await batchExecuteHighPriority(base44);
     }
 

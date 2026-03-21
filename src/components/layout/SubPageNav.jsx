@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Home } from 'lucide-react';
 import GlobalSearch from '@/components/search/GlobalSearch';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 export default function SubPageNav() {
   const navItems = [
@@ -31,6 +32,9 @@ export default function SubPageNav() {
 
           {/* Global Search */}
           <GlobalSearch />
+
+          {/* Notification Bell */}
+          <NotificationBell />
 
           {/* Navigation Items */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1">

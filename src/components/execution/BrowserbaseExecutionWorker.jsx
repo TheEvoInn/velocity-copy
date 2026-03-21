@@ -25,41 +25,50 @@ export default function BrowserbaseExecutionWorker() {
   // Execute single task
   const executeMutation = useMutation({
     mutationFn: async (taskId) => {
-      const res = await base44.functions.invoke('browserbaseExecutor', {
+      const res = await base44.functions.invoke('agentWorker', {
         action: 'execute_task',
-        task_id: taskId,
-        form_data: selectedTask?.form_data_submitted || {},
+        payload: {
+          task_id: taskId,
+          url: selectedTask?.url,
+          opportunity_id: selectedTask?.opportunity_id,
+          identity_id: selectedTask?.identity_id,
+          platform: selectedTask?.platform,
+        }
       });
       return res.data;
     },
     onSuccess: (data) => {
       refetch();
-      if (data.submit_success) {
-        toast.success('✅ Task completed successfully');
+      if (data?.success) {
+        toast.success('✅ Task completed');
       } else {
-        toast.warning('⚠️ Task executed but submit may have failed');
+        toast.warning('⚠️ Task needs manual review');
       }
       setSelectedTask(null);
     },
-    onError: () => {
-      toast.error('Failed to execute task');
+    onError: (err) => {
+      toast.error(`Failed: ${err.message || 'Unknown error'}`);
     },
   });
 
   // Batch execute
   const batchMutation = useMutation({
     mutationFn: async () => {
-      const res = await base44.functions.invoke('browserbaseExecutor', {
-        action: 'batch_execute',
+      const res = await base44.functions.invoke('agentWorker', {
+        action: 'execute_next_task',
       });
       return res.data;
     },
     onSuccess: (data) => {
       refetch();
-      toast.success(`✅ Executed ${data.executed} tasks`);
+      if (data?.success) {
+        toast.success('✅ Next task executed');
+      } else {
+        toast.info('All tasks processed');
+      }
     },
-    onError: () => {
-      toast.error('Batch execution failed');
+    onError: (err) => {
+      toast.error(`Failed: ${err.message || 'Unknown error'}`);
     },
   });
 

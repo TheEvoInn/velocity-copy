@@ -142,7 +142,7 @@ export default function AutopilotIdentitySelector({ opportunities = [], onTasksQ
         {opportunities.map((opp) => {
           const rec = recommendations[opp.id];
           const isProcessed = processingQueue.includes(opp.id);
-          const isQueued = processedCount >= processedCount; // simplified for demo
+          const isQueued = isProcessed;
 
           return (
             <Card key={opp.id} className={`p-3 transition-colors ${

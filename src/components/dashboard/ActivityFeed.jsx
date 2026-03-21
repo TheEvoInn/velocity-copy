@@ -32,7 +32,14 @@ export default function ActivityFeed({ logs: propLogs }) {
   // Self-fetch live activity if no logs passed as props
   const { data: fetchedLogs = [] } = useQuery({
     queryKey: ['activityFeed_live'],
-    queryFn: () => base44.entities.ActivityLog.list('-created_date', 30),
+    queryFn: async () => {
+      try {
+        return await base44.entities.ActivityLog.list('-created_date', 30);
+      } catch (err) {
+        console.error('Failed to fetch activity logs:', err);
+        return [];
+      }
+    },
     refetchInterval: 12000,
     enabled: !propLogs, // only fetch if not provided by parent
   });

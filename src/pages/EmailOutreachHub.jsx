@@ -110,9 +110,8 @@ export default function EmailOutreachHub() {
             {selectedOpp && (
               <EmailDraftGenerator
                 opportunity={selectedOpp}
-                onDraftGenerated={() => {
-                  // Refresh queue after draft
-                }}
+                injectedDraft={injectedDraft}
+                onDraftGenerated={() => { setInjectedDraft(null); }}
               />
             )}
           </div>

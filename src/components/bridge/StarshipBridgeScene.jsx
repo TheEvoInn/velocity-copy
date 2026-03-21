@@ -189,7 +189,8 @@ export default function StarshipBridgeScene() {
         fpsTime = now;
       }
 
-      renderer.render(scene, camera);
+      // Render with post-processing
+      postProcessingRef.current.render();
     };
 
     animate();

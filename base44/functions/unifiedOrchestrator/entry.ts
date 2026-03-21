@@ -23,14 +23,19 @@ Deno.serve(async (req) => {
     const action = body.action || 'full_cycle';
 
     // Get or create platform state
-    let states = await base44.entities.PlatformState.list();
-    let platformState = states[0];
+    let states = await base44.asServiceRole.entities.PlatformState.list().catch(() => []);
+    let platformState = Array.isArray(states) ? states[0] : null;
     if (!platformState) {
-      platformState = await base44.entities.PlatformState.create({
-        autopilot_enabled: true,
-        autopilot_mode: 'continuous',
-        system_health: 'healthy'
-      });
+      try {
+        platformState = await base44.asServiceRole.entities.PlatformState.create({
+          autopilot_enabled: true,
+          autopilot_mode: 'continuous',
+          system_health: 'healthy'
+        });
+      } catch (e) {
+        console.warn('PlatformState creation failed:', e.message);
+        return Response.json({ error: 'Failed to initialize platform state', details: e.message }, { status: 500 });
+      }
     }
 
     // Emergency stop gate (bypassed by force_run)
@@ -56,23 +61,31 @@ Deno.serve(async (req) => {
         return Response.json(await executeQueuedTasks(base44, user, body.max_tasks || 5));
 
       case 'toggle_autopilot': {
-        const enabled = body.enabled;
-        await base44.entities.PlatformState.update(platformState.id, { autopilot_enabled: enabled });
-        // Also sync UserGoals
-        const goals = (await base44.entities.UserGoals.list())[0];
-        if (goals) await base44.entities.UserGoals.update(goals.id, { autopilot_enabled: enabled });
-        await base44.entities.ActivityLog.create({
-          action_type: 'system',
-          message: `🤖 Autopilot ${enabled ? 'ENABLED' : 'DISABLED'} by user`,
-          severity: enabled ? 'success' : 'warning',
-          metadata: { triggered_by: user.email }
-        });
-        return Response.json({ success: true, autopilot_enabled: enabled });
+        const enabled = typeof body.enabled === 'boolean' ? body.enabled : true;
+        try {
+          await base44.asServiceRole.entities.PlatformState.update(platformState.id, { autopilot_enabled: enabled });
+          // Also sync UserGoals
+          const goals = await base44.asServiceRole.entities.UserGoals.list().catch(() => []);
+          if (Array.isArray(goals) && goals[0]) {
+            await base44.asServiceRole.entities.UserGoals.update(goals[0].id, { autopilot_enabled: enabled });
+          }
+          await base44.asServiceRole.entities.ActivityLog.create({
+            action_type: 'system',
+            message: `🤖 Autopilot ${enabled ? 'ENABLED' : 'DISABLED'} by ${user?.email || 'system'}`,
+            severity: enabled ? 'success' : 'warning',
+            metadata: { triggered_by: user?.email }
+          });
+          return Response.json({ success: true, autopilot_enabled: enabled });
+        } catch (err) {
+          return Response.json({ error: 'Toggle failed', details: err.message }, { status: 500 });
+        }
       }
 
       case 'get_status': {
-        const queuedCount = (await base44.entities.TaskExecutionQueue.filter({ status: 'queued' }, null, 100)).length;
-        const processingCount = (await base44.entities.TaskExecutionQueue.filter({ status: 'processing' }, null, 100)).length;
+        const queued = await base44.asServiceRole.entities.TaskExecutionQueue.filter({ status: 'queued' }, null, 100).catch(() => []);
+        const processing = await base44.asServiceRole.entities.TaskExecutionQueue.filter({ status: 'processing' }, null, 100).catch(() => []);
+        const queuedCount = Array.isArray(queued) ? queued.length : 0;
+        const processingCount = Array.isArray(processing) ? processing.length : 0;
         return Response.json({ success: true, state: { ...platformState, queued_count: queuedCount, processing_count: processingCount } });
       }
 
@@ -155,17 +168,21 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
 
     // 2. Run opportunity scan
     addLog('scan', 'running', 'Scanning for new opportunities');
-    const scanResult = await runScan(base44, user);
+    const scanResult = await runScan(base44, user).catch(e => ({ success: false, error: e.message, opportunities_found: 0 }));
     result.scan_result = scanResult;
-    addLog('scan', 'success', `Scan complete: ${scanResult.opportunities_found || 0} found, ${scanResult.created || 0} new`);
+    const scanOppsFound = typeof scanResult?.opportunities_found === 'number' ? scanResult.opportunities_found : 0;
+    const scanOppsCreated = typeof scanResult?.created === 'number' ? scanResult.created : 0;
+    addLog('scan', 'success', `Scan complete: ${scanOppsFound} found, ${scanOppsCreated} new`);
 
     // 3. Score new opportunities with AI
     addLog('scoring', 'running', 'AI-scoring new opportunities');
     const newOpps = await base44.asServiceRole.entities.Opportunity.filter(
       { status: 'new', auto_execute: true }, '-created_date', 20
-    );
+    ).catch(() => []);
     let scored = 0;
-    for (const opp of newOpps.slice(0, 10)) {
+    const oppsToScore = Array.isArray(newOpps) ? newOpps.slice(0, 10) : [];
+    for (const opp of oppsToScore) {
+      if (!opp || !opp.id) continue;
       if (!opp.overall_score) {
         try {
           const scoreRes = await base44.asServiceRole.functions.invoke('geminiAI', {
@@ -195,7 +212,7 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
     addLog('queue', 'running', 'Queuing eligible opportunities');
     const eligibleOpps = await base44.asServiceRole.entities.Opportunity.filter(
       { status: 'new', auto_execute: true }, '-overall_score', 20
-    );
+    ).catch(() => []);
 
     // Digital-only filter — block any opportunity requiring physical/offline action
     const PHYSICAL_KEYWORDS = [
@@ -209,10 +226,12 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
       return !PHYSICAL_KEYWORDS.some(kw => text.includes(kw));
     };
 
-    const digitalOpps = eligibleOpps.filter(isDigital);
-    addLog('queue', 'info', `${eligibleOpps.length - digitalOpps.length} non-digital opps filtered out`);
+    const safeEligibleOpps = Array.isArray(eligibleOpps) ? eligibleOpps : [];
+    const digitalOpps = safeEligibleOpps.filter(o => o && isDigital(o));
+    addLog('queue', 'info', `${safeEligibleOpps.length - digitalOpps.length} non-digital opps filtered out`);
 
     for (const opp of digitalOpps.slice(0, forceRun ? 10 : 5)) {
+      if (!opp || !opp.id) continue;
       try {
         // Skip if no URL
         if (!opp.url) {
@@ -260,24 +279,28 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
 
     // 5. Execute queued tasks
     addLog('execute', 'running', `Executing queued tasks (force=${forceRun})`);
-    const execResult = await executeQueuedTasks(base44, user, forceRun ? 10 : 3);
-    result.executed = execResult.executed;
-    result.errors.push(...(execResult.errors || []));
-    addLog('execute', 'success', `Executed: ${execResult.executed} tasks`);
+    const execResult = await executeQueuedTasks(base44, user, forceRun ? 10 : 3).catch(e => ({
+      executed: 0,
+      errors: [e.message],
+      total_queued: 0
+    }));
+    result.executed = typeof execResult?.executed === 'number' ? execResult.executed : 0;
+    result.errors.push(...(Array.isArray(execResult?.errors) ? execResult.errors : []));
+    addLog('execute', 'success', `Executed: ${result.executed} tasks`);
 
     // 6. Update platform state
     const duration = Math.round((Date.now() - cycleStart) / 1000);
-    const states = await base44.asServiceRole.entities.PlatformState.list();
-    const ps = states[0];
-    if (ps) {
+    const states = await base44.asServiceRole.entities.PlatformState.list().catch(() => []);
+    const ps = Array.isArray(states) ? states[0] : null;
+    if (ps && ps.id) {
       await base44.asServiceRole.entities.PlatformState.update(ps.id, {
         last_cycle_timestamp: new Date().toISOString(),
-        cycle_count_today: (ps.cycle_count_today || 0) + 1,
-        tasks_completed_today: (ps.tasks_completed_today || 0) + result.executed,
+        cycle_count_today: (typeof ps.cycle_count_today === 'number' ? ps.cycle_count_today : 0) + 1,
+        tasks_completed_today: (typeof ps.tasks_completed_today === 'number' ? ps.tasks_completed_today : 0) + result.executed,
         current_queue_count: result.queued,
-        system_health: result.errors.length > 3 ? 'warning' : 'healthy',
-        execution_log: log.slice(-50) // Keep last 50 entries
-      });
+        system_health: Array.isArray(result.errors) && result.errors.length > 3 ? 'warning' : 'healthy',
+        execution_log: Array.isArray(log) ? log.slice(-50) : []
+      }).catch(e => console.error('PlatformState update failed:', e.message));
     }
 
     // 7. Activity log
@@ -343,48 +366,66 @@ async function executeQueuedTasks(base44, user, maxTasks = 3) {
 
   const queuedTasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
     { status: 'queued' }, '-priority', maxTasks * 2
-  );
+  ).catch(() => []);
+
+  // Ensure array
+  if (!Array.isArray(queuedTasks)) {
+    console.error('[Orchestrator] queuedTasks not an array, got:', typeof queuedTasks);
+    return { executed: 0, errors: ['Failed to fetch queued tasks'], total_queued: 0 };
+  }
 
   // Sort: highest priority first, then oldest first
-  queuedTasks.sort((a, b) => {
-    if (b.priority !== a.priority) return (b.priority || 0) - (a.priority || 0);
-    return new Date(a.queue_timestamp || a.created_date) - new Date(b.queue_timestamp || b.created_date);
+  const sortedTasks = [...queuedTasks].sort((a, b) => {
+    if (!a || !b) return 0;
+    const aPriority = typeof a.priority === 'number' ? a.priority : 0;
+    const bPriority = typeof b.priority === 'number' ? b.priority : 0;
+    if (bPriority !== aPriority) return bPriority - aPriority;
+    const aTime = new Date(a.queue_timestamp || a.created_date);
+    const bTime = new Date(b.queue_timestamp || b.created_date);
+    return aTime - bTime;
   });
 
-  const batch = queuedTasks.slice(0, maxTasks);
+  const batch = sortedTasks.slice(0, maxTasks);
   console.log(`[Orchestrator] Executing ${batch.length} tasks (${queuedTasks.length} total queued)`);
 
   for (const task of batch) {
+    if (!task || !task.id) continue;
     try {
       // Mark as processing to prevent double-execution
       await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
         status: 'processing',
         start_timestamp: new Date().toISOString()
-      });
+      }).catch(e => console.error(`Failed to mark processing: ${e.message}`));
 
       // Execute via agentWorker (use base44.functions not asServiceRole to pass auth token through)
-      const execRes = await base44.functions.invoke('agentWorker', {
+      const execRes = await base44.asServiceRole.functions.invoke('agentWorker', {
         action: 'execute_task',
         payload: {
           task_id: task.id,
-          opportunity_id: task.opportunity_id,
-          url: task.url,
-          identity_id: task.identity_id,
-          platform: task.platform
+          opportunity_id: task.opportunity_id || '',
+          url: task.url || '',
+          identity_id: task.identity_id || '',
+          platform: task.platform || 'unknown'
         }
-      });
+      }).catch(e => ({ data: { success: false, error: e.message } }));
 
-      if (execRes.data?.success) {
+      if (execRes?.data?.success) {
         executed++;
         console.log(`[Orchestrator] Task ${task.id} completed successfully`);
       } else {
-        const errMsg = execRes.data?.error || 'Unknown error';
+        const errMsg = execRes?.data?.error || 'Unknown error';
         errors.push(`Task ${task.id}: ${errMsg}`);
         console.error(`[Orchestrator] Task ${task.id} failed: ${errMsg}`);
+        // Update task status
+        await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
+          status: 'failed',
+          error_message: errMsg,
+          needs_manual_review: true
+        }).catch(() => {});
       }
     } catch (e) {
       errors.push(`Task ${task.id}: ${e.message}`);
-      // Revert to queued on exception so retry can pick it up
+      // Mark as failed
       await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
         status: 'failed',
         error_message: e.message,

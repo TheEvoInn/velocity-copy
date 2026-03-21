@@ -7,6 +7,9 @@ import PostProcessingComposer from './PostProcessingComposer';
 import StationScreenRenderer from './StationScreenRenderer';
 import { useBridgeAlerts } from '@/hooks/useBridgeAlerts';
 import EnhancedBridgeHUD from './EnhancedBridgeHUD.jsx';
+import AudioEngine from './AudioEngine';
+import AudioUIFeedback from './AudioUIFeedback';
+import BridgeAudioIntegration from './BridgeAudioIntegration';
 
 export default function StarshipBridgeScene() {
   const canvasRef = useRef(null);
@@ -19,6 +22,9 @@ export default function StarshipBridgeScene() {
   
   const postProcessingRef = useRef(null);
   const stationScreensRef = useRef(null);
+  const audioEngineRef = useRef(null);
+  const audioUIFeedbackRef = useRef(null);
+  const audioIntegrationRef = useRef(null);
   
   const [focusedStation, setFocusedStation] = useState(null);
   const [alerts, setAlerts] = useState([]);
@@ -92,6 +98,16 @@ export default function StarshipBridgeScene() {
     
     // Initialize station screens
     stationScreensRef.current = new StationScreenRenderer(scene);
+    
+    // Initialize audio systems
+    audioEngineRef.current = new AudioEngine(camera);
+    audioUIFeedbackRef.current = new AudioUIFeedback(audioEngineRef.current);
+    audioIntegrationRef.current = new BridgeAudioIntegration(
+      audioEngineRef.current,
+      audioUIFeedbackRef.current,
+      alertSystemRef.current
+    );
+    audioIntegrationRef.current.systemReady();
 
     // Create interactive stations
     const stations = createStations(scene);
@@ -126,6 +142,7 @@ export default function StarshipBridgeScene() {
           povControllerRef.current.focusStation(station.mesh);
           particleManagerRef.current.focusStation(station.mesh, station.color);
           stationScreensRef.current.focusScreen(station.name);
+          audioIntegrationRef.current.focusStation(station.name);
         }
       } else {
         // Clicked background - return to center
@@ -134,6 +151,7 @@ export default function StarshipBridgeScene() {
           povControllerRef.current.returnToCenter();
           particleManagerRef.current.unfocusStation();
           stationScreensRef.current.unfocusScreen();
+          audioIntegrationRef.current.unfocusStation();
         }
       }
     };
@@ -145,6 +163,7 @@ export default function StarshipBridgeScene() {
         povControllerRef.current.returnToCenter();
         particleManagerRef.current.unfocusStation();
         stationScreensRef.current.unfocusScreen();
+        audioIntegrationRef.current.unfocusStation();
       }
     };
 
@@ -201,6 +220,7 @@ export default function StarshipBridgeScene() {
       window.removeEventListener('resize', onWindowResize);
       postProcessingRef.current.dispose();
       stationScreensRef.current.dispose();
+      audioIntegrationRef.current.dispose();
       renderer.dispose();
     };
   }, [focusedStation]);

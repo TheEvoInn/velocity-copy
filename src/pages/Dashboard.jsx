@@ -155,8 +155,12 @@ export default function Dashboard() {
       )}
       {showTxForm && (
         <TransactionForm
-          onClose={() => { setShowTxForm(false); queryClient.invalidateQueries({ queryKey: ['transactions'] }); }}
-          currentBalance={userGoals.wallet_balance || 0}
+          onClose={() => { 
+            setShowTxForm(false); 
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+            queryClient.invalidateQueries({ queryKey: ['goals'] });
+          }}
+          currentBalance={userGoals?.wallet_balance ?? 0}
         />
       )}
 
@@ -264,11 +268,11 @@ export default function Dashboard() {
         {/* Right Intelligence Column */}
         <div className="space-y-4">
           <DailyGoalTracker
-            target={userGoals.daily_target || 1000}
-            earned={todayEarned}
-            totalEarned={totalEarned}
-            walletBalance={walletBalance}
-          />
+                target={userGoals?.daily_target ?? 1000}
+                earned={todayEarned}
+                totalEarned={totalEarned}
+                walletBalance={walletBalance}
+              />
           <SystemAuditChecker />
           <AIInsightsPanel />
           <div className="glass-card rounded-2xl p-4">

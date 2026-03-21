@@ -48,7 +48,35 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 
-export const pagesConfig = {
-	Pages: {}
-}
+import Dashboard from './pages/Dashboard';
+import AutoPilot from './pages/AutoPilot';
+import Discovery from './pages/Discovery';
+import Execution from './pages/Execution';
+import Finance from './pages/Finance';
+import Control from './pages/Control';
+import IdentityManager from './pages/IdentityManager';
+import KYCManagement from './pages/KYCManagement';
+import Chat from './pages/Chat';
+import ActivityPage from './pages/ActivityPage';
+import AdminControlPanel from './pages/AdminControlPanel';
+import CryptoAutomation from './pages/CryptoAutomation';
 
+const PAGES = {
+	Dashboard,
+	AutoPilot,
+	Discovery,
+	Execution,
+	Finance,
+	Control,
+	IdentityManager,
+	KYCManagement,
+	Chat,
+	ActivityPage,
+	AdminControlPanel,
+	CryptoAutomation
+};
+
+export const pagesConfig = {
+	mainPage: 'Dashboard',
+	Pages: PAGES
+};

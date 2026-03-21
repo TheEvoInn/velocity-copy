@@ -4,7 +4,6 @@
  */
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
-import { createHmac } from 'npm:crypto@1.0.1';
 
 Deno.serve(async (req) => {
   try {
@@ -72,9 +71,10 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Missing webhook signature' }, { status: 400 });
       }
 
-      const expectedSignature = createHmac('sha256', webhookToken)
-        .update(JSON.stringify(payload))
-        .digest('hex');
+      const expectedSignature = await generateHmacSignature(
+        JSON.stringify(payload),
+        webhookToken
+      );
 
       if (signature !== expectedSignature) {
         return Response.json({ error: 'Invalid webhook signature' }, { status: 401 });
@@ -241,12 +241,24 @@ function applyTransform(value, transform) {
   }
 }
 
-// Helper: Hash payload
-function hashPayload(data) {
+// Helper: Generate HMAC signature
+async function generateHmacSignature(payload, secret) {
   const encoder = new TextEncoder();
-  const buffer = encoder.encode(data);
-  const hashBuffer = crypto.subtle.digestSync('SHA-256', buffer);
-  return Array.from(new Uint8Array(hashBuffer))
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(payload)
+  );
+  
+  return Array.from(new Uint8Array(signature))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 }

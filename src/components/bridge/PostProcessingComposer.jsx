@@ -78,36 +78,41 @@ class PostProcessingComposer {
       { type: THREE.HalfFloatType }
     );
     
-    // Apply bloom
-    if (this.settings.bloomEnabled) {
-      this.bloomPass.material.uniforms.bloomStrength.value = this.settings.bloomStrength;
-      this.bloomPass.material.uniforms.bloomRadius.value = this.settings.bloomRadius;
-      this.bloomPass.material.uniforms.bloomThreshold.value = this.settings.bloomThreshold;
-      this.renderPass(current, temp, this.bloomPass);
-      current = temp.texture;
+    try {
+      // Apply bloom
+      if (this.settings.bloomEnabled) {
+        this.bloomPass.material.uniforms.bloomStrength.value = this.settings.bloomStrength;
+        this.bloomPass.material.uniforms.bloomRadius.value = this.settings.bloomRadius;
+        this.bloomPass.material.uniforms.bloomThreshold.value = this.settings.bloomThreshold;
+        this.renderPass(current, temp, this.bloomPass);
+        current = temp.texture;
+      }
+      
+      // Apply glitch
+      if (this.settings.glitchEnabled && this.settings.glitchStrength > 0) {
+        this.glitchPass.material.uniforms.glitchStrength.value = this.settings.glitchStrength;
+        this.glitchPass.material.uniforms.time.value = this.time;
+        this.renderPass(current, temp, this.glitchPass);
+        current = temp.texture;
+      }
+      
+      // Apply scanlines
+      if (this.settings.scanlineEnabled) {
+        this.scanlinePass.material.uniforms.scanlineIntensity.value = this.settings.scanlineIntensity;
+        this.scanlinePass.material.uniforms.scanlineFrequency.value = this.settings.scanlineFrequency;
+        this.scanlinePass.material.uniforms.time.value = this.time;
+        this.renderPass(current, null, this.scanlinePass); // Render to screen
+      } else if (current !== this.renderTarget.texture) {
+        // Final copy to screen if scanlines disabled
+        this.renderer.setRenderTarget(null);
+        this.renderer.render(this.scene, this.camera);
+      }
+    } finally {
+      // Ensure temp render target is always cleaned up
+      if (temp) {
+        temp.dispose();
+      }
     }
-    
-    // Apply glitch
-    if (this.settings.glitchEnabled && this.settings.glitchStrength > 0) {
-      this.glitchPass.material.uniforms.glitchStrength.value = this.settings.glitchStrength;
-      this.glitchPass.material.uniforms.time.value = this.time;
-      this.renderPass(current, temp, this.glitchPass);
-      current = temp.texture;
-    }
-    
-    // Apply scanlines
-    if (this.settings.scanlineEnabled) {
-      this.scanlinePass.material.uniforms.scanlineIntensity.value = this.settings.scanlineIntensity;
-      this.scanlinePass.material.uniforms.scanlineFrequency.value = this.settings.scanlineFrequency;
-      this.scanlinePass.material.uniforms.time.value = this.time;
-      this.renderPass(current, null, this.scanlinePass); // Render to screen
-    } else if (current !== this.renderTarget.texture) {
-      // Final copy to screen if scanlines disabled
-      this.renderer.setRenderTarget(null);
-      this.renderer.render(this.scene, this.camera);
-    }
-    
-    temp.dispose();
   }
 
   onWindowResize(width, height) {

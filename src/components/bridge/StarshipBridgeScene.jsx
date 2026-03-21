@@ -222,9 +222,30 @@ export default function StarshipBridgeScene() {
       window.removeEventListener('click', onMouseClick);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', onWindowResize);
-      postProcessingRef.current.dispose();
-      stationScreensRef.current.dispose();
-      audioIntegrationRef.current.dispose();
+      
+      // Cleanup audio systems
+      if (audioIntegrationRef.current) {
+        audioIntegrationRef.current.dispose();
+      }
+      if (audioEngineRef.current) {
+        audioEngineRef.current.stopAmbientLoop();
+      }
+      
+      // Cleanup visual systems
+      if (stationScreensRef.current) {
+        stationScreensRef.current.dispose();
+      }
+      if (postProcessingRef.current) {
+        postProcessingRef.current.dispose();
+      }
+      if (povControllerRef.current) {
+        povControllerRef.current.dispose?.();
+      }
+      if (particleManagerRef.current) {
+        particleManagerRef.current.dispose?.();
+      }
+      
+      // Cleanup renderer
       renderer.dispose();
     };
   }, [focusedStation]);

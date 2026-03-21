@@ -6,15 +6,23 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   ShoppingCart, Zap, TrendingUp, Globe, Sparkles, AlertCircle,
-  Play, Pause, RotateCw, Plus, Eye, Settings, Trash2
+  Play, Pause, RotateCw, Plus, Eye, Settings, Trash2, Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function DigitalResellers() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const queryClient = useQueryClient();
+  const { user: authUser } = useAuth();
+  
+  // Get active identity from local storage or context
+  const activeIdentityData = typeof window !== 'undefined' 
+    ? localStorage.getItem('activeIdentity') 
+    : null;
+  const activeIdentity = activeIdentityData ? JSON.parse(activeIdentityData) : null;
 
   // Fetch user data
   const { data: user } = useQuery({
@@ -22,17 +30,19 @@ export default function DigitalResellers() {
     queryFn: async () => await base44.auth.me(),
   });
 
-  // Fetch digital resale opportunities
+  // Fetch digital resale opportunities (created by current user)
   const { data: opportunities = [], isLoading: opportunitiesLoading } = useQuery({
-    queryKey: ['digitalResellOpportunities'],
+    queryKey: ['digitalResellOpportunities', user?.email],
     queryFn: async () => {
+      if (!user?.email) return [];
       const res = await base44.entities.Opportunity.filter(
-        { category: 'resale' },
+        { category: 'digital_flip', created_by: user.email },
         '-created_date',
         100
       );
       return res;
     },
+    enabled: !!user?.email,
     refetchInterval: 30000,
   });
 
@@ -70,17 +80,40 @@ export default function DigitalResellers() {
     },
   });
 
+  // Fetch reseller autopilot config
+  const { data: autopilotConfig } = useQuery({
+    queryKey: ['resellAutopilotConfig', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return null;
+      const configs = await base44.entities.ResellAutopilotConfig.filter(
+        { created_by: user.email },
+        '-updated_date',
+        1
+      );
+      return configs.length > 0 ? configs[0] : null;
+    },
+    enabled: !!user?.email,
+  });
+
   // Launch autopilot reseller mutation
   const launchAutopilotMutation = useMutation({
     mutationFn: async () => {
+      // Verify user has approved identity
+      if (!activeIdentity) {
+        throw new Error('Please select an approved identity first');
+      }
+      
       const response = await base44.functions.invoke('autopilotResellOrchestrator', {
         action: 'launch_autonomous_reseller',
         user_id: user?.id,
+        user_email: user?.email,
+        identity_id: activeIdentity?.id,
       });
       return response.data;
     },
     onSuccess: () => {
       toast.success('Autopilot Digital Reseller launched!');
+      queryClient.invalidateQueries({ queryKey: ['resellAutopilotConfig'] });
       queryClient.invalidateQueries({ queryKey: ['userStorefronts'] });
     },
     onError: (err) => {

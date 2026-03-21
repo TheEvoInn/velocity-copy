@@ -20,13 +20,13 @@ function getOpenAI() {
 async function llm(messages, maxTokens = 1200) {
   try {
     const res = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages,
       max_tokens: maxTokens,
     });
     return res.choices[0].message.content;
   } catch (_e) {
-    // fallback handled by caller
+    console.error('LLM error:', _e.message);
     return null;
   }
 }
@@ -160,8 +160,11 @@ async function executeInstantTask(base44, payload, log) {
     ], 1000);
 
     let fillPlan = null;
-    try { fillPlan = JSON.parse(aiResponse); } catch (_) { /* use fallback */ }
+    try { fillPlan = JSON.parse(aiResponse || '{}'); } catch (_) { /* use fallback */ }
 
+    if (!fillPlan || !fillPlan.instructions) {
+      log('ai_fallback', 'Using fallback instruction generation');
+    }
     const instructions = fillPlan?.instructions || buildFallbackInstructions(task_type, snapshot, context, identity);
     const deliverable = fillPlan?.deliverable || '';
 
@@ -276,6 +279,7 @@ Deno.serve(async (req) => {
 
       // Update task record if task_id provided
       if (payload.task_id) {
+        const execTime = payload.start_time ? Math.round((Date.now() - payload.start_time) / 1000) : 0;
         await base44.asServiceRole.entities.TaskExecutionQueue.update(payload.task_id, {
           status: result.submitted ? 'completed' : 'needs_review',
           completion_timestamp: new Date().toISOString(),
@@ -284,8 +288,9 @@ Deno.serve(async (req) => {
           deep_link_for_manual: result.final_url,
           execution_log: execLog,
           needs_manual_review: !result.submitted,
-          manual_review_reason: result.submitted ? null : 'Instant task completed but submission confirmation pending',
-          execution_time_seconds: Math.round((Date.now() - (payload.start_time || Date.now())) / 1000),
+          manual_review_reason: result.submitted ? null : 'Manual review needed',
+          screenshot_url: result.screenshot_url || null,
+          execution_time_seconds: execTime > 0 ? execTime : 0,
         }).catch(err => console.error('Task update failed:', err.message));
       }
 

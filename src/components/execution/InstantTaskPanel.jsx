@@ -100,20 +100,22 @@ export default function InstantTaskPanel({ opportunities = [], onTaskComplete })
     try {
       // Create or get task record first
       let taskId = null;
-      if (selectedOpp?.id) {
+      try {
         const task = await base44.entities.TaskExecutionQueue.create({
-          opportunity_id: selectedOpp.id,
+          opportunity_id: selectedOpp?.id || '',
           url: targetUrl,
           opportunity_type: 'instant_task',
-          platform: selectedOpp.platform || 'manual',
+          platform: selectedOpp?.platform || 'manual',
           identity_id: identity?.id || '',
           identity_name: identity?.name || '',
           status: 'processing',
           queue_timestamp: new Date().toISOString(),
           priority: 100,
-          estimated_value: selectedOpp.profit_estimate_high || 50,
+          estimated_value: selectedOpp?.profit_estimate_high || 50,
         });
-        taskId = task.id;
+        taskId = task?.id;
+      } catch (taskErr) {
+        console.warn('Task creation failed, continuing without task record:', taskErr);
       }
 
       const res = await base44.functions.invoke('instantTask', {

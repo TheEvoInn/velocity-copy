@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { useState, useRef, useEffect } from 'react';
 import BridgePOVController from './BridgePOVController';
 import BridgeParticleManager from './BridgeParticleManager';
 import BridgeAlertSystem from './BridgeAlertSystem';
+import PostProcessingComposer from './PostProcessingComposer';
+import StationScreenRenderer from './StationScreenRenderer';
 import { useBridgeAlerts } from '@/hooks/useBridgeAlerts';
-import BridgeHUDOverlay from './BridgeHUDOverlay.jsx';
+import EnhancedBridgeHUD from './EnhancedBridgeHUD.jsx';
 
 export default function StarshipBridgeScene() {
   const canvasRef = useRef(null);

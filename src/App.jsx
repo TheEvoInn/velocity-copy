@@ -48,6 +48,7 @@ import EmailMarketing from './pages/EmailMarketing';
 import PageCustomizer from './pages/PageCustomizer';
 import CryptoProfitSystems from './pages/CryptoProfitSystems';
 import GlobalTaskOrchestrator from './pages/GlobalTaskOrchestrator';
+import NotificationsDashboard from './pages/NotificationsDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -112,6 +113,7 @@ const AuthenticatedApp = () => {
         <Route path="/EmailMarketing" element={<EmailMarketing />} />
         <Route path="/CryptoProfitSystems" element={<CryptoProfitSystems />} />
         <Route path="/GlobalTaskOrchestrator" element={<GlobalTaskOrchestrator />} />
+        <Route path="/NotificationsDashboard" element={<NotificationsDashboard />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

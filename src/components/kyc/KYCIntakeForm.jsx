@@ -320,9 +320,16 @@ export default function KYCIntakeForm({ onSubmitSuccess }) {
                   />
                   <label htmlFor={field} className="cursor-pointer block">
                     {documents[field] ? (
-                      <div className="flex items-center justify-center gap-2 text-emerald-400">
-                        <FileCheck className="w-4 h-4" />
-                        <span className="text-xs">{documents[field].name}</span>
+                      <div className="space-y-2">
+                        <img
+                          src={URL.createObjectURL(documents[field])}
+                          alt={field}
+                          className="w-full max-h-36 object-contain rounded-lg border border-slate-700"
+                        />
+                        <div className="flex items-center justify-center gap-2 text-emerald-400">
+                          <FileCheck className="w-4 h-4" />
+                          <span className="text-xs">{documents[field].name}</span>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-2">

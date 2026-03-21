@@ -119,7 +119,6 @@ export default function TemplatesLibrary() {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [showSavedOnly, setShowSavedOnly] = useState(false);
-  const [applyingId, setApplyingId] = useState(null);
   const [showWizard, setShowWizard] = useState(false);
 
   // Load user's saved templates + UserDataStore
@@ -229,17 +228,14 @@ export default function TemplatesLibrary() {
       qc.invalidateQueries({ queryKey: ['userDataStore_templates'] });
       qc.invalidateQueries({ queryKey: ['userGoals'] });
       qc.invalidateQueries({ queryKey: ['platformState'] });
-      setApplyingId(null);
     },
     onError: (error) => {
       console.error('Apply template error:', error);
       toast.error(`Failed to apply template: ${error.message || 'Unknown error'}`);
-      setApplyingId(null);
     },
   });
 
-  const handleApply = async (template) => {
-    setApplyingId(template.id);
+  const handleApply = (template) => {
     applyMutation.mutate(template);
   };
 
@@ -367,7 +363,7 @@ export default function TemplatesLibrary() {
               template={template}
               isSaved={savedIds.includes(template.id)}
               isApplied={appliedId === template.id}
-              applying={applyingId === template.id}
+              applying={applyMutation.isPending}
               onSave={() => saveMutation.mutate(template)}
               onApply={() => handleApply(template)}
             />

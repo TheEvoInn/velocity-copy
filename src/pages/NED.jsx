@@ -13,6 +13,8 @@ import { TrendingUp, Zap, Wallet, DollarSign } from 'lucide-react';
 
 const style = getDeptStyle('ned');
 
+const DUMMY_COLOR = '#06b6d4';
+
 export default function NED() {
   const { data: opportunities = [] } = useQuery({
     queryKey: ['cryptoOpportunities'],

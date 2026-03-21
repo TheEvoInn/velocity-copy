@@ -13,6 +13,8 @@ import { Zap, TrendingUp, BookOpen, Target } from 'lucide-react';
 
 const style = getDeptStyle('vipz');
 
+const DUMMY_COLOR = '#ec4899';
+
 export default function VIPZ() {
   const { data: storefronts = [] } = useQuery({
     queryKey: ['digitalStorefronts'],

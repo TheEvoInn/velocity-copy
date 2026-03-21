@@ -7,8 +7,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 const { Pages, Layout, mainPage } = pagesConfig;
-// StarshipBridge is the new master landing page
-const MainPage = Pages.StarshipBridge ?? null;
+const MainPage = Pages[mainPage] ?? null;
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useDepartmentSync } from '@/hooks/useDepartmentSync';
 import { LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal, Zap, Target, TrendingUp, Bot, Activity, ChevronRight, Plus, DollarSign, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -77,6 +77,27 @@ export default function Dashboard() {
   useRealtimeNotifications();
 
   const [showTxForm, setShowTxForm] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+
+  // Scan market opportunities mutation
+  const scanMutation = useMutation({
+    mutationFn: async () => {
+      setIsScanning(true);
+      const res = await base44.functions.invoke('scanOpportunities', {
+        action: 'scan',
+        max_results: 10
+      });
+      return res.data || {};
+    },
+    onSuccess: (data) => {
+      setIsScanning(false);
+      invalidateAll(); // Refresh all department data including opportunities
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+    },
+    onError: () => {
+      setIsScanning(false);
+    }
+  });
 
   const hasOnboarded = userGoals.id || userGoals.onboarded;
   // Auto-show onboarding for new users once goals data has loaded (not loading = no record = first visit)
@@ -256,11 +277,15 @@ export default function Dashboard() {
               {activeOpps.length === 0 && (
                 <div className="text-center py-5">
                   <p className="text-xs text-slate-500 mb-2">No active opportunities</p>
-                  <Link to="/Chat">
-                    <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-white text-xs h-7 gap-1">
-                      <Zap className="w-3 h-3" /> Scan Now
-                    </Button>
-                  </Link>
+                  <Button
+                    size="sm"
+                    onClick={() => scanMutation.mutate()}
+                    disabled={isScanning}
+                    className="bg-amber-600 hover:bg-amber-500 text-white text-xs h-7 gap-1"
+                  >
+                    <Zap className={`w-3 h-3 ${isScanning ? 'animate-spin' : ''}`} />
+                    {isScanning ? 'Scanning...' : 'Scan Now'}
+                  </Button>
                 </div>
               )}
             </div>

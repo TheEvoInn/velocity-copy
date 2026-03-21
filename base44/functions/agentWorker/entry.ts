@@ -524,11 +524,35 @@ Provide:
 
 function buildIdentitySystemPrompt(identity, fallbackRole) {
   const brandAssets = identity.brand_assets || {};
+  const kyc = identity.kyc_verified_data || null;
   const rules = [
     ...(brandAssets.always_rules || []),
     ...(brandAssets.writing_rules || [])
   ].join('. ');
   const forbidden = (brandAssets.forbidden_phrases || []).join(', ');
+
+  let kycBlock = '';
+  if (kyc && kyc.kyc_tier && kyc.kyc_tier !== 'none') {
+    const clearance = kyc.autopilot_clearance || {};
+    kycBlock = `
+
+VERIFIED LEGAL IDENTITY (KYC Tier: ${kyc.kyc_tier.toUpperCase()}) — Use ONLY when the task explicitly requires it:
+- Full Legal Name: ${kyc.full_legal_name || identity.name}
+- Date of Birth: ${kyc.date_of_birth || '—'}
+- Address: ${[kyc.residential_address, kyc.city, kyc.state, kyc.postal_code, kyc.country].filter(Boolean).join(', ') || '—'}
+- Phone: ${kyc.phone_number || '—'}
+- Email: ${kyc.email || identity.email || '—'}
+- Government ID Type: ${kyc.government_id_type || '—'}
+- Government ID Number: ${kyc.government_id_number || '—'}
+- Government ID Expiry: ${kyc.government_id_expiry || '—'}
+${kyc.tax_id ? `- Tax ID / SSN: ${kyc.tax_id}` : ''}
+${kyc.ssn_last4 ? `- SSN Last 4: ${kyc.ssn_last4}` : ''}
+
+AUTHORIZED TASK TYPES for this identity:
+${clearance.can_submit_w9 ? '✓ W-9 and tax form submissions\n' : ''}${clearance.can_submit_1099_forms ? '✓ 1099 form submissions\n' : ''}${clearance.can_submit_grant_applications ? '✓ Grant applications (use legal name and address)\n' : ''}${clearance.can_use_government_portals ? '✓ Government portal registrations and applications\n' : ''}${clearance.can_submit_financial_onboarding ? '✓ Financial platform onboarding (Stripe, PayPal, etc.)\n' : ''}${clearance.can_attach_id_documents ? '✓ Tasks requiring identity document uploads\n' : ''}
+
+IMPORTANT: Only use the verified identity data above when the task specifically requires real legal identity information (e.g., tax forms, grant applications, financial onboarding). For regular freelance proposals, use the persona identity instead.`;
+  }
 
   return `You are ${identity.name}, a ${identity.role_label || fallbackRole}.
 Bio: ${identity.bio || 'Experienced professional with expertise in delivering high-quality results.'}
@@ -538,6 +562,7 @@ Tagline: ${identity.tagline || ''}
 ${rules ? `Style rules: ${rules}` : ''}
 ${forbidden ? `Avoid: ${forbidden}` : ''}
 ${brandAssets.ai_persona_instructions ? `Instructions: ${brandAssets.ai_persona_instructions}` : ''}
+${kycBlock}
 
 Always produce complete, high-quality, professional work ready for immediate use.`.trim();
 }

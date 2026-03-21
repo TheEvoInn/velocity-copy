@@ -27,14 +27,14 @@ class BridgePOVController {
     };
   }
 
-  focusStation(station) {
+  focusStation(stationMesh) {
     if (this.isAnimating) return;
     
     this.isAnimating = true;
     this.animationStart = Date.now();
     
     // Calculate target position (45° angle to station screen, offset from center)
-    const stationPos = station.position || new THREE.Vector3(0, 1, -2);
+    const stationPos = stationMesh.position || new THREE.Vector3(0, 1, -2);
     const screenOffset = new THREE.Vector3(0, 0.5, 1.5);
     this.targetPosition = stationPos.clone().add(screenOffset);
     

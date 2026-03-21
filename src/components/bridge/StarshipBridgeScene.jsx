@@ -122,6 +122,9 @@ export default function StarshipBridgeScene() {
       alertSystemRef.current
     );
     audioIntegrationRef.current.systemReady();
+    
+    // Start ambient audio loop
+    audioEngineRef.current.startAmbientLoop();
 
     // Create interactive stations
     const stations = createStations(scene);
@@ -260,6 +263,7 @@ export default function StarshipBridgeScene() {
       }
       if (audioEngineRef.current) {
         audioEngineRef.current.stopAmbientLoop();
+        audioEngineRef.current.dispose();
       }
       
       // Cleanup visual systems

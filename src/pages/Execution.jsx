@@ -2,14 +2,17 @@
  * EXECUTION DEPARTMENT
  * Real-time task queue, autopilot monitoring, and completion tracking
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useTasksV2, useOpportunitiesV2, useUserGoalsV2, useActivityLogsV2 } from '@/lib/velocityHooks';
 import { getDeptStyle } from '@/lib/galaxyTheme';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Zap, Play, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Zap, Play, CheckCircle2, AlertTriangle, Clock, Workflow } from 'lucide-react';
+import TaskReaderInterface from '@/components/task-reader/TaskReaderInterface';
+import AnalysisWorkflowMonitor from '@/components/task-reader/AnalysisWorkflowMonitor';
 
 const style = getDeptStyle('execution');
 
@@ -18,6 +21,9 @@ export default function Execution() {
   const { opportunities } = useOpportunitiesV2({ status: 'executing' });
   const { goals } = useUserGoalsV2();
   const { logs } = useActivityLogsV2(15);
+  const [activeTab, setActiveTab] = useState('queue');
+  const [recentAnalysisTasks, setRecentAnalysisTasks] = useState([]);
+  const [analysisStats, setAnalysisStats] = useState({});
 
   const stats = {
     queued: tasks.filter(t => t.status === 'queued').length,

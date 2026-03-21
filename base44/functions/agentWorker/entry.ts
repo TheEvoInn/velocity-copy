@@ -247,23 +247,25 @@ async function executeTask(base44, payload) {
       });
     }
 
-    // Update opportunity
-    await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
-      status: executionResult.success ? 'submitted' : 'reviewing',
-      submission_timestamp: new Date().toISOString(),
-      submission_confirmed: executionResult.success && !executionResult.needs_manual_action,
-      confirmation_number: `EXEC-${(task_id || opportunity_id || '').slice(0, 8).toUpperCase()}`,
-      notes: executionResult.message
-    });
+    // Update opportunity (if we have one)
+    if (opp) {
+      await base44.asServiceRole.entities.Opportunity.update(opportunity_id, {
+        status: executionResult.success ? 'submitted' : 'reviewing',
+        submission_timestamp: new Date().toISOString(),
+        submission_confirmed: executionResult.success && !executionResult.needs_manual_action,
+        confirmation_number: `EXEC-${(task_id || opportunity_id || '').slice(0, 8).toUpperCase()}`,
+        notes: executionResult.message
+      }).catch(() => {});
+    }
 
     // Save deliverable to AIWorkLog
     if (executionResult.deliverable) {
       await base44.asServiceRole.entities.AIWorkLog.create({
         log_type: 'proposal_submitted',
-        opportunity_id,
+        opportunity_id: opportunity_id || '',
         task_id: task_id || '',
-        platform: opp.platform,
-        subject: opp.title,
+        platform: opp?.platform || 'unknown',
+        subject: opp?.title || 'Instant Task',
         status: executionResult.needs_manual_action ? 'draft_ready' : 'sent',
         outcome: executionResult.message,
         execution_log: execLog,
@@ -273,24 +275,24 @@ async function executeTask(base44, payload) {
           deliverable_length: executionResult.deliverable.length,
           execution_time_seconds: executionTime,
           needs_manual_action: executionResult.needs_manual_action,
-          manual_url: opp.url
+          manual_url: opp?.url || url
         }
       }).catch(() => {});
     }
 
     // Activity log
     await base44.asServiceRole.entities.ActivityLog.create({
-      action_type: 'opportunity_found',
-      message: `${executionResult.success ? '✅' : '⚠️'} Task executed: "${opp.title}" (${executionTime}s)${executionResult.needs_manual_action ? ' — Manual submission needed' : ''}`,
+      action_type: executionResult.success ? 'opportunity_found' : 'alert',
+      message: `${executionResult.success ? '✅' : '⚠️'} Task executed${opp ? ': "' + opp.title + '"' : ''} (${executionTime}s)${executionResult.needs_manual_action ? ' — Manual submission needed' : ''}`,
       severity: executionResult.success ? 'success' : 'warning',
       metadata: {
         task_id,
         opportunity_id,
-        platform: opp.platform,
+        platform: opp?.platform || 'unknown',
         identity: identity.name,
         execution_time: executionTime,
         needs_manual_action: executionResult.needs_manual_action,
-        manual_url: executionResult.needs_manual_action ? opp.url : null
+        manual_url: executionResult.needs_manual_action ? (opp?.url || url) : null
       }
     }).catch(() => {});
 

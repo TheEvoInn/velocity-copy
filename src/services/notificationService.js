@@ -1,5 +1,4 @@
 import { base44 } from '@/api/base44Client';
-import { base44 } from '@/api/base44Client';
 
 class NotificationService {
   // Trigger a rule execution notification

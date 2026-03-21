@@ -25,6 +25,14 @@ export default function KYCStatusPanel({ onStartKYC }) {
     },
   });
 
+  if (isLoading) {
+    return (
+      <Card className="bg-slate-900 border-slate-800">
+        <CardContent className="py-8 text-center text-slate-500 text-sm">Loading KYC status...</CardContent>
+      </Card>
+    );
+  }
+
   if (!kycRecord) {
     return (
       <Card className="bg-slate-900 border-slate-800">

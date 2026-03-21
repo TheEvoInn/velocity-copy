@@ -49,40 +49,12 @@
  */
 
 import StarshipBridge from './pages/StarshipBridge';
-import Dashboard from './pages/Dashboard';
-import AutoPilot from './pages/AutoPilot';
-import Discovery from './pages/Discovery';
-import Execution from './pages/Execution.jsx';
-import Finance from './pages/Finance';
-import Control from './pages/Control';
-import IdentityManager from './pages/IdentityManager';
-import KYCManagement from './pages/KYCManagement';
-import Chat from './pages/Chat';
-import ActivityPage from './pages/ActivityPage';
-import AdminControlPanel from './pages/AdminControlPanel';
-import CryptoAutomation from './pages/CryptoAutomation';
-import WebhookEngine from './pages/WebhookEngine';
-import AppLayout from './components/layout/AppLayout.jsx';
 
-const PAGES = {
-	StarshipBridge,
-	Dashboard,
-	AutoPilot,
-	Discovery,
-	Execution,
-	Finance,
-	Control,
-	IdentityManager,
-	KYCManagement,
-	Chat,
-	ActivityPage,
-	AdminControlPanel,
-	CryptoAutomation,
-	WebhookEngine
-};
+export const PAGES = {
+	"StarshipBridge": StarshipBridge,
+}
 
 export const pagesConfig = {
-	mainPage: 'StarshipBridge',
-	Pages: PAGES,
-	Layout: AppLayout
-};
+	mainPage: "StarshipBridge",
+	Pages: PAGES
+}

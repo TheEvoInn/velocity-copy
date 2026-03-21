@@ -71,18 +71,16 @@ export default function UserAccessPage() {
   const ActiveComponent = activeTabData?.component;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-5">
         {/* Header */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-              <Settings className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold text-white font-orbitron">User Access Center</h1>
-              <p className="text-slate-400">Manage your account, settings, and preferences</p>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
+            <Settings className="w-5 h-5 text-cyan-400" />
+          </div>
+          <div>
+            <h1 className="font-orbitron text-lg font-bold text-white tracking-wide">USER ACCESS CENTER</h1>
+            <p className="text-xs text-slate-500">Account · Settings · Preferences · Compliance</p>
           </div>
         </div>
 

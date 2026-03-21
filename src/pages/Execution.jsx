@@ -18,6 +18,7 @@ import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import InstantTaskPanel from '@/components/execution/InstantTaskPanel';
 import AICreativeStudio from '@/components/creative/AICreativeStudio';
 import BrowserbaseExecutionWorker from '@/components/execution/BrowserbaseExecutionWorker';
+import AutopilotIdentitySelector from '@/components/autopilot/AutopilotIdentitySelector';
 
 const STATUS_CONFIG = {
   queued:     { color: 'text-amber-400',   bg: 'bg-amber-500/15 border-amber-500/25',   label: 'Queued' },
@@ -123,6 +124,15 @@ export default function Execution() {
       {/* Browserbase Execution Worker */}
       <div className="mb-5">
         <BrowserbaseExecutionWorker />
+      </div>
+
+      {/* Autopilot Identity Selector */}
+      <div className="mb-5">
+        <AutopilotIdentitySelector
+          opportunities={opportunities?.filter(o => o.status === 'new' || o.status === 'reviewing').slice(0, 5) || []}
+          onTasksQueued={() => queryClient.invalidateQueries({ queryKey: ['taskQueue', 'opportunities'] })}
+          autoExecute={userGoals?.autopilot_enabled}
+        />
       </div>
 
       {/* Instant Task — Real browser automation */}

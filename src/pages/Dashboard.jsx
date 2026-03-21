@@ -82,9 +82,11 @@ export default function Dashboard() {
     }
   }, [hasOnboarded]);
   const today = new Date().toDateString();
-  const completedToday = opportunities.filter(o => o.id && o.status === 'completed' && o.updated_date && new Date(o.updated_date).toDateString() === today).length;
-  const failedTasks = tasks.filter(t => t.id && t.status === 'failed').length;
-  const reviewTasks = tasks.filter(t => t.id && t.status === 'needs_review').length;
+  const safeOpps = Array.isArray(opportunities) ? opportunities : [];
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const completedToday = safeOpps.filter(o => o?.id && o?.status === 'completed' && o?.updated_date && new Date(o.updated_date).toDateString() === today).length;
+  const failedTasks = safeTasks.filter(t => t?.id && t?.status === 'failed').length;
+  const reviewTasks = safeTasks.filter(t => t?.id && t?.status === 'needs_review').length;
 
   // Per-department stat summaries
   const deptStats = {

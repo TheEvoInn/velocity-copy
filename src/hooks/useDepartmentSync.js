@@ -11,7 +11,7 @@ import { DeptBus, DEPT_EVENTS } from '@/lib/departmentBus';
 export function useDepartmentSync() {
   const queryClient = useQueryClient();
 
-  // Fetch user-specific data only (RLS enforced on backend)
+  // Fetch user-specific data only (RLS enforced on backend) - increased intervals to prevent rate limiting
   const { data: goals = [] }        = useQuery({ 
     queryKey: ['userGoals'], 
     queryFn: async () => {
@@ -24,7 +24,8 @@ export function useDepartmentSync() {
       }
     },
     initialData: [], 
-    refetchInterval: 30000 
+    refetchInterval: 60000,
+    staleTime: 30000
   });
   
   const { data: opportunities = [] } = useQuery({ 
@@ -39,7 +40,8 @@ export function useDepartmentSync() {
       }
     },
     initialData: [], 
-    refetchInterval: 10000 
+    refetchInterval: 45000,
+    staleTime: 30000
   });
   
   const { data: transactions = [] }  = useQuery({ 
@@ -54,7 +56,8 @@ export function useDepartmentSync() {
       }
     },
     initialData: [], 
-    refetchInterval: 10000 
+    refetchInterval: 45000,
+    staleTime: 30000
   });
   
   const { data: tasks = [] }         = useQuery({ 
@@ -69,7 +72,8 @@ export function useDepartmentSync() {
       }
     },
     initialData: [], 
-    refetchInterval: 8000 
+    refetchInterval: 40000,
+    staleTime: 25000
   });
   
   const { data: identities = [] }    = useQuery({ 
@@ -84,7 +88,8 @@ export function useDepartmentSync() {
       }
     },
     initialData: [], 
-    refetchInterval: 30000 
+    refetchInterval: 60000,
+    staleTime: 40000
   });
   
   const { data: activityLogs = [] }  = useQuery({ 
@@ -99,7 +104,8 @@ export function useDepartmentSync() {
       }
     },
     initialData: [], 
-    refetchInterval: 15000 
+    refetchInterval: 35000,
+    staleTime: 20000
   });
 
   const userGoals = goals[0] || { daily_target: 1000, wallet_balance: 0 };

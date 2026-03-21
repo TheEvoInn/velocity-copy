@@ -48,6 +48,7 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 
+import StarshipBridge from './pages/StarshipBridge';
 import Dashboard from './pages/Dashboard';
 import AutoPilot from './pages/AutoPilot';
 import Discovery from './pages/Discovery';
@@ -64,6 +65,7 @@ import WebhookEngine from './pages/WebhookEngine';
 import AppLayout from './components/layout/AppLayout.jsx';
 
 const PAGES = {
+	StarshipBridge,
 	Dashboard,
 	AutoPilot,
 	Discovery,
@@ -80,7 +82,7 @@ const PAGES = {
 };
 
 export const pagesConfig = {
-	mainPage: 'Dashboard',
+	mainPage: 'StarshipBridge',
 	Pages: PAGES,
 	Layout: AppLayout
 };

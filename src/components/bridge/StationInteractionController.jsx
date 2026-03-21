@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 class StationInteractionController {
   constructor(stations, camera, renderer) {
     this.stations = stations;

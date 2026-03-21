@@ -1,6 +1,7 @@
 import { base44 } from '@/api/base44Client';
 
 class NotificationDataBinding {
+  // Notification data binding handler
   constructor(alertCallback) {
     this.alertCallback = alertCallback;
     this.subscription = null;

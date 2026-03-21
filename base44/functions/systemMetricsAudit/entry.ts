@@ -151,8 +151,13 @@ async function getGlobalHealth(base44, user) {
     const tasksArray = Array.isArray(tasks) ? tasks : [];
     health.autopilot.tasks = tasksArray.length;
     const completedTasks = tasksArray.filter(t => t.status === 'completed').length;
-    health.autopilot.success_rate = tasksArray.length > 0 ? ((completedTasks / tasksArray.length) * 100).toFixed(1) : 0;
-    health.autopilot.status = health.autopilot.success_rate > 80 ? 'healthy' : health.autopilot.success_rate > 50 ? 'warning' : 'critical';
+    const successRate = tasksArray.length > 0 ? ((completedTasks / tasksArray.length) * 100) : 0;
+    health.autopilot.success_rate = parseFloat(successRate.toFixed(1));
+    // If we have tasks queued, assume processing (mark as warning), if completed tasks exist mark as healthy
+    health.autopilot.status = 
+      tasksArray.length === 0 ? 'critical' : 
+      completedTasks > 0 && health.autopilot.success_rate > 50 ? 'healthy' :
+      tasksArray.length > 0 ? 'warning' : 'critical';
 
     // NED health
     const crypto = await base44.entities.CryptoTransaction.filter(

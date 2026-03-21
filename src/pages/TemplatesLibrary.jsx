@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Library, Filter, RefreshCw, Sparkles } from 'lucide-react';
+import { Search, Library, Filter, RefreshCw, Sparkles, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import TemplateCard from '@/components/templates/TemplateCard';
+import WorkflowWizard from '@/components/templates/WorkflowWizard';
 
 // ── Built-in curated templates ────────────────────────────────────────────────
 const CURATED_TEMPLATES = [
@@ -119,6 +120,7 @@ export default function TemplatesLibrary() {
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [applyingId, setApplyingId] = useState(null);
+  const [showWizard, setShowWizard] = useState(false);
 
   // Load user's saved templates + UserDataStore
   const { data: store, refetch: refetchStore } = useQuery({
@@ -243,6 +245,15 @@ export default function TemplatesLibrary() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      {showWizard && (
+        <WorkflowWizard
+          onClose={() => setShowWizard(false)}
+          onSuccess={() => {
+            refetchStore();
+            qc.invalidateQueries({ queryKey: ['workflowTemplates'] });
+          }}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6 gap-4">
@@ -260,12 +271,21 @@ export default function TemplatesLibrary() {
             </p>
           </div>
         </div>
-        {appliedId && (
-          <div className="text-[11px] px-3 py-1.5 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-300">
-            <Sparkles className="w-3 h-3 inline mr-1" />
-            Active: {store?.autopilot_preferences?.active_template_name || appliedId}
-          </div>
-        )}
+        <div className="flex gap-3 items-center">
+          <Button
+            onClick={() => setShowWizard(true)}
+            className="bg-cyan-600/80 hover:bg-cyan-600 text-white text-xs h-9 gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Create Custom
+          </Button>
+          {appliedId && (
+            <div className="text-[11px] px-3 py-1.5 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-300">
+              <Sparkles className="w-3 h-3 inline mr-1" />
+              Active: {store?.autopilot_preferences?.active_template_name || appliedId}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Search + Filters */}

@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 import { useAutoInvalidateCache } from '@/lib/cacheInvalidationHook';
+import { useRealtimeEventBus } from '@/lib/realtimeEventBus';
 
 const AuthContext = createContext();
 

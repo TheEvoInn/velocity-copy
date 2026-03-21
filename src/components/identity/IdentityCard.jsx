@@ -80,26 +80,33 @@ export default function IdentityCard({
   const isActive = identity.is_active;
 
   const saveField = async (field, value) => {
-    await base44.entities.AIIdentity.update(identity.id, { [field]: value });
-    qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
-    qc.invalidateQueries({ queryKey: ['active_identity', user?.email] });
+    if (!identity || !identity.id || !field) return;
+    try {
+      await base44.entities.AIIdentity.update(identity.id, { [field]: value });
+      qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
+      qc.invalidateQueries({ queryKey: ['active_identity', user?.email] });
+    } catch (e) {
+      console.error(`Failed to save ${field}:`, e.message);
+    }
   };
+
+  if (!identity || !identity.id) return null;
 
   return (
     <Card className={`border transition-all ${isActive ? 'border-emerald-500/50 bg-emerald-950/10' : 'border-slate-700/60 bg-slate-900/50'} p-4`}>
       <div className="space-y-3">
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-white text-sm">
-                <InlineField
-                  value={identity.name}
-                  onSave={v => saveField('name', v)}
-                  placeholder="Identity name"
-                />
-              </span>
+         {/* Header */}
+         <div className="flex items-start justify-between gap-2">
+           <div className="flex-1 min-w-0">
+             <div className="flex items-center gap-2 flex-wrap">
+               <span className="font-semibold text-white text-sm">
+                 <InlineField
+                   value={identity?.name || ''}
+                   onSave={v => saveField('name', v)}
+                   placeholder="Identity name"
+                 />
+               </span>
               {isActive && (
                 <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 rounded-full">
                   <Radio className="w-2.5 h-2.5 animate-pulse" /> ACTIVE
@@ -143,9 +150,9 @@ export default function IdentityCard({
 
         {/* Stats row */}
         <div className="flex gap-3 text-[10px]">
-          <div><span className="text-slate-500">Tasks </span><span className="text-white font-semibold">{identity.tasks_executed || 0}</span></div>
-          <div><span className="text-slate-500">Earned </span><span className="text-emerald-400 font-semibold">${(identity.total_earned || 0).toFixed(2)}</span></div>
-          <div><span className="text-slate-500">Accounts </span><span className="text-blue-400 font-semibold">{(identity.linked_account_ids || []).length}</span></div>
+          <div><span className="text-slate-500">Tasks </span><span className="text-white font-semibold">{typeof identity?.tasks_executed === 'number' ? identity.tasks_executed : 0}</span></div>
+          <div><span className="text-slate-500">Earned </span><span className="text-emerald-400 font-semibold">${typeof identity?.total_earned === 'number' ? identity.total_earned.toFixed(2) : '0.00'}</span></div>
+          <div><span className="text-slate-500">Accounts </span><span className="text-blue-400 font-semibold">{Array.isArray(identity?.linked_account_ids) ? identity.linked_account_ids.length : 0}</span></div>
         </div>
 
         {/* Actions */}

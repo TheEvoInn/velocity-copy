@@ -7,23 +7,30 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { action, platform, identity_id, on_demand } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { action, platform, identity_id, on_demand } = body;
 
     // ── check_and_create_account ────────────────────────────────────────────────
     if (action === 'check_and_create_account') {
-      const identity = await base44.asServiceRole.entities.AIIdentity.filter({ id: identity_id });
-      if (!identity.length) return Response.json({ error: 'Identity not found' }, { status: 404 });
+      if (!platform || !identity_id) {
+        return Response.json({ error: 'platform and identity_id required' }, { status: 400 });
+      }
+
+      const identity = (await base44.asServiceRole.entities.AIIdentity.filter({ id: identity_id }).catch(() => [])) || [];
+      if (!Array.isArray(identity) || !identity.length) return Response.json({ error: 'Identity not found' }, { status: 404 });
 
       const ident = identity[0];
+      if (!ident || !ident.id) return Response.json({ error: 'Invalid identity data' }, { status: 400 });
 
       // Check if account already exists
-      const existing = await base44.asServiceRole.entities.LinkedAccountCreation.filter({
+      const existing = (await base44.asServiceRole.entities.LinkedAccountCreation.filter({
         platform,
         identity_id,
         account_status: { $ne: 'banned' }
-      });
+      }).catch(() => [])) || [];
 
-      if (existing.length && existing[0].is_user_override) {
+      const safeExisting = Array.isArray(existing) ? existing : [];
+      if (safeExisting.length && safeExisting[0] && safeExisting[0].is_user_override) {
         return Response.json({
           success: true,
           exists: true,
@@ -32,24 +39,25 @@ Deno.serve(async (req) => {
         });
       }
 
-      if (existing.length && existing[0].onboarding_completed) {
+      if (safeExisting.length && safeExisting[0] && safeExisting[0].onboarding_completed) {
         return Response.json({
           success: true,
           exists: true,
-          account: existing[0],
+          account: safeExisting[0],
           message: 'Account already created and active'
         });
       }
 
       // Generate account creation strategy
-      const strategy = await base44.asServiceRole.integrations.Core.InvokeLLM({
-        prompt: `Generate account creation strategy for:
+      try {
+        const strategy = await base44.asServiceRole.integrations.Core.InvokeLLM({
+          prompt: `Generate account creation strategy for:
 
-Platform: ${platform}
-Identity: ${ident.name} (${ident.role_label})
-Email: ${ident.email}
-Skills: ${ident.skills?.join(', ') || 'General'}
-Bio: ${ident.bio || ''}
+      Platform: ${platform || 'unknown'}
+      Identity: ${ident?.name || 'Unknown'} (${ident?.role_label || 'Freelancer'})
+      Email: ${ident?.email || 'auto@system.local'}
+      Skills: ${Array.isArray(ident?.skills) ? ident.skills.join(', ') : 'General'}
+      Bio: ${ident?.bio || ''}
 
 Provide a step-by-step strategy including:
 1. Username generation (3 suggestions)
@@ -89,22 +97,23 @@ Return JSON:
       });
 
       // Create account record
-      const username = strategy?.username_suggestions?.[0] || `${ident.name.toLowerCase().replace(/\s+/g, '')}_${Math.random().toString(36).substr(2, 9)}`;
-      const password = btoa(`${username}${Date.now()}`).slice(0, 16); // Simple password generation
+      const suggestions = Array.isArray(strategy?.username_suggestions) ? strategy.username_suggestions : [];
+      const username = (suggestions.length > 0 && suggestions[0]) ? String(suggestions[0]) : `${String(ident?.name || 'user').toLowerCase().replace(/\s+/g, '')}_${Math.random().toString(36).substr(2, 9)}`;
+      const password = btoa(`${username}${Date.now()}`).slice(0, 16);
 
       const account = await base44.asServiceRole.entities.LinkedAccountCreation.create({
         platform,
         identity_id,
-        identity_name: ident.name,
+        identity_name: ident?.name || 'Unknown',
         username,
-        email: ident.email,
+        email: ident?.email || 'auto@system.local',
         account_status: 'activating',
         is_ai_created: true,
         creation_timestamp: new Date().toISOString(),
         creation_logs: [{
           timestamp: new Date().toISOString(),
           event: 'created',
-          details: `Account auto-created for identity "${ident.name}"`
+          details: `Account auto-created for identity "${ident?.name || 'Unknown'}"`
         }]
       });
 
@@ -113,7 +122,7 @@ Return JSON:
         platform,
         credential_type: 'login',
         linked_account_id: account.id,
-        encrypted_payload: btoa(JSON.stringify({ username, password, email: ident.email })),
+        encrypted_payload: btoa(JSON.stringify({ username, password, email: ident?.email || 'auto@system.local' })),
         iv: 'placeholder',
         is_active: true
       });
@@ -121,7 +130,11 @@ Return JSON:
       // Update account with vault reference
       await base44.asServiceRole.entities.LinkedAccountCreation.update(account.id, {
         credential_vault_id: vault.id
-      });
+      }).catch(e => console.error('Failed to link vault:', e.message));
+      } catch (e) {
+      console.error('Account creation error:', e.message);
+      throw e;
+      }
 
       // Log account creation
       await base44.asServiceRole.entities.ActivityLog.create({
@@ -148,12 +161,16 @@ Return JSON:
 
     // ── account_onboarding ──────────────────────────────────────────────────────
     if (action === 'account_onboarding') {
-      const { account_id, profile_data } = await req.json();
+      const body2 = await req.json().catch(() => ({}));
+      const { account_id, profile_data } = body2;
 
-      const account = await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id });
-      if (!account.length) return Response.json({ error: 'Account not found' }, { status: 404 });
+      if (!account_id) return Response.json({ error: 'account_id required' }, { status: 400 });
 
-      const acct = account[0];
+      const account = (await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id }).catch(() => [])) || [];
+      const safeAccount = Array.isArray(account) ? account : [];
+      if (!safeAccount.length || !safeAccount[0]) return Response.json({ error: 'Account not found' }, { status: 404 });
+
+      const acct = safeAccount[0];
 
       // Simulate onboarding completion
       const updated = await base44.asServiceRole.entities.LinkedAccountCreation.update(account_id, {
@@ -185,44 +202,55 @@ Return JSON:
 
     // ── override_with_user_account ──────────────────────────────────────────────
     if (action === 'override_with_user_account') {
-      const { account_id, user_username, user_credential_data } = await req.json();
+      const body3 = await req.json().catch(() => ({}));
+      const { account_id, user_username, user_credential_data } = body3;
 
-      const account = await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id });
-      if (!account.length) return Response.json({ error: 'Account not found' }, { status: 404 });
-
-      // Store user's credentials in vault
-      const newVault = await base44.asServiceRole.entities.CredentialVault.create({
-        platform: account[0].platform,
-        credential_type: 'login',
-        linked_account_id: account_id,
-        encrypted_payload: btoa(JSON.stringify(user_credential_data)),
-        iv: 'placeholder',
-        is_active: true
-      });
-
-      // Delete old vault if exists
-      if (account[0].credential_vault_id) {
-        try {
-          await base44.asServiceRole.entities.CredentialVault.delete(account[0].credential_vault_id);
-        } catch (e) {
-          // Ignore deletion errors
-        }
+      if (!account_id || !user_credential_data) {
+        return Response.json({ error: 'account_id and user_credential_data required' }, { status: 400 });
       }
 
-      // Update account as user-overridden
-      const updated = await base44.asServiceRole.entities.LinkedAccountCreation.update(account_id, {
-        is_user_override: true,
-        user_override_username: user_username,
-        credential_vault_id: newVault.id,
-        account_status: 'active'
-      });
+      const account = (await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id }).catch(() => [])) || [];
+      const safeAccount = Array.isArray(account) ? account : [];
+      if (!safeAccount.length || !safeAccount[0]) return Response.json({ error: 'Account not found' }, { status: 404 });
 
-      await base44.asServiceRole.entities.ActivityLog.create({
-        action_type: 'user_action',
-        message: `🔄 User account override: "${account[0].platform}"`,
-        severity: 'info',
-        metadata: { account_id, platform: account[0].platform, is_user_account: true }
-      });
+      try {
+        // Store user's credentials in vault
+        const newVault = await base44.asServiceRole.entities.CredentialVault.create({
+          platform: safeAccount[0]?.platform || 'unknown',
+          credential_type: 'login',
+          linked_account_id: account_id,
+          encrypted_payload: btoa(JSON.stringify(user_credential_data || {})),
+          iv: 'placeholder',
+          is_active: true
+        });
+
+        // Delete old vault if exists
+        if (safeAccount[0]?.credential_vault_id) {
+          try {
+            await base44.asServiceRole.entities.CredentialVault.delete(safeAccount[0].credential_vault_id).catch(() => {});
+          } catch (e) {
+            console.error('Vault deletion error:', e.message);
+          }
+        }
+
+        // Update account as user-overridden
+        const updated = await base44.asServiceRole.entities.LinkedAccountCreation.update(account_id, {
+          is_user_override: true,
+          user_override_username: user_username || 'user',
+          credential_vault_id: newVault.id,
+          account_status: 'active'
+        });
+
+        await base44.asServiceRole.entities.ActivityLog.create({
+          action_type: 'user_action',
+          message: `🔄 User account override: "${safeAccount[0]?.platform || 'unknown'}"`,
+          severity: 'info',
+          metadata: { account_id, platform: safeAccount[0]?.platform, is_user_account: true }
+        }).catch(e => console.error('Activity log error:', e.message));
+      } catch (e) {
+        console.error('Override error:', e.message);
+        throw e;
+      }
 
       return Response.json({
         success: true,

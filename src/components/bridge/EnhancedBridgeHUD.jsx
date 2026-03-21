@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, Info, Rocket } from 'lucide-react';
 import SectorMapView from './SectorMapView';
+import CockpitControlPanel from './CockpitControlPanel';
 import { useSectorMapData } from '@/hooks/useSectorMapData';
 
 export default function EnhancedBridgeHUD({ alerts, focusedStation, particleCount, performanceStats = {} }) {
   const { pois } = useSectorMapData();
+  const [activePanel, setActivePanel] = useState('autopilot');
   const [time, setTime] = useState(new Date());
   
   useEffect(() => {
@@ -119,6 +121,31 @@ export default function EnhancedBridgeHUD({ alerts, focusedStation, particleCoun
         </svg>
       </div>
 
+      {/* Bottom-left: Cockpit Control Panels */}
+      <div className="absolute bottom-4 left-4 pointer-events-auto w-64">
+        <div className="glass-card p-3">
+          <div className="flex gap-1 mb-2">
+            {['autopilot', 'wallet', 'navigation'].map(panel => (
+              <button
+                key={panel}
+                onClick={() => setActivePanel(panel)}
+                className={`flex-1 px-2 py-1 text-xs font-orbitron rounded transition-all ${
+                  activePanel === panel
+                    ? 'bg-cyber-cyan/40 border border-cyber-cyan text-cyber-cyan'
+                    : 'bg-slate-900/40 border border-slate-700 text-muted-foreground hover:border-slate-600'
+                }`}
+              >
+                {panel.toUpperCase().slice(0, 3)}
+              </button>
+            ))}
+          </div>
+          <CockpitControlPanel 
+            panelType={activePanel}
+            onAction={(action) => console.log('Cockpit action:', action)}
+          />
+        </div>
+      </div>
+
       {/* Bottom-right: Performance Stats */}
       <div className="absolute bottom-4 right-4 pointer-events-auto">
         <div className="glass-card p-3 w-64 text-xs font-mono">
@@ -144,7 +171,7 @@ export default function EnhancedBridgeHUD({ alerts, focusedStation, particleCoun
             </div>
             <div className="flex justify-between">
               <span>CAMERA MODE:</span>
-              <span className="text-cyan-400">PERSPECTIVE</span>
+              <span className="text-cyan-400">INSPECTION</span>
             </div>
           </div>
         </div>

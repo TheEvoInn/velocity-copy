@@ -252,7 +252,10 @@ export default function AdminKYCReview() {
 
   const { data: kycs = [], isLoading, refetch } = useQuery({
     queryKey: ['admin_kyc_list'],
-    queryFn: () => base44.entities.KYCVerification.list('-created_date', 100),
+    queryFn: async () => {
+      const res = await base44.functions.invoke('kycAdminService', { action: 'list' });
+      return res.data?.records || [];
+    },
     refetchInterval: 20000,
   });
 

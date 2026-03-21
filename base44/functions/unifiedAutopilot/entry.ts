@@ -263,17 +263,28 @@ Deno.serve(async (req) => {
     }
 
     // ── autopilot_full_cycle ────────────────────────────────────────────────────
-    if (action === 'autopilot_full_cycle') {
+    if (action === 'autopilot_full_cycle' || action === 'full_cycle') {
       const cycleResults = {
         timestamp: new Date().toISOString(),
         opportunities_queued: 0,
         tasks_executed: 0,
         proposals_generated: 0,
-        errors: []
+        errors: [],
+        cycle_type: action
       };
 
       try {
-        // 1. Batch execute opportunities
+        // 1. Scan for new opportunities
+        try {
+          const scanRes = await base44.asServiceRole.functions.invoke('scanOpportunities', {
+            sources: ['ai_web', 'rapidapi', 'n8n']
+          });
+          cycleResults.opportunities_scanned = scanRes.data?.opportunities_found || 0;
+        } catch (e) {
+          cycleResults.errors.push(`Scan error: ${e.message}`);
+        }
+
+        // 2. Batch execute opportunities
         const batchRes = await base44.asServiceRole.functions.invoke('unifiedAutopilot', {
           action: 'batch_execute_opportunities',
           filter_criteria: { status: 'new', auto_execute: true },
@@ -282,18 +293,22 @@ Deno.serve(async (req) => {
 
         cycleResults.opportunities_queued = batchRes.data?.queued || 0;
 
-        // 2. Execute pending agent tasks
-        for (let i = 0; i < 3; i++) {
-          const taskRes = await base44.asServiceRole.functions.invoke('agentWorker', {
-            action: 'execute_next_task'
-          });
+        // 3. Execute pending agent tasks (up to 5 concurrent)
+        for (let i = 0; i < 5; i++) {
+          try {
+            const taskRes = await base44.asServiceRole.functions.invoke('agentWorker', {
+              action: 'execute_next_task'
+            });
 
-          if (taskRes.data?.task?.status === 'completed') {
-            cycleResults.tasks_executed++;
+            if (taskRes.data?.task?.status === 'completed') {
+              cycleResults.tasks_executed++;
+            }
+          } catch (e) {
+            break;
           }
         }
 
-        // 3. Get stats
+        // 4. Get stats
         const statsRes = await base44.asServiceRole.functions.invoke('agentWorker', {
           action: 'get_execution_stats'
         });

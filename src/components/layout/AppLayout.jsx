@@ -16,7 +16,7 @@ const DEPARTMENTS = [
     path: '/Dashboard',
     icon: LayoutDashboard,
     label: 'Command',
-    subtitle: 'Overview & Control',
+    subtitle: 'Mission Control',
     color: '#06b6d4',
     glow: 'rgba(6,182,212,0.5)',
     gradient: 'from-cyan-500/20 to-blue-600/10',
@@ -27,8 +27,8 @@ const DEPARTMENTS = [
   {
     path: '/Discovery',
     icon: Telescope,
-    label: 'Observe',
-    subtitle: 'Intelligence & Scanning',
+    label: 'Discover',
+    subtitle: 'Scan & Analyze',
     color: '#f59e0b',
     glow: 'rgba(245,158,11,0.5)',
     gradient: 'from-amber-500/20 to-orange-600/10',
@@ -40,55 +40,31 @@ const DEPARTMENTS = [
     path: '/Execution',
     icon: Cpu,
     label: 'Execute',
-    subtitle: 'Automation & Tasks',
+    subtitle: 'Tasks & Automation',
     color: '#3b82f6',
     glow: 'rgba(59,130,246,0.5)',
     gradient: 'from-blue-500/20 to-indigo-600/10',
     activeBorder: 'border-blue-400/60',
     textActive: 'text-blue-300',
-    planet: '🚀',
+    planet: '⚡',
   },
   {
     path: '/Finance',
     icon: Landmark,
-    label: 'Treasury',
-    subtitle: 'Wallet & Compliance',
+    label: 'Finance',
+    subtitle: 'Wallets & Earnings',
     color: '#10b981',
     glow: 'rgba(16,185,129,0.5)',
     gradient: 'from-emerald-500/20 to-teal-600/10',
     activeBorder: 'border-emerald-400/60',
     textActive: 'text-emerald-300',
-    planet: '💎',
-  },
-  {
-    path: '/DigitalResellers',
-    icon: ShoppingCart,
-    label: 'Resellers',
-    subtitle: 'Storefronts & Revenue',
-    color: '#ec4899',
-    glow: 'rgba(236,72,153,0.5)',
-    gradient: 'from-pink-500/20 to-rose-600/10',
-    activeBorder: 'border-pink-400/60',
-    textActive: 'text-pink-300',
-    planet: '🛍️',
-  },
-  {
-    path: '/CryptoProfitSystems',
-    icon: Coins,
-    label: 'Crypto',
-    subtitle: 'Earnings & Mining',
-    color: '#06b6d4',
-    glow: 'rgba(6,182,212,0.5)',
-    gradient: 'from-cyan-500/20 to-blue-600/10',
-    activeBorder: 'border-cyan-400/60',
-    textActive: 'text-cyan-300',
     planet: '💰',
   },
   {
     path: '/Control',
     icon: SlidersHorizontal,
     label: 'Control',
-    subtitle: 'Settings & Identities',
+    subtitle: 'Settings & Access',
     color: '#a855f7',
     glow: 'rgba(168,85,247,0.5)',
     gradient: 'from-purple-500/20 to-violet-600/10',
@@ -97,28 +73,28 @@ const DEPARTMENTS = [
     planet: '⚙️',
   },
   {
-    path: '/VIPZ',
-    icon: Target,
-    label: 'VIPZ',
-    subtitle: 'Marketing Automation',
+    path: '/DigitalCommerce',
+    icon: ShoppingCart,
+    label: 'Commerce',
+    subtitle: 'Digital Storefronts',
     color: '#ec4899',
     glow: 'rgba(236,72,153,0.5)',
     gradient: 'from-pink-500/20 to-rose-600/10',
     activeBorder: 'border-pink-400/60',
     textActive: 'text-pink-300',
-    planet: '🎯',
+    planet: '🛍️',
   },
   {
-    path: '/NED',
+    path: '/CryptoAutomation',
     icon: Coins,
-    label: 'NED',
-    subtitle: 'Crypto Intelligence',
+    label: 'Crypto',
+    subtitle: 'Yield & Mining',
     color: '#06b6d4',
     glow: 'rgba(6,182,212,0.5)',
     gradient: 'from-cyan-500/20 to-blue-600/10',
     activeBorder: 'border-cyan-400/60',
     textActive: 'text-cyan-300',
-    planet: '🤖',
+    planet: '🚀',
   },
 ];
 
@@ -259,25 +235,20 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
             <MessageSquare className="w-4 h-4 text-violet-400" />
             <span className="text-sm text-slate-300">VELOCITY AI</span>
           </Link>
-          <Link to="/AutoPilot" onClick={onClose}
-            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all">
-            <span className="text-base">🛰️</span>
-            <span className="text-sm text-slate-300">Autopilot</span>
-          </Link>
-          <Link to="/TaskQueueApproval" onClick={onClose}
-            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all">
-            <span className="text-base">📋</span>
-            <span className="text-sm text-slate-300">Task Queue</span>
-          </Link>
-          <Link to="/TemplatesLibrary" onClick={onClose}
-            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all">
-            <span className="text-base">📚</span>
-            <span className="text-sm text-slate-300">Templates</span>
-          </Link>
-          <Link to="/UserAccessPage" onClick={onClose}
+          <Link to="/IdentityWalletView" onClick={onClose}
             className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all">
-            <Settings className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm text-slate-300">Settings</span>
+            <span className="text-base">🪪</span>
+            <span className="text-sm text-slate-300">Identity Wallet</span>
+          </Link>
+          <Link to="/NotificationsDashboard" onClick={onClose}
+            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all">
+            <span className="text-base">🔔</span>
+            <span className="text-sm text-slate-300">Notifications</span>
+          </Link>
+          <Link to="/CrossSystemAutomation" onClick={onClose}
+            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-pink-500/30 hover:bg-pink-500/5 transition-all">
+            <span className="text-base">⚙️</span>
+            <span className="text-sm text-slate-300">Multi-Dept Automation</span>
           </Link>
         </div>
       </nav>

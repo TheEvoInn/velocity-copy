@@ -53,6 +53,7 @@ import WorkflowBuilder from './pages/WorkflowBuilder';
 import WebhookConfiguration from './pages/WebhookConfiguration';
 import WorkflowArchitect from './pages/WorkflowArchitect';
 import CentralEventLog from './pages/CentralEventLog';
+import VelocitySystemDashboard from './pages/VelocitySystemDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

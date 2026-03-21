@@ -43,13 +43,11 @@ import UserAccessPage from './pages/UserAccessPage';
 import TaskQueueApproval from './pages/TaskQueueApproval.jsx';
 import FinancialDashboard from './pages/FinancialDashboard';
 import TemplatesLibrary from './pages/TemplatesLibrary.jsx';
-import DigitalResellers from './pages/DigitalResellers';
+import DigitalCommerce from './pages/DigitalCommerce';
+import CryptoAutomation from './pages/CryptoAutomation';
 import EmailMarketing from './pages/EmailMarketing';
 import PageCustomizer from './pages/PageCustomizer';
-import CryptoProfitSystems from './pages/CryptoProfitSystems';
 import GlobalTaskOrchestrator from './pages/GlobalTaskOrchestrator';
-import VIPZ from './pages/VIPZ';
-import NED from './pages/NED';
 import NotificationsDashboard from './pages/NotificationsDashboard';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import WebhookConfiguration from './pages/WebhookConfiguration';
@@ -85,11 +83,9 @@ const AuthenticatedApp = () => {
       <Route path="/Execution" element={<Execution />} />
       <Route path="/Finance" element={<Finance />} />
       <Route path="/Control" element={<Control />} />
-      {/* AI Agent Departments */}
-      <Route path="/VIPZ" element={<VIPZ />} />
-      <Route path="/NED" element={<NED />} />
-      <Route path="/DigitalResellers" element={<DigitalResellers />} />
-      <Route path="/CryptoProfitSystems" element={<CryptoProfitSystems />} />
+      {/* Unified AI Systems */}
+      <Route path="/DigitalCommerce" element={<DigitalCommerce />} />
+      <Route path="/CryptoAutomation" element={<CryptoAutomation />} />
       <Route element={<AppLayout />}>
         {/* Command Center */}
         <Route path="/Dashboard" element={<Dashboard />} />
@@ -126,10 +122,10 @@ const AuthenticatedApp = () => {
         <Route path="/TaskQueueApproval" element={<TaskQueueApproval />} />
         <Route path="/FinancialDashboard" element={<FinancialDashboard />} />
         <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
-        <Route path="/DigitalResellers" element={<DigitalResellers />} />
+        <Route path="/DigitalCommerce" element={<DigitalCommerce />} />
+        <Route path="/CryptoAutomation" element={<CryptoAutomation />} />
         <Route path="/PageCustomizer" element={<PageCustomizer />} />
         <Route path="/EmailMarketing" element={<EmailMarketing />} />
-        <Route path="/CryptoProfitSystems" element={<CryptoProfitSystems />} />
         <Route path="/GlobalTaskOrchestrator" element={<GlobalTaskOrchestrator />} />
         <Route path="/NotificationsDashboard" element={<NotificationsDashboard />} />
         <Route path="/WorkflowBuilder" element={<WorkflowBuilder />} />

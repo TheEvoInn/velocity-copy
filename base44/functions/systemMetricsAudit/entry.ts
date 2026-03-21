@@ -170,17 +170,18 @@ async function getGlobalHealth(base44, user) {
     health.ned.success_rate = parseFloat(nedSuccessRate.toFixed(1));
     health.ned.status = cryptoArray.length === 0 ? 'initializing' : health.ned.success_rate > 50 ? 'healthy' : 'warning';
 
-    // VIPZ health
+    // VIPZ health - No pages yet, mark as initializing
     const pages = await base44.entities.DigitalStorefront.filter(
       { created_by: user.email }
     ).catch(() => []);
     const pagesArray = Array.isArray(pages) ? pages : [];
     health.vipz.pages = pagesArray.length;
     const totalRevenue = pagesArray.reduce((sum, p) => sum + (p.total_revenue || 0), 0);
-    health.vipz.conversion_rate = pagesArray.length > 0 
-      ? ((pagesArray.filter(p => p.customer_count > 0).length / pagesArray.length) * 100).toFixed(1)
+    const vipzConversionRate = pagesArray.length > 0 
+      ? pagesArray.filter(p => p.customer_count > 0).length / pagesArray.length * 100
       : 0;
-    health.vipz.status = health.vipz.conversion_rate > 20 ? 'healthy' : health.vipz.conversion_rate > 5 ? 'warning' : 'critical';
+    health.vipz.conversion_rate = parseFloat(vipzConversionRate.toFixed(1));
+    health.vipz.status = pagesArray.length === 0 ? 'initializing' : health.vipz.conversion_rate > 5 ? 'healthy' : 'warning';
 
     // Discovery health
     const opportunities = await base44.entities.Opportunity.filter(

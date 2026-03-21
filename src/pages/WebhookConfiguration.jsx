@@ -1,225 +1,200 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+/**
+ * Webhook Configuration Page
+ * Manage Task Reader webhooks and integrations
+ */
+import React, { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertCircle, CheckCircle2, Plus, Trash2, Edit2 } from 'lucide-react';
-import WebhookForm from '@/components/webhooks/WebhookForm';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertCircle, Zap, Settings, BarChart3 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import WebhookManager from '@/components/webhooks/WebhookManager';
+import PayloadMapper from '@/components/webhooks/PayloadMapper';
 
 export default function WebhookConfiguration() {
-  const [editingWebhook, setEditingWebhook] = useState(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const queryClient = useQueryClient();
+  const [webhooks, setWebhooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedWebhook, setSelectedWebhook] = useState(null);
 
-  const { data: webhooks = [], isLoading } = useQuery({
-    queryKey: ['webhooks'],
-    queryFn: () => base44.entities.WebhookConfig.list()
-  });
+  useEffect(() => {
+    loadWebhooks();
+  }, []);
 
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.WebhookConfig.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['webhooks'] });
-      setDialogOpen(false);
-      setEditingWebhook(null);
-    },
-    onError: (error) => {
-      console.error('Failed to create webhook:', error);
-    }
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.WebhookConfig.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['webhooks'] });
-      setDialogOpen(false);
-      setEditingWebhook(null);
-    },
-    onError: (error) => {
-      console.error('Failed to update webhook:', error);
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.WebhookConfig.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['webhooks'] });
-    },
-    onError: (error) => {
-      console.error('Failed to delete webhook:', error);
-    }
-  });
-
-  const handleSubmit = (formData) => {
-    if (editingWebhook) {
-      updateMutation.mutate({ id: editingWebhook.id, data: formData });
-    } else {
-      createMutation.mutate(formData);
+  const loadWebhooks = async () => {
+    try {
+      const res = await base44.entities.WebhookTaskTrigger.list();
+      setWebhooks(res || []);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error loading webhooks:', err);
+      setLoading(false);
     }
   };
 
-  const handleEdit = (webhook) => {
-    setEditingWebhook(webhook);
-    setDialogOpen(true);
-  };
-
-  const handleNew = () => {
-    setEditingWebhook(null);
-    setDialogOpen(true);
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-violet-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold font-orbitron text-cyan-400">External Webhooks</h1>
-          <p className="text-slate-400 mt-1">Send events to external endpoints when notifications trigger or rules execute</p>
+          <div className="flex items-center gap-3 mb-2">
+            <Zap className="w-8 h-8 text-violet-400" />
+            <h1 className="text-4xl font-bold text-white font-orbitron">Webhook Configuration</h1>
+          </div>
+          <p className="text-slate-300">
+            Trigger Task Reader workflows from external services via secure webhooks
+          </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleNew} className="gap-2 bg-cyan-600 hover:bg-cyan-700">
-              <Plus size={18} /> New Webhook
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-card border-cyan-500/20">
-            <DialogHeader>
-              <DialogTitle>{editingWebhook ? 'Edit Webhook' : 'Create New Webhook'}</DialogTitle>
-            </DialogHeader>
-            <WebhookForm
-              webhook={editingWebhook}
-              onSubmit={handleSubmit}
-              isLoading={createMutation.isPending || updateMutation.isPending}
-              lastDelivery={editingWebhook?.recent_deliveries?.[0]}
-            />
-          </DialogContent>
-        </Dialog>
-      </div>
 
-      {/* Webhooks List */}
-      {isLoading ? (
-        <div className="text-center py-8 text-slate-400">Loading webhooks...</div>
-      ) : webhooks.length === 0 ? (
-        <Card className="glass-card border-dashed">
-          <CardContent className="py-12 text-center">
-            <p className="text-slate-400 mb-4">No webhooks configured yet</p>
-            <Button onClick={handleNew} variant="outline" className="gap-2">
-              <Plus size={18} /> Create your first webhook
-            </Button>
-          </CardContent>
+        {/* Info Banner */}
+        <Card className="p-4 bg-violet-500/10 border-violet-500/30 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-violet-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-violet-200">
+            <p className="font-semibold mb-1">External Integration Ready</p>
+            <p>Create webhooks to allow external services to trigger Task Reader tasks. Each webhook has a unique URL and secure token.</p>
+          </div>
         </Card>
-      ) : (
-        <div className="grid gap-4">
-          {webhooks.map((webhook) => (
-            <Card key={webhook.id} className={`glass-card transition-all ${!webhook.is_active ? 'opacity-60' : ''}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <CardTitle className="text-lg">{webhook.name}</CardTitle>
-                      {webhook.is_active ? (
-                        <Badge className="bg-emerald-500/20 text-emerald-300">Active</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-slate-700">Inactive</Badge>
-                      )}
-                      {webhook.test_mode && (
-                        <Badge className="bg-amber-500/20 text-amber-300">Test Mode</Badge>
-                      )}
+
+        {/* Tabs */}
+        <Tabs defaultValue="webhooks" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 bg-slate-900/50 border border-slate-800">
+            <TabsTrigger value="webhooks" className="gap-2">
+              <Zap className="w-4 h-4" />
+              Webhooks
+            </TabsTrigger>
+            <TabsTrigger value="mapping" className="gap-2">
+              <Settings className="w-4 h-4" />
+              Payload Mapping
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Analytics
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Webhooks Tab */}
+          <TabsContent value="webhooks" className="mt-6">
+            <WebhookManager webhooks={webhooks} />
+          </TabsContent>
+
+          {/* Mapping Tab */}
+          <TabsContent value="mapping" className="mt-6">
+            {selectedWebhook ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white">
+                    Configure: {selectedWebhook.webhook_name}
+                  </h3>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedWebhook(null)}
+                  >
+                    Back
+                  </Button>
+                </div>
+                <PayloadMapper webhook={selectedWebhook} />
+              </div>
+            ) : (
+              <Card className="p-6 text-center text-slate-400">
+                <p className="mb-4">Select a webhook to configure payload mapping</p>
+                <div className="space-y-2">
+                  {webhooks.map(w => (
+                    <Button
+                      key={w.id}
+                      variant="outline"
+                      onClick={() => setSelectedWebhook(w)}
+                      className="w-full justify-start"
+                    >
+                      {w.webhook_name}
+                    </Button>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="mt-6">
+            <div className="grid gap-4">
+              {webhooks.map(webhook => (
+                <Card key={webhook.id} className="p-4 bg-slate-900/50 border-slate-800">
+                  <h4 className="font-semibold text-white mb-3">{webhook.webhook_name}</h4>
+                  <div className="grid grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-400">Total Requests</p>
+                      <p className="text-2xl font-bold text-white">
+                        {webhook.statistics?.total_requests || 0}
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1 font-mono break-all">{webhook.endpoint_url}</p>
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button
-                      onClick={() => handleEdit(webhook)}
-                      variant="ghost"
-                      size="icon"
-                      className="text-slate-400 hover:text-cyan-400"
-                    >
-                      <Edit2 size={18} />
-                    </Button>
-                    <Button
-                      onClick={() => deleteMutation.mutate(webhook.id)}
-                      variant="ghost"
-                      size="icon"
-                      className="text-slate-400 hover:text-red-400"
-                    >
-                      <Trash2 size={18} />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                {/* Events */}
-                <div>
-                  <p className="text-xs font-medium text-slate-300 mb-2">Events:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {webhook.events?.map((event) => (
-                      <Badge key={event} variant="outline" className="text-xs">
-                        {event}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Stats Row */}
-                <div className="grid grid-cols-4 gap-4 py-3 border-t border-slate-700/50">
-                  <div>
-                    <p className="text-xs text-slate-400">Total Deliveries</p>
-                    <p className="text-lg font-bold text-cyan-400">{webhook.delivery_stats?.total_deliveries || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400">Success Rate</p>
-                    <p className="text-lg font-bold text-emerald-400">{webhook.delivery_stats?.success_rate || 0}%</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400">Failed</p>
-                    <p className="text-lg font-bold text-red-400">{webhook.delivery_stats?.failed_deliveries || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400">Last Status</p>
-                    {webhook.last_status === 'success' ? (
-                      <div className="flex items-center gap-1 text-emerald-400">
-                        <CheckCircle2 size={16} /> Success
-                      </div>
-                    ) : webhook.last_status === 'failed' ? (
-                      <div className="flex items-center gap-1 text-red-400">
-                        <AlertCircle size={16} /> Failed
-                      </div>
-                    ) : (
-                      <span className="text-slate-400 text-sm">—</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Recent Activity */}
-                {webhook.recent_deliveries && webhook.recent_deliveries.length > 0 && (
-                  <div className="pt-3 border-t border-slate-700/50">
-                    <p className="text-xs font-medium text-slate-300 mb-2">Recent Deliveries:</p>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {webhook.recent_deliveries.slice(0, 5).map((delivery, idx) => (
-                        <div key={idx} className="text-xs text-slate-400 flex items-center justify-between">
-                          <span>{new Date(delivery.timestamp).toLocaleString()}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-500">{delivery.event}</span>
-                            {delivery.status === 'success' ? (
-                              <CheckCircle2 size={12} className="text-emerald-500" />
-                            ) : (
-                              <AlertCircle size={12} className="text-red-500" />
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                    <div>
+                      <p className="text-xs text-slate-400">Tasks Created</p>
+                      <p className="text-2xl font-bold text-emerald-400">
+                        {webhook.statistics?.successful_tasks || 0}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Failed</p>
+                      <p className="text-2xl font-bold text-red-400">
+                        {webhook.statistics?.failed_requests || 0}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Success Rate</p>
+                      <p className="text-2xl font-bold text-white">
+                        {Math.round((webhook.statistics?.success_rate || 0) * 100)}%
+                      </p>
                     </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                  {webhook.statistics?.last_request_at && (
+                    <p className="text-xs text-slate-500 mt-3">
+                      Last request: {new Date(webhook.statistics.last_request_at).toLocaleString()}
+                    </p>
+                  )}
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Documentation */}
+        <Card className="p-6 bg-slate-900/50 border-slate-800">
+          <h3 className="font-semibold text-white mb-4">Quick Start</h3>
+          <div className="space-y-4 text-sm text-slate-300">
+            <div>
+              <p className="font-semibold text-white mb-2">1. Create a Webhook</p>
+              <p>Click "Create Webhook" to generate a new webhook with a unique URL and secure token.</p>
+            </div>
+            <div>
+              <p className="font-semibold text-white mb-2">2. Configure Payload Mapping</p>
+              <p>Map fields from your webhook payload to Task Reader parameters (URL, email, name, etc.).</p>
+            </div>
+            <div>
+              <p className="font-semibold text-white mb-2">3. Send Requests</p>
+              <p>POST JSON data to your webhook URL with the required fields. Task Reader will automatically create and execute tasks.</p>
+            </div>
+            <div className="bg-slate-800 rounded-lg p-3 mt-4">
+              <p className="text-xs text-slate-400 mb-2">Example Request:</p>
+              <pre className="text-xs text-slate-300 overflow-x-auto">
+{`curl -X POST https://api.velocity.app/webhooks/task-reader/YOUR_TOKEN \\
+  -H "Content-Type: application/json" \\
+  -H "x-webhook-signature: SHA256_SIGNATURE" \\
+  -d '{
+    "url": "https://example.com/apply",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }'`}
+              </pre>
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

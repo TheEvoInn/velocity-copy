@@ -49,19 +49,23 @@ export default function DocVerificationTracker({ kyc, onKycUpdated }) {
 
   const updateMutation = useMutation({
     mutationFn: (updates) =>
-      base44.entities.KYCVerification.update(kyc.id, {
-        ...updates,
-        reviewed_by: user?.email,
-        review_started_at: new Date().toISOString(),
-        access_log: [
-          ...(kyc.access_log || []),
-          {
-            accessed_at: new Date().toISOString(),
-            accessed_by: user?.email,
-            purpose: 'doc_review',
-            module: 'DocVerificationTracker',
-          }
-        ]
+      base44.functions.invoke('kycAdminService', {
+        action: 'update',
+        id: kyc.id,
+        updates: {
+          ...updates,
+          reviewed_by: user?.email,
+          review_started_at: new Date().toISOString(),
+          access_log: [
+            ...(kyc.access_log || []),
+            {
+              accessed_at: new Date().toISOString(),
+              accessed_by: user?.email,
+              purpose: 'doc_review',
+              module: 'DocVerificationTracker',
+            }
+          ]
+        }
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin_kyc_list'] });

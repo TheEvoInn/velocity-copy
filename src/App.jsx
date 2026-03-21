@@ -57,6 +57,7 @@ import WebhookListener from './pages/WebhookListener';
 import WorkflowArchitect from './pages/WorkflowArchitect';
 import CentralEventLog from './pages/CentralEventLog';
 import VelocitySystemDashboard from './pages/VelocitySystemDashboard';
+import TaskOrchestrator from './pages/TaskOrchestrator';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -138,6 +139,7 @@ const AuthenticatedApp = () => {
         <Route path="/WorkflowArchitect" element={<WorkflowArchitect />} />
         <Route path="/CentralEventLog" element={<CentralEventLog />} />
         <Route path="/VelocitySystemDashboard" element={<VelocitySystemDashboard />} />
+        <Route path="/TaskOrchestrator" element={<TaskOrchestrator />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

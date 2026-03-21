@@ -38,7 +38,6 @@ export default function Discovery() {
   const [filter, setFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active');
   const [scanning, setScanning] = useState(false);
-  const queryClient = useQueryClient();
 
   const filtered = opportunities.filter(o => {
     const catOk = filter === 'all' || o.category === filter;
@@ -95,11 +94,21 @@ export default function Discovery() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Link to="/Chat">
-            <Button size="sm" className="bg-amber-600/80 hover:bg-amber-500 text-white text-xs h-8 gap-1.5">
-              <Search className="w-3.5 h-3.5" /> Scan Markets
-            </Button>
-          </Link>
+          <Button size="sm"
+            onClick={async () => {
+              setScanning(true);
+              try {
+                await base44.functions.invoke('unifiedOrchestrator', { action: 'scan_opportunities' });
+                queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+              } finally {
+                setScanning(false);
+              }
+            }}
+            disabled={scanning}
+            className="bg-amber-600/80 hover:bg-amber-500 text-white text-xs h-8 gap-1.5">
+            <RefreshCw className={`w-3.5 h-3.5 ${scanning ? 'animate-spin' : ''}`} />
+            {scanning ? 'Scanning...' : 'Scan Markets'}
+          </Button>
         </div>
       </div>
 

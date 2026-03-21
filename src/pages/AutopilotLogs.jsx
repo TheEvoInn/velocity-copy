@@ -59,9 +59,25 @@ export default function AutopilotLogs() {
           variant="outline"
           size="sm"
           className="border-slate-700 text-slate-400 text-xs h-8"
+          onClick={() => {
+            const csv = ['Date,Type,Status,Subject,Revenue',
+              ...logs.map(l => [
+                new Date(l.created_date).toISOString(),
+                l.log_type || '',
+                l.status || '',
+                `"${(l.subject || l.content_preview || '').replace(/"/g, "'")}"`,
+                l.revenue_associated || 0
+              ].join(','))
+            ].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `autopilot-logs-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click(); URL.revokeObjectURL(url);
+          }}
         >
           <Download className="w-3.5 h-3.5 mr-1.5" />
-          Export
+          Export CSV
         </Button>
       </div>
 

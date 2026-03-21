@@ -184,15 +184,14 @@ async function switchToAlternativeIdentity(base44, currentIdentityId, platform) 
 
     // Find alternative identity that:
     // 1. Is different from current
-    // 2. Has the required platform
-    // 3. Has good health status
-    const alternative = identities?.find(
-      i => i.id !== currentIdentityId &&
-           i.preferred_platforms?.includes(platform) &&
-           i.health_status === 'healthy'
+    // 2. Has the required platform (fallback: any active)
+    // 3. Is valid
+    const alternative = (Array.isArray(identities) ? identities : [])?.find(
+      i => i?.id && i.id !== currentIdentityId &&
+           (Array.isArray(i.preferred_platforms) ? i.preferred_platforms.includes(platform) : true)
     );
 
-    return alternative?.id || currentIdentityId;
+    return (alternative?.id && typeof alternative.id === 'string') ? alternative.id : currentIdentityId;
   } catch (error) {
     console.error('Error switching identity:', error);
     return currentIdentityId;
@@ -203,17 +202,17 @@ async function switchToAlternativeAccount(base44, currentAccountId, platform) {
   try {
     // Fetch alternative accounts on same platform
     const accounts = await base44.entities.LinkedAccount.filter(
-      { platform, health_status: 'healthy', ai_can_use: true },
+      { platform, ai_can_use: true },
       '-performance_score',
       5
     );
 
-    // Find one that's different and has better performance
-    const alternative = accounts?.find(
-      a => a.id !== currentAccountId && a.performance_score > 50
+    // Find one that's different and has valid performance
+    const alternative = (Array.isArray(accounts) ? accounts : [])?.find(
+      a => a?.id && a.id !== currentAccountId && typeof a.performance_score === 'number' && a.performance_score > 30
     );
 
-    return alternative?.id || currentAccountId;
+    return (alternative?.id && typeof alternative.id === 'string') ? alternative.id : currentAccountId;
   } catch (error) {
     console.error('Error switching account:', error);
     return currentAccountId;

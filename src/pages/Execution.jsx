@@ -34,8 +34,7 @@ const STATUS_CONFIG = {
 };
 
 export default function Execution() {
-  const { tasks, opportunities, userGoals, activityLogs, todayEarned, DeptBus, DEPT_EVENTS } = useDepartmentSync();
-  const queryClient = useQueryClient();
+  const { tasks, opportunities, userGoals, activityLogs, todayEarned, DeptBus, DEPT_EVENTS, invalidateTasksOnly } = useDepartmentSync();
   const [statusFilter, setStatusFilter] = useState('all');
 
   const filtered = statusFilter === 'all' ? tasks : tasks.filter(t => t.status === statusFilter);
@@ -48,39 +47,37 @@ export default function Execution() {
   };
 
   const handleRetry = async (task) => {
+    if (!task?.id) return;
     try {
       await base44.functions.invoke('agentWorker', {
         action: 'execute_task',
         payload: {
           task_id: task.id,
-          opportunity_id: task.opportunity_id,
-          url: task.url,
-          identity_id: task.identity_id,
-          platform: task.platform
+          opportunity_id: task.opportunity_id || '',
+          url: task.url || '',
+          identity_id: task.identity_id || '',
+          platform: task.platform || 'unknown'
         }
       });
-      queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
-      queryClient.invalidateQueries({ queryKey: ['taskQueueManager'] });
-      queryClient.invalidateQueries({ queryKey: ['live_sessions', 'live_session_data'] });
+      invalidateTasksOnly();
     } catch (e) {
-      console.error('Retry failed:', e);
+      console.error('Retry failed:', e.message);
     }
   };
 
   const handleCancel = async (task) => {
+    if (!task?.id) return;
     try {
       await base44.entities.TaskExecutionQueue.update(task.id, { 
         status: 'cancelled',
         completion_timestamp: new Date().toISOString()
       });
       if (task.opportunity_id) {
-        await base44.entities.Opportunity.update(task.opportunity_id, { status: 'dismissed' });
-        queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+        await base44.entities.Opportunity.update(task.opportunity_id, { status: 'dismissed' }).catch(() => {});
       }
-      queryClient.invalidateQueries({ queryKey: ['taskQueue'] });
-      queryClient.invalidateQueries({ queryKey: ['taskQueueManager'] });
+      invalidateTasksOnly();
     } catch (e) {
-      console.error('Cancel failed:', e);
+      console.error('Cancel failed:', e.message);
     }
   };
 
@@ -159,8 +156,8 @@ export default function Execution() {
       {/* Autopilot Identity Selector */}
       <div className="mb-5">
         <AutopilotIdentitySelector
-          opportunities={Array.isArray(opportunities) ? opportunities.filter(o => o.status === 'new' || o.status === 'reviewing').slice(0, 5) : []}
-          onTasksQueued={() => queryClient.invalidateQueries({ queryKey: ['taskQueue', 'opportunities'] })}
+          opportunities={Array.isArray(opportunities) ? opportunities.filter(o => o?.status === 'new' || o?.status === 'reviewing').slice(0, 5) : []}
+          onTasksQueued={() => invalidateTasksOnly()}
           autoExecute={userGoals?.autopilot_enabled}
         />
       </div>
@@ -168,8 +165,8 @@ export default function Execution() {
       {/* Instant Task — Real browser automation */}
       <div className="mb-5">
         <InstantTaskPanel
-          opportunities={opportunities || []}
-          onTaskComplete={() => queryClient.invalidateQueries({ queryKey: ['taskQueue'] })}
+          opportunities={Array.isArray(opportunities) ? opportunities : []}
+          onTaskComplete={() => invalidateTasksOnly()}
         />
       </div>
 

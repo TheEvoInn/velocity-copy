@@ -121,9 +121,14 @@ export function useDepartmentSync() {
   const activeIdentity = identities.find(i => i.is_active && i.id) || (identities.length > 0 ? identities[0] : null);
 
   const invalidateAll = () => {
-    ['userGoals', 'opportunities', 'transactions', 'taskQueue', 'taskQueueManager', 'aiIdentities', 'activityLogs'].forEach(k =>
-      queryClient.invalidateQueries({ queryKey: [k] })
-    );
+    ['userGoals', 'opportunities', 'transactions', 'taskQueue', 'taskQueueManager', 'aiIdentities', 'activityLogs'].forEach(k => {
+      queryClient.invalidateQueries({ queryKey: [k] }, { exact: false });
+    });
+  };
+
+  const invalidateTasksOnly = () => {
+    queryClient.invalidateQueries({ queryKey: ['taskQueue'] }, { exact: false });
+    queryClient.invalidateQueries({ queryKey: ['taskQueueManager'] }, { exact: false });
   };
 
   return {
@@ -132,6 +137,6 @@ export function useDepartmentSync() {
     // Derived
     todayEarned, totalEarned, walletBalance, activeOpps, activeTasks, activeIdentity,
     // Utilities
-    invalidateAll, DeptBus, DEPT_EVENTS,
+    invalidateAll, invalidateTasksOnly, DeptBus, DEPT_EVENTS, queryClient,
   };
 }

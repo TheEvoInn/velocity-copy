@@ -267,13 +267,18 @@ Deno.serve(async (req) => {
 
         // 4c. Process execution queue
         try {
-          const processRes = await base44.asServiceRole.functions.invoke('autopilotRealExecution', {
+          const processRes = await base44.functions.invoke('autopilotRealExecution', {
             action: 'process_execution_queue'
-          }).catch(e => ({ data: { processed: 0 } }));
+          }).catch(e => {
+            console.error('Queue processing error:', e.message);
+            return { data: { processed: { started_count: 0, completed_count: 0, failed_count: 0 } } };
+          });
           
-          cycleResults.tasks_executed += processRes?.data?.started_count || 0;
+          if (processRes?.data?.processed) {
+            cycleResults.tasks_executed += processRes.data.processed.started_count || 0;
+          }
         } catch (e) {
-          console.error('Error processing execution queue:', e.message);
+          console.error('Error in queue processing:', e.message);
         }
 
         // 5. Run monitoring cycle

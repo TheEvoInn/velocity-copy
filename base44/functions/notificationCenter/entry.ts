@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
 
     // ── VERIFICATION REQUIRED NOTIFICATION ──────────────────────────────────
     if (action === 'verification_required') {
-      const { account_id, platform, verification_type, required_steps } = await req.json().catch(() => ({}));
+      const { account_id, platform, verification_type, required_steps } = body;
 
       if (!account_id || !platform) {
         return Response.json({ error: 'account_id and platform required' }, { status: 400 });

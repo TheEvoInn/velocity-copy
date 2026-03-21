@@ -17,6 +17,7 @@ import DualStreamCard from '@/components/autopilot/DualStreamCard';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import InstantTaskPanel from '@/components/execution/InstantTaskPanel';
 import AICreativeStudio from '@/components/creative/AICreativeStudio';
+import BrowserbaseExecutionWorker from '@/components/execution/BrowserbaseExecutionWorker';
 
 const STATUS_CONFIG = {
   queued:     { color: 'text-amber-400',   bg: 'bg-amber-500/15 border-amber-500/25',   label: 'Queued' },
@@ -118,6 +119,11 @@ export default function Execution() {
           <AutopilotPanel goals={userGoals} />
         </div>
       )}
+
+      {/* Browserbase Execution Worker */}
+      <div className="mb-5">
+        <BrowserbaseExecutionWorker />
+      </div>
 
       {/* Instant Task — Real browser automation */}
       <div className="mb-5">

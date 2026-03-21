@@ -3,59 +3,73 @@
 @tailwind utilities;
 
 /* ─── Google Font ─────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
 @layer base {
   :root {
-    /* Galaxy design tokens */
+    /* Galaxy-Cyberpunk design tokens */
     --background: 230 40% 4%;
-    --foreground: 220 20% 95%;
+    --foreground: 210 40% 95%;
     --card: 230 35% 7%;
-    --card-foreground: 220 20% 95%;
+    --card-foreground: 210 40% 95%;
     --popover: 230 35% 7%;
-    --popover-foreground: 220 20% 95%;
-    --primary: 258 90% 66%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 230 30% 12%;
-    --secondary-foreground: 220 15% 75%;
-    --muted: 230 30% 12%;
-    --muted-foreground: 220 15% 55%;
-    --accent: 195 90% 50%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
+    --popover-foreground: 210 40% 95%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 280 80% 50%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 230 20% 20%;
+    --muted-foreground: 210 20% 65%;
+    --accent: 50 89% 62%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 230 30% 15%;
-    --input: 230 30% 12%;
-    --ring: 258 90% 66%;
-    --chart-1: 258 90% 66%;
-    --chart-2: 160 84% 39%;
-    --chart-3: 195 90% 50%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 320 80% 60%;
+    --border: 230 25% 15%;
+    --input: 230 20% 10%;
+    --ring: 180 100% 50%;
+    --chart-1: 180 100% 50%;
+    --chart-2: 280 80% 50%;
+    --chart-3: 50 89% 62%;
+    --chart-4: 320 75% 55%;
+    --chart-5: 180 70% 45%;
     --radius: 0.75rem;
 
-    /* Galaxy color palette */
-    --galaxy-deep:    #050714;
-    --galaxy-dark:    #0a0e21;
-    --galaxy-mid:     #0f1535;
-    --galaxy-violet:  #7c3aed;
-    --galaxy-purple:  #9333ea;
-    --galaxy-blue:    #2563eb;
-    --galaxy-cyan:    #06b6d4;
-    --galaxy-teal:    #0d9488;
-    --galaxy-amber:   #f59e0b;
+    /* Deep Space Palette */
+    --nebula-deep: #050714;
+    --nebula-dark: #0a0f2a;
+    --nebula-mid: #1a1a2e;
+    --nebula-purple: #3a1a5f;
+
+    /* Cyber-Glow Palette */
+    --cyber-cyan: #00e8ff;
+    --cyber-magenta: #ff2ec4;
+    --cyber-gold: #f9d65c;
+    --cyber-silver: #dde6f2;
+    --cyber-teal: #00ffd9;
+    --cyber-violet: #b537f2;
+
+    /* Legacy compatibility */
+    --galaxy-deep: #050714;
+    --galaxy-dark: #0a0e21;
+    --galaxy-mid: #0f1535;
+    --galaxy-violet: #7c3aed;
+    --galaxy-purple: #9333ea;
+    --galaxy-blue: #2563eb;
+    --galaxy-cyan: #06b6d4;
+    --galaxy-teal: #0d9488;
+    --galaxy-amber: #f59e0b;
     --galaxy-emerald: #10b981;
-    --galaxy-pink:    #ec4899;
+    --galaxy-pink: #ec4899;
     --galaxy-nebula1: #4f46e5;
     --galaxy-nebula2: #7c3aed;
-    --galaxy-star:    #e2e8f0;
+    --galaxy-star: #e2e8f0;
 
     /* Department colors */
-    --dept-discovery:  #f59e0b;
-    --dept-execution:  #3b82f6;
-    --dept-finance:    #10b981;
-    --dept-control:    #a855f7;
-    --dept-command:    #06b6d4;
+    --dept-discovery: #f59e0b;
+    --dept-execution: #3b82f6;
+    --dept-finance: #10b981;
+    --dept-control: #a855f7;
+    --dept-command: #06b6d4;
   }
 }
 

@@ -43,6 +43,7 @@ import UserAccessPage from './pages/UserAccessPage';
 import TaskQueueApproval from './pages/TaskQueueApproval.jsx';
 import FinancialDashboard from './pages/FinancialDashboard';
 import TemplatesLibrary from './pages/TemplatesLibrary.jsx';
+import DigitalResellers from './pages/DigitalResellers';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

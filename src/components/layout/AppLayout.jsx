@@ -315,9 +315,9 @@ export default function AppLayout() {
 
       {/* ── Top Bar ── */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 h-14 glass-nav transition-all duration-300 ${scrolled ? 'shadow-lg shadow-black/40' : ''}`}
+        className={`fixed top-0 left-0 right-0 z-50 h-14 glass-nav transition-all duration-300 pointer-events-auto ${scrolled ? 'shadow-lg shadow-black/40' : ''}`}
       >
-        <div className="h-full flex items-center px-4 gap-3 max-w-screen-2xl mx-auto">
+        <div className="h-full flex items-center px-4 gap-3 max-w-screen-2xl mx-auto pointer-events-auto">
 
           {/* Logo */}
           <Link to="/Dashboard" className="flex items-center gap-2.5 shrink-0 group mr-2">

@@ -137,11 +137,13 @@ export default function Execution() {
             <List className="w-4 h-4 text-blue-400" />
             Task Execution Queue
           </h2>
-          <Link to="/TaskQueueApproval"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-400 text-xs font-medium transition-all">
-            <Eye className="w-3.5 h-3.5" />
-            Full Approval View
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/TaskQueueApproval"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-400 text-xs font-medium transition-all">
+              <Eye className="w-3.5 h-3.5" />
+              Queue Manager
+            </Link>
+          </div>
         </div>
         
         <div className="flex items-center justify-between mb-4">

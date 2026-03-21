@@ -257,7 +257,7 @@ export default function AdminKYCReview() {
   const { data: kycs = [], isLoading, error, refetch } = useQuery({
     queryKey: ['admin_kyc_list'],
     queryFn: async () => {
-      const res = await base44.functions.invoke('kycAdminService', { action: 'list' });
+      const res = await base44.functions.invoke('kycAdminService', { action: 'list_all' });
       if (res.data?.error) throw new Error(res.data.error);
       return res.data?.records || [];
     },

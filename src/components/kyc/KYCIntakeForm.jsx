@@ -61,11 +61,14 @@ export default function KYCIntakeForm({ onSubmitSuccess }) {
       return kyc;
     },
     onSuccess: (data) => {
+      setUploadProgress('');
       queryClient.invalidateQueries({ queryKey: ['kyc'] });
+      queryClient.invalidateQueries({ queryKey: ['kyc_my'] });
       toast.success('Application submitted. An administrator will review it within 5 business days.');
       if (onSubmitSuccess) onSubmitSuccess(data);
     },
     onError: (error) => {
+      setUploadProgress('');
       toast.error(`KYC submission failed: ${error.message}`);
     },
   });

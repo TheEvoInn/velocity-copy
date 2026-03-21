@@ -121,6 +121,7 @@ const AuthenticatedApp = () => {
         <Route path="/WorkflowBuilder" element={<WorkflowBuilder />} />
         <Route path="/WebhookConfiguration" element={<WebhookConfiguration />} />
         <Route path="/WorkflowArchitect" element={<WorkflowArchitect />} />
+        <Route path="/CentralEventLog" element={<CentralEventLog />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

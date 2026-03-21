@@ -1,12 +1,10 @@
 import React from 'react';
-import TaskQueueViewer from '@/components/execution/TaskQueueViewer';
+import TaskQueueManager from '@/components/execution/TaskQueueManager';
 
 export default function TaskQueueApproval() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 p-6">
-      <div className="max-w-6xl mx-auto">
-        <TaskQueueViewer />
-      </div>
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+      <TaskQueueManager />
     </div>
   );
 }

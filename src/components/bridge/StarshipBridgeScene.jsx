@@ -13,11 +13,6 @@ export default function StarshipBridgeScene({ onModuleSelect }) {
   useEffect(() => {
     initializeScene();
     subscribeToData();
-    return () => {
-      if (rendererRef.current && containerRef.current) {
-        containerRef.current.removeChild(rendererRef.current.domElement);
-      }
-    };
   }, []);
 
   const initializeScene = () => {
@@ -136,8 +131,9 @@ export default function StarshipBridgeScene({ onModuleSelect }) {
     const mouse = new THREE.Vector2();
 
     const handleClick = (event) => {
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
 
       // Check planet intersections
@@ -153,6 +149,15 @@ export default function StarshipBridgeScene({ onModuleSelect }) {
     };
 
     renderer.domElement.addEventListener('click', handleClick);
+    
+    const cleanup = () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', handleResize);
+      renderer.domElement.removeEventListener('click', handleClick);
+      if (containerRef.current && renderer.domElement.parentNode === containerRef.current) {
+        containerRef.current.removeChild(renderer.domElement);
+      }
+    };
 
     // Store refs
     sceneRef.current = scene;
@@ -163,11 +168,7 @@ export default function StarshipBridgeScene({ onModuleSelect }) {
 
     setLoading(false);
 
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', handleResize);
-      renderer.domElement.removeEventListener('click', handleClick);
-    };
+    return cleanup;
   };
 
   const createControlPanel = (parent, position, side) => {
@@ -381,5 +382,5 @@ export default function StarshipBridgeScene({ onModuleSelect }) {
     );
   }
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  return <div ref={containerRef} className="absolute inset-0 w-full h-full" />;
 }

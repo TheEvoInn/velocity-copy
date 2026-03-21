@@ -30,8 +30,7 @@ Deno.serve(async (req) => {
 
     if (action === 'list' || action === 'list_all') {
       // Use asServiceRole to bypass RLS and fetch ALL users' KYC records
-      // Use filter({}) with explicit empty query to ensure all records are returned
-      const records = await base44.asServiceRole.entities.KYCVerification.filter({}, '-created_date', 500);
+      const records = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
       console.log(`[kycAdminService] fetched ${records.length} KYC records`);
       return Response.json({ records });
     }

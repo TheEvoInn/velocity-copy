@@ -406,6 +406,12 @@ This is a real contest entry — be specific and actionable.`
 async function executeGrantApplication(opp, identity, log) {
   log('grant_application', 'running', 'Drafting full grant application');
 
+  const kyc = identity.kyc_verified_data;
+  const hasKYC = kyc && kyc.kyc_tier !== 'none' && kyc.autopilot_clearance?.can_submit_grant_applications;
+  if (hasKYC) {
+    log('kyc_inject', 'success', `Using verified KYC identity: ${kyc.full_legal_name} (Tier: ${kyc.kyc_tier})`);
+  }
+
   let content;
   try {
     content = await llmComplete([
@@ -417,7 +423,15 @@ Title: ${opp.title}
 Platform: ${opp.platform}
 Description: ${opp.description || 'No description provided'}
 URL: ${opp.url}
-
+${hasKYC ? `
+APPLICANT DETAILS (use these exactly on all forms):
+- Name: ${kyc.full_legal_name}
+- DOB: ${kyc.date_of_birth}
+- Address: ${[kyc.residential_address, kyc.city, kyc.state, kyc.postal_code].filter(Boolean).join(', ')}
+- Phone: ${kyc.phone_number || '—'}
+- Email: ${kyc.email || '—'}
+${kyc.tax_id ? `- Tax ID / EIN: ${kyc.tax_id}` : ''}
+` : ''}
 Write a complete, compelling grant application:
 1. Executive Summary (2 paragraphs)
 2. Project Description and Statement of Need
@@ -426,6 +440,7 @@ Write a complete, compelling grant application:
 5. Budget narrative
 6. Organizational capacity statement
 7. Conclusion and call to action
+${hasKYC ? '8. Pre-filled applicant information section using the verified details above' : ''}
 
 Make it professional, specific, and ready to submit.`
       }

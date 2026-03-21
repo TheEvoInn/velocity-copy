@@ -43,21 +43,34 @@ export default function Dashboard() {
   const scanMutation = useMutation({
     mutationFn: async () => {
       setIsScanning(true);
-      const res = await base44.functions.invoke('scanOpportunities', {
-        action: 'scan',
-        max_results: 10
-      });
-      return res.data || {};
+      try {
+        const res = await base44.functions.invoke('scanOpportunities', {
+          action: 'scan',
+          max_results: 10
+        });
+        return res?.data || {};
+      } catch (error) {
+        console.error('Scan error:', error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       setIsScanning(false);
-      invalidateAll(); // Refresh all department data including opportunities
-      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      if (data?.scan?.found > 0) {
+        invalidateAll();
+        queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      }
     },
-    onError: () => {
+    onError: (error) => {
       setIsScanning(false);
+      console.error('Scan failed:', error.message);
     }
   });
+
+  // Trigger scan manually when needed
+  const handleScan = async () => {
+    await scanMutation.mutateAsync();
+  };
 
   const hasOnboarded = userGoals.id || userGoals.onboarded;
   // Auto-show onboarding for new users once goals data has loaded (not loading = no record = first visit)

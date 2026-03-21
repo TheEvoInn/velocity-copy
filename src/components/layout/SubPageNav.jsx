@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, Home } from 'lucide-react';
+import { Home } from 'lucide-react';
+import GlobalSearch from '@/components/search/GlobalSearch';
 
 export default function SubPageNav() {
   const navItems = [
@@ -20,13 +21,18 @@ export default function SubPageNav() {
   return (
     <nav className="glass-nav sticky top-0 z-50 border-b border-slate-700/50">
       <div className="max-w-full px-4 md:px-6 py-3">
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex items-center gap-3">
+          {/* Home Button */}
           <Link to="/" className="flex-shrink-0">
             <button className="p-2 hover:bg-slate-800/50 rounded-lg transition-colors">
               <Home className="w-4 h-4 text-cyan-400" />
             </button>
           </Link>
-          
+
+          {/* Global Search */}
+          <GlobalSearch />
+
+          {/* Navigation Items */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1">
             {navItems.map((item) => (
               <Link key={item.path} to={item.path}>

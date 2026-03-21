@@ -284,7 +284,9 @@ Deno.serve(async (req) => {
           deep_link_for_manual: result.final_url,
           execution_log: execLog,
           needs_manual_review: !result.submitted,
-        });
+          manual_review_reason: result.submitted ? null : 'Instant task completed but submission confirmation pending',
+          execution_time_seconds: Math.round((Date.now() - (payload.start_time || Date.now())) / 1000),
+        }).catch(err => console.error('Task update failed:', err.message));
       }
 
       // Update opportunity if opportunity_id provided
@@ -294,18 +296,27 @@ Deno.serve(async (req) => {
           submission_timestamp: new Date().toISOString(),
           submission_confirmed: result.submitted,
           notes: result.message,
-        });
+          confirmation_number: result.submitted ? `INSTANT-${new Date().getTime()}` : null,
+        }).catch(err => console.error('Opportunity update failed:', err.message));
       }
 
       // Activity log
       await base44.asServiceRole.entities.ActivityLog.create({
-        action_type: 'system',
+        action_type: result.submitted ? 'opportunity_found' : 'alert',
         message: `[InstantTask] ${result.submitted ? '✅ Submitted' : '⚠️ Review needed'}: ${payload.task_type} at ${payload.url}`,
         severity: result.submitted ? 'success' : 'warning',
-        metadata: { session_id: result.session_id, task_type: payload.task_type },
-      }).catch(() => {});
+        metadata: { 
+          session_id: result.session_id, 
+          task_type: payload.task_type,
+          task_id: payload.task_id,
+          opportunity_id: payload.opportunity_id,
+          submitted: result.submitted,
+          fields_found: result.fields_found,
+          instructions_executed: result.instructions_executed
+        },
+      }).catch(err => console.error('ActivityLog creation failed:', err.message));
 
-      return Response.json({ success: true, ...result, execution_log: execLog });
+      return Response.json({ success: true, ...result, execution_log: execLog, task_id: payload.task_id });
     }
 
     if (action === 'list_task_types') {

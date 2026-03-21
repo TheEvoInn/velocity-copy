@@ -49,6 +49,7 @@ import EmailMarketing from './pages/EmailMarketing';
 import PageCustomizer from './pages/PageCustomizer';
 import GlobalTaskOrchestrator from './pages/GlobalTaskOrchestrator';
 import CrossSystemAutomation from './pages/CrossSystemAutomation';
+import IdentityWalletView from './pages/IdentityWalletView';
 import NotificationsDashboard from './pages/NotificationsDashboard';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import WebhookConfiguration from './pages/WebhookConfiguration';
@@ -129,6 +130,7 @@ const AuthenticatedApp = () => {
         <Route path="/EmailMarketing" element={<EmailMarketing />} />
         <Route path="/GlobalTaskOrchestrator" element={<GlobalTaskOrchestrator />} />
         <Route path="/CrossSystemAutomation" element={<CrossSystemAutomation />} />
+        <Route path="/IdentityWalletView" element={<IdentityWalletView />} />
         <Route path="/NotificationsDashboard" element={<NotificationsDashboard />} />
         <Route path="/WorkflowBuilder" element={<WorkflowBuilder />} />
         <Route path="/WebhookConfiguration" element={<WebhookConfiguration />} />

@@ -85,13 +85,21 @@ export default function InstantTaskPanel({ opportunities = [], onTaskComplete })
   // Load active identity
   const { data: identities = [] } = useQuery({
     queryKey: ['identities_active'],
-    queryFn: () => base44.entities.AIIdentity.filter({ is_active: true }),
+    queryFn: async () => {
+      try {
+        const res = await base44.entities.AIIdentity.filter({ is_active: true });
+        return Array.isArray(res) ? res : [];
+      } catch (e) {
+        console.error('Failed to load identities:', e.message);
+        return [];
+      }
+    },
     initialData: [],
   });
-  const identity = identities[0] || null;
+  const identity = Array.isArray(identities) ? identities[0] : null;
 
   const targetUrl = selectedOpp?.url || customUrl;
-  const canRun = !!targetUrl && !running;
+  const canRun = !!targetUrl?.trim() && !running;
 
   const handleRun = async () => {
     setRunning(true);
@@ -142,7 +150,9 @@ export default function InstantTaskPanel({ opportunities = [], onTaskComplete })
   };
 
   // Only show opportunities that are queued/new and have a URL
-  const eligible = opportunities.filter(o => ['new', 'queued', 'reviewing'].includes(o.status) && o.url);
+  const eligible = Array.isArray(opportunities) 
+    ? opportunities.filter(o => o && ['new', 'queued', 'reviewing'].includes(o?.status) && o?.url)
+    : [];
 
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">

@@ -37,26 +37,28 @@ export default function Execution() {
   const { tasks, opportunities, userGoals, activityLogs, todayEarned, DeptBus, DEPT_EVENTS, invalidateTasksOnly } = useDepartmentSync();
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const filtered = statusFilter === 'all' ? tasks : tasks.filter(t => t.status === statusFilter);
+  const safeTasks = Array.isArray(tasks) ? tasks.filter(t => t && t.id) : [];
+  const filtered = statusFilter === 'all' ? safeTasks : safeTasks.filter(t => t?.status === statusFilter);
 
   const stats = {
-    active:    tasks.filter(t => ['queued','processing','navigating','filling','submitting'].includes(t.status)).length,
-    completed: tasks.filter(t => t.status === 'completed').length,
-    failed:    tasks.filter(t => t.status === 'failed').length,
-    review:    tasks.filter(t => t.status === 'needs_review').length,
+    active:    safeTasks.filter(t => ['queued','processing','navigating','filling','submitting'].includes(t?.status)).length,
+    completed: safeTasks.filter(t => t?.status === 'completed').length,
+    failed:    safeTasks.filter(t => t?.status === 'failed').length,
+    review:    safeTasks.filter(t => t?.status === 'needs_review').length,
   };
 
   const handleRetry = async (task) => {
     if (!task?.id) return;
     try {
+      await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, { status: 'queued' }).catch(() => {});
       await base44.functions.invoke('agentWorker', {
         action: 'execute_task',
         payload: {
           task_id: task.id,
-          opportunity_id: task.opportunity_id || '',
-          url: task.url || '',
-          identity_id: task.identity_id || '',
-          platform: task.platform || 'unknown'
+          opportunity_id: task?.opportunity_id || '',
+          url: task?.url || '',
+          identity_id: task?.identity_id || '',
+          platform: task?.platform || 'unknown'
         }
       });
       invalidateTasksOnly();
@@ -82,14 +84,14 @@ export default function Execution() {
   };
 
   // Calculate real earnings from completed tasks
-  const safeTasks = Array.isArray(tasks) ? tasks : [];
-  const completedTasks = safeTasks.filter(t => t.status === 'completed' && typeof t.estimated_value === 'number');
+  const safeTasks = Array.isArray(tasks) ? tasks.filter(t => t && t.id) : [];
+  const completedTasks = safeTasks.filter(t => t?.status === 'completed' && typeof t?.estimated_value === 'number');
   const aiEarnedToday = completedTasks
-    .filter(t => t.executed_by === 'ned_autopilot' || !t.executed_by)
-    .reduce((sum, t) => sum + (t.estimated_value || 0), 0);
+    .filter(t => t?.executed_by === 'ned_autopilot' || !t?.executed_by)
+    .reduce((sum, t) => sum + (typeof t?.estimated_value === 'number' ? t.estimated_value : 0), 0);
   const userEarnedToday = safeTasks
-    .filter(t => t.status === 'completed' && t.executed_by === 'user')
-    .reduce((sum, t) => sum + (t.estimated_value || 0), 0);
+    .filter(t => t?.status === 'completed' && t?.executed_by === 'user')
+    .reduce((sum, t) => sum + (typeof t?.estimated_value === 'number' ? t.estimated_value : 0), 0);
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">

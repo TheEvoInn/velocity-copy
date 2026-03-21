@@ -12,10 +12,8 @@ export default function SubPageNav() {
     { label: 'Discovery', path: '/Discovery' },
     { label: 'Execution', path: '/Execution' },
     { label: 'Finance', path: '/Finance' },
-    { label: 'Crypto', path: '/CryptoAutomation' },
-    { label: 'Resellers', path: '/DigitalResellers' },
-    { label: 'NED', path: '/NED' },
-    { label: 'VIPZ', path: '/VIPZ' },
+    { label: 'Commerce', path: '/DigitalCommerce' },
+    { label: 'Crypto', path: '/CryptoProfitSystems' },
   ];
 
   return (

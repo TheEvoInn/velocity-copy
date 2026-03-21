@@ -32,19 +32,22 @@ export default function KYCIntakeForm({ onSubmitSuccess }) {
   const [showSensitive, setShowSensitive] = useState(false);
   const queryClient = useQueryClient();
 
+  const [uploadProgress, setUploadProgress] = useState('');
+
   const submitKYC = useMutation({
     mutationFn: async () => {
-      // Upload documents first
-      const uploadFile = async (file) => {
+      const uploadFile = async (file, label) => {
         if (!file) return null;
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        return file_url;
+        setUploadProgress(`Uploading ${label}...`);
+        const result = await base44.integrations.Core.UploadFile({ file });
+        if (!result?.file_url) throw new Error(`Failed to upload ${label}`);
+        return result.file_url;
       };
-      const [id_document_front_url, id_document_back_url, selfie_url] = await Promise.all([
-        uploadFile(documents.id_front),
-        uploadFile(documents.id_back),
-        uploadFile(documents.selfie),
-      ]);
+
+      const id_document_front_url = await uploadFile(documents.id_front, 'ID Front');
+      const id_document_back_url  = await uploadFile(documents.id_back,  'ID Back');
+      const selfie_url             = await uploadFile(documents.selfie,   'Selfie');
+      setUploadProgress('Saving application...');
 
       const kyc = await base44.entities.KYCVerification.create({
         ...formData,

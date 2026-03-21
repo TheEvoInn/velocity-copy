@@ -239,6 +239,7 @@ Deno.serve(async (req) => {
          }
 
         // 3. Scan opportunities
+        let opportunities = [];
         try {
           const scanRes = await base44.asServiceRole.functions.invoke('scanOpportunities', {
             action: 'scan',
@@ -249,13 +250,13 @@ Deno.serve(async (req) => {
           });
 
           cycleResults.opportunities_found = scanRes.data?.opportunities?.length || 0;
-          const opportunities = Array.isArray(scanRes.data?.opportunities) ? scanRes.data.opportunities : [];
+          opportunities = Array.isArray(scanRes.data?.opportunities) ? scanRes.data.opportunities : [];
 
           // Score new opportunities
           for (const opp of opportunities.slice(0, 5)) {
             if (opp && !opp.overall_score && opp.id) {
               try {
-                const scores = { overall_score: 70, velocity_score: 65, risk_score: 40 }; // Default scores
+                const scores = { overall_score: 70, velocity_score: 65, risk_score: 40 };
                 await base44.asServiceRole.entities.Opportunity.update(opp.id, {
                   velocity_score: scores.velocity_score,
                   risk_score: scores.risk_score,
@@ -271,7 +272,7 @@ Deno.serve(async (req) => {
         }
 
         // 4b. Queue opportunities for real execution
-        const opportunitiesForExecution = opportunities.filter(o => 
+        const opportunitiesForExecution = (opportunities || []).filter(o => 
           o && o.id && o.url && o.overall_score && o.overall_score > 50
         );
 
@@ -286,7 +287,7 @@ Deno.serve(async (req) => {
               console.error(`Queue error for ${opp.id}:`, e.message);
               return { data: { task: null } };
             });
-            
+
             if (queueRes?.data?.task && queueRes.data.task.id) {
               cycleResults.tasks_executed++;
             }

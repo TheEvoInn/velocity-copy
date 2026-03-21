@@ -162,7 +162,7 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center">
               <Zap className="w-3 h-3 text-white" />
             </div>
-            <span className="font-orbitron text-sm text-white tracking-widest">GALAXY MAP</span>
+            <span className="font-orbitron text-sm text-white tracking-widest">VELOCITY NAV</span>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
             <X className="w-5 h-5" />
@@ -276,8 +276,8 @@ export default function AppLayout() {
                 style={{ top: 0, right: -2, boxShadow: '0 0 4px #06b6d4', animation: 'orbit-reverse 3s linear infinite' }} />
             </div>
             <div className="hidden sm:block">
-              <p className="font-orbitron text-xs font-bold tracking-[0.2em] text-white leading-none">PROFIT ENGINE</p>
-              <p className="text-[8px] text-violet-400/70 tracking-[0.15em] leading-none mt-0.5">COSMIC COMMAND SYSTEM</p>
+              <p className="font-orbitron text-xs font-bold tracking-[0.2em] text-white leading-none">VELOCITY</p>
+              <p className="text-[8px] text-violet-400/70 tracking-[0.15em] leading-none mt-0.5">PROFIT ENGINE</p>
             </div>
           </Link>
 

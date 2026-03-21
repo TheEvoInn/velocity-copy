@@ -14,11 +14,11 @@ export default function StepWelcome({ onNext }) {
         </div>
       </div>
 
-      <h2 className="text-2xl font-bold text-white mb-1 font-orbitron">Welcome to MISSION</h2>
-      <p className="text-sm text-violet-300 mb-6">Autonomous Profit Engine — Setup Required</p>
+      <h2 className="text-2xl font-bold text-white mb-1 font-orbitron">Welcome to VELOCITY</h2>
+      <p className="text-sm text-violet-300 mb-6">PROFIT ENGINE — Setup Required</p>
 
       <p className="text-sm text-slate-400 mb-8 max-w-sm mx-auto leading-relaxed">
-        To activate your AI Autopilot, we need to configure your identity, compliance status, preferences, and payment details. This takes about <strong className="text-white">5 minutes</strong> and only happens once.
+        To activate your VELOCITY Autopilot, we need to configure your identity, compliance status, preferences, and payment details. This takes about <strong className="text-white">5 minutes</strong> and only happens once.
       </p>
 
       <div className="grid grid-cols-2 gap-3 mb-8 text-left">

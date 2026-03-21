@@ -92,7 +92,7 @@ export default function StepLaunch({ identityData, kycData, prefData, bankingDat
             </Button>
             <Button onClick={() => onLaunch(doNotShowAgain)}
               className="flex-1 h-10 bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-white font-bold">
-              <Rocket className="w-4 h-4 mr-2" /> Launch MISSION
+              <Rocket className="w-4 h-4 mr-2" /> Launch VELOCITY
             </Button>
           </div>
         </>
@@ -101,7 +101,7 @@ export default function StepLaunch({ identityData, kycData, prefData, bankingDat
           <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-4">
             <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
           </div>
-          <h3 className="text-sm font-bold text-white mb-4">Activating your system...</h3>
+          <h3 className="text-sm font-bold text-white mb-4">Activating VELOCITY...</h3>
           <div className="space-y-2 text-left max-w-xs mx-auto">
             {activationSteps.map((step, i) => (
               <div key={step} className="flex items-center gap-2">

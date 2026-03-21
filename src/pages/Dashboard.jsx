@@ -128,8 +128,8 @@ export default function Dashboard() {
               style={{ boxShadow: '0 0 8px #06b6d4', animation: 'pulse-glow 2s ease-in-out infinite' }} />
           </div>
           <div>
-            <h1 className="font-orbitron text-base sm:text-xl font-bold tracking-widest text-white text-glow-cyan truncate">COMMAND CENTER</h1>
-            <p className="text-xs text-slate-500 tracking-wide">All departments · Real-time sync</p>
+            <h1 className="font-orbitron text-base sm:text-xl font-bold tracking-widest text-white text-glow-cyan truncate">VELOCITY</h1>
+            <p className="text-xs text-slate-500 tracking-wide">PROFIT ENGINE · Real-time sync</p>
           </div>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -141,7 +141,7 @@ export default function Dashboard() {
           <Link to="/Chat">
             <Button size="sm" className="btn-cosmic text-white text-xs h-8 gap-1.5">
               <Zap className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Mission AI</span>
+              <span className="hidden sm:inline">VELOCITY AI</span>
             </Button>
           </Link>
         </div>

@@ -39,8 +39,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'get_access_log' && id) {
-      const records = await base44.asServiceRole.entities.KYCVerification.filter({ id });
-      return Response.json({ access_log: records[0]?.access_log || [] });
+      const all = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
+      const record = all.find(r => r.id === id);
+      return Response.json({ access_log: record?.access_log || [] });
     }
 
     return Response.json({ error: 'Invalid action' }, { status: 400 });

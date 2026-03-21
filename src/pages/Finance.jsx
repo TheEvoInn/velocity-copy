@@ -30,11 +30,12 @@ export default function Finance() {
   const [showTxForm, setShowTxForm] = useState(false);
   const [txFilter, setTxFilter] = useState('all');
 
-  const filtered = txFilter === 'all' ? transactions : transactions.filter(t => t.type === txFilter);
+  const safeTxs = Array.isArray(transactions) ? transactions : [];
+  const filtered = txFilter === 'all' ? safeTxs : safeTxs.filter(t => t && t.type === txFilter);
 
-  const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + (t.amount || 0), 0);
-  const pendingPayouts = transactions.filter(t => t.payout_status === 'pending').reduce((s, t) => s + (t.net_amount || t.amount || 0), 0);
-  const platformFees = transactions.reduce((s, t) => s + (t.platform_fee || 0), 0);
+  const totalExpenses = safeTxs.filter(t => t && t.type === 'expense').reduce((s, t) => s + (typeof t?.amount === 'number' ? t.amount : 0), 0);
+  const pendingPayouts = safeTxs.filter(t => t && t.payout_status === 'pending').reduce((s, t) => s + (typeof t?.net_amount === 'number' ? t.net_amount : (typeof t?.amount === 'number' ? t.amount : 0)), 0);
+  const platformFees = safeTxs.reduce((s, t) => s + (t && typeof t?.platform_fee === 'number' ? t.platform_fee : 0), 0);
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
@@ -45,7 +46,7 @@ export default function Finance() {
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
             DeptBus.emit(DEPT_EVENTS.TRANSACTION_RECORDED, { source: 'manual' });
           }}
-          currentBalance={userGoals.wallet_balance || 0}
+          currentBalance={typeof userGoals?.wallet_balance === 'number' ? userGoals.wallet_balance : 0}
         />
       )}
 
@@ -114,29 +115,35 @@ export default function Finance() {
           </div>
         </div>
         <div className="space-y-1.5 max-h-80 overflow-y-auto">
-          {filtered.slice(0, 50).map(tx => {
-            const cfg = TX_TYPE_CONFIG[tx.type] || TX_TYPE_CONFIG.income;
-            const Icon = cfg.icon;
-            return (
-              <div key={tx.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800/50 transition-colors">
-                <div className={`w-7 h-7 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
-                  <Icon className={`w-3.5 h-3.5 ${cfg.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-white font-medium truncate">{tx.description || tx.platform || tx.type}</p>
-                  <p className="text-xs text-slate-500">{tx.platform} · {new Date(tx.created_date).toLocaleDateString()}</p>
-                </div>
-                <div className="text-right">
-                  <p className={`text-sm font-semibold ${cfg.color}`}>
-                    {cfg.sign}${(tx.net_amount ?? tx.amount ?? 0).toFixed(2)}
-                  </p>
-                  {tx.platform_fee > 0 && (
-                    <p className="text-xs text-slate-600">fee: ${tx.platform_fee.toFixed(2)}</p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+           {filtered.slice(0, 50).map(tx => {
+             if (!tx || !tx.id) return null;
+             const cfg = TX_TYPE_CONFIG[tx.type] || TX_TYPE_CONFIG.income;
+             const Icon = cfg.icon;
+             try {
+               return (
+                 <div key={tx.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800/50 transition-colors">
+                   <div className={`w-7 h-7 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
+                     <Icon className={`w-3.5 h-3.5 ${cfg.color}`} />
+                   </div>
+                   <div className="flex-1 min-w-0">
+                     <p className="text-xs text-white font-medium truncate">{tx.description || tx.platform || tx.type}</p>
+                     <p className="text-xs text-slate-500">{tx.platform || 'unknown'} · {tx.created_date ? new Date(tx.created_date).toLocaleDateString() : 'N/A'}</p>
+                   </div>
+                   <div className="text-right">
+                     <p className={`text-sm font-semibold ${cfg.color}`}>
+                       {cfg.sign}${(typeof tx?.net_amount === 'number' ? tx.net_amount : (typeof tx?.amount === 'number' ? tx.amount : 0)).toFixed(2)}
+                     </p>
+                     {typeof tx?.platform_fee === 'number' && tx.platform_fee > 0 && (
+                       <p className="text-xs text-slate-600">fee: ${tx.platform_fee.toFixed(2)}</p>
+                     )}
+                   </div>
+                 </div>
+               );
+             } catch (e) {
+               console.error('TX render error:', e);
+               return null;
+             }
+           })}
           {filtered.length === 0 && (
             <div className="text-center py-8 text-slate-500 text-sm">No transactions yet.</div>
           )}

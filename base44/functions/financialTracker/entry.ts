@@ -57,60 +57,63 @@ Deno.serve(async (req) => {
 
     // ── ACTION: get_summary ───────────────────────────────────────────────────
     if (action === 'get_summary') {
-      const transactions = await base44.asServiceRole.entities.Transaction.list('-created_date', 500);
-      const accounts = await base44.asServiceRole.entities.LinkedAccount.list();
-      const goals = await base44.asServiceRole.entities.UserGoals.list();
-      const profile = goals[0] || {};
+      const transactions = (await base44.asServiceRole.entities.Transaction.list('-created_date', 500).catch(() => [])) || [];
+      const accounts = (await base44.asServiceRole.entities.LinkedAccount.list().catch(() => [])) || [];
+      const goals = (await base44.asServiceRole.entities.UserGoals.list().catch(() => [])) || [];
+      const profile = (Array.isArray(goals) && goals.length > 0) ? goals[0] : {};
 
-      const incomeTransactions = transactions.filter(t => t.type === 'income');
-      const expenseTransactions = transactions.filter(t => t.type === 'expense');
+      const safeTxs = Array.isArray(transactions) ? transactions : [];
+      const incomeTransactions = safeTxs.filter(t => t && t.type === 'income');
+      const expenseTransactions = safeTxs.filter(t => t && t.type === 'expense');
 
       // ── Gross / net / fees ────────────────────────────────────────────────
-      const grossIncome = incomeTransactions.reduce((s, t) => s + (t.amount || 0), 0);
-      const totalFees = incomeTransactions.reduce((s, t) => s + (t.platform_fee || 0), 0);
-      const totalTaxWithheld = incomeTransactions.reduce((s, t) => s + (t.tax_withheld || 0), 0);
-      const netIncome = incomeTransactions.reduce((s, t) => s + (t.net_amount || t.amount || 0), 0) - totalTaxWithheld;
-      const totalExpenses = expenseTransactions.reduce((s, t) => s + (t.amount || 0), 0);
+      const grossIncome = incomeTransactions.reduce((s, t) => s + (typeof t?.amount === 'number' ? t.amount : 0), 0);
+      const totalFees = incomeTransactions.reduce((s, t) => s + (typeof t?.platform_fee === 'number' ? t.platform_fee : 0), 0);
+      const totalTaxWithheld = incomeTransactions.reduce((s, t) => s + (typeof t?.tax_withheld === 'number' ? t.tax_withheld : 0), 0);
+      const netIncome = incomeTransactions.reduce((s, t) => s + (typeof t?.net_amount === 'number' ? t.net_amount : (typeof t?.amount === 'number' ? t.amount : 0)), 0) - totalTaxWithheld;
+      const totalExpenses = expenseTransactions.reduce((s, t) => s + (typeof t?.amount === 'number' ? t.amount : 0), 0);
 
       // ── Payout status breakdown ───────────────────────────────────────────
       const available = incomeTransactions
-        .filter(t => !t.payout_status || t.payout_status === 'available' || t.payout_status === 'cleared')
-        .reduce((s, t) => s + (t.net_amount || t.amount || 0), 0);
+        .filter(t => t && (!t.payout_status || t.payout_status === 'available' || t.payout_status === 'cleared'))
+        .reduce((s, t) => s + (typeof t?.net_amount === 'number' ? t.net_amount : (typeof t?.amount === 'number' ? t.amount : 0)), 0);
       const pending = incomeTransactions
-        .filter(t => t.payout_status === 'pending' || t.payout_status === 'in_transit' || t.payout_status === 'processing')
-        .reduce((s, t) => s + (t.net_amount || t.amount || 0), 0);
+        .filter(t => t && (t.payout_status === 'pending' || t.payout_status === 'in_transit' || t.payout_status === 'processing'))
+        .reduce((s, t) => s + (typeof t?.net_amount === 'number' ? t.net_amount : (typeof t?.amount === 'number' ? t.amount : 0)), 0);
 
       // ── Per-platform breakdown ────────────────────────────────────────────
       const platformMap = {};
       for (const t of incomeTransactions) {
+        if (!t) continue;
         const p = (t.platform || 'other').toLowerCase();
         if (!platformMap[p]) platformMap[p] = { gross: 0, fees: 0, net: 0, tax: 0, transactions: 0, pending: 0 };
-        platformMap[p].gross += t.amount || 0;
-        platformMap[p].fees += t.platform_fee || 0;
-        platformMap[p].net += t.net_amount || t.amount || 0;
-        platformMap[p].tax += t.tax_withheld || 0;
+        platformMap[p].gross += typeof t.amount === 'number' ? t.amount : 0;
+        platformMap[p].fees += typeof t.platform_fee === 'number' ? t.platform_fee : 0;
+        platformMap[p].net += typeof t.net_amount === 'number' ? t.net_amount : (typeof t.amount === 'number' ? t.amount : 0);
+        platformMap[p].tax += typeof t.tax_withheld === 'number' ? t.tax_withheld : 0;
         platformMap[p].transactions++;
         if (t.payout_status === 'pending' || t.payout_status === 'in_transit') {
-          platformMap[p].pending += t.net_amount || t.amount || 0;
+          platformMap[p].pending += typeof t.net_amount === 'number' ? t.net_amount : (typeof t.amount === 'number' ? t.amount : 0);
         }
       }
 
       // ── Per-account breakdown (match by linked_account_id) ────────────────
+      const safeAccounts = Array.isArray(accounts) ? accounts : [];
       const accountMap = {};
       for (const t of incomeTransactions) {
-        if (!t.linked_account_id) continue;
-        const acc = accounts.find(a => a.id === t.linked_account_id);
+        if (!t || !t.linked_account_id) continue;
+        const acc = safeAccounts.find(a => a && a.id === t.linked_account_id);
         const key = t.linked_account_id;
         if (!accountMap[key]) accountMap[key] = {
           account_id: key,
-          platform: acc?.platform || t.platform || 'unknown',
-          username: acc?.username || 'Unknown',
-          label: acc?.label || '',
+          platform: (acc?.platform || t.platform || 'unknown'),
+          username: (acc?.username || 'Unknown'),
+          label: (acc?.label || ''),
           gross: 0, net: 0, fees: 0, transactions: 0
         };
-        accountMap[key].gross += t.amount || 0;
-        accountMap[key].net += t.net_amount || t.amount || 0;
-        accountMap[key].fees += t.platform_fee || 0;
+        accountMap[key].gross += typeof t.amount === 'number' ? t.amount : 0;
+        accountMap[key].net += typeof t.net_amount === 'number' ? t.net_amount : (typeof t.amount === 'number' ? t.amount : 0);
+        accountMap[key].fees += typeof t.platform_fee === 'number' ? t.platform_fee : 0;
         accountMap[key].transactions++;
       }
 
@@ -119,24 +122,29 @@ Deno.serve(async (req) => {
       const yearStart = new Date(now.getFullYear(), 0, 1);
       const daysElapsed = Math.max(1, (now - yearStart) / 86400000);
       const ytdIncome = incomeTransactions
-        .filter(t => new Date(t.created_date) >= yearStart)
-        .reduce((s, t) => s + (t.net_amount || t.amount || 0), 0);
+        .filter(t => {
+          try { return t && new Date(t.created_date) >= yearStart; } catch { return false; }
+        })
+        .reduce((s, t) => s + (typeof t?.net_amount === 'number' ? t.net_amount : (typeof t?.amount === 'number' ? t.amount : 0)), 0);
       const annualizedIncome = (ytdIncome / daysElapsed) * 365;
-      const effectiveTaxRate = estimateTaxRate(annualizedIncome);
+      const effectiveTaxRate = estimateTaxRate(typeof annualizedIncome === 'number' ? annualizedIncome : 0);
       const estimatedAnnualTax = annualizedIncome * effectiveTaxRate;
       const estimatedQtrTax = estimatedAnnualTax / 4;
       const alreadyWithheld = incomeTransactions
-        .filter(t => new Date(t.created_date) >= yearStart)
-        .reduce((s, t) => s + (t.tax_withheld || 0), 0);
+        .filter(t => {
+          try { return t && new Date(t.created_date) >= yearStart; } catch { return false; }
+        })
+        .reduce((s, t) => s + (typeof t?.tax_withheld === 'number' ? t.tax_withheld : 0), 0);
       const taxOwed = Math.max(0, ytdIncome * effectiveTaxRate - alreadyWithheld);
 
       // ── Category breakdown ────────────────────────────────────────────────
       const categoryMap = {};
       for (const t of incomeTransactions) {
+        if (!t) continue;
         const c = t.category || 'other';
         if (!categoryMap[c]) categoryMap[c] = { gross: 0, net: 0, transactions: 0 };
-        categoryMap[c].gross += t.amount || 0;
-        categoryMap[c].net += t.net_amount || t.amount || 0;
+        categoryMap[c].gross += typeof t.amount === 'number' ? t.amount : 0;
+        categoryMap[c].net += typeof t.net_amount === 'number' ? t.net_amount : (typeof t.amount === 'number' ? t.amount : 0);
         categoryMap[c].transactions++;
       }
 
@@ -174,39 +182,45 @@ Deno.serve(async (req) => {
     // ── ACTION: sync_platform — recalculate fees+tax for existing transactions ─
     if (action === 'sync_platform') {
       const { platform } = body;
-      const transactions = await base44.asServiceRole.entities.Transaction.list('-created_date', 500);
-      const incomeForPlatform = transactions.filter(t =>
-        t.type === 'income' && (platform ? (t.platform || '').toLowerCase() === platform.toLowerCase() : true)
+      const transactions = (await base44.asServiceRole.entities.Transaction.list('-created_date', 500).catch(() => [])) || [];
+      const safeTxs = Array.isArray(transactions) ? transactions : [];
+      const incomeForPlatform = safeTxs.filter(t =>
+        t && t.type === 'income' && (platform ? (t.platform || '').toLowerCase() === platform.toLowerCase() : true)
       );
 
       // Calculate lifetime earnings per platform for tiered fee logic
       const lifetimeByPlatform = {};
-      for (const t of transactions.filter(t => t.type === 'income')) {
+      for (const t of safeTxs.filter(t => t && t.type === 'income')) {
         const p = (t.platform || 'other').toLowerCase();
-        lifetimeByPlatform[p] = (lifetimeByPlatform[p] || 0) + (t.amount || 0);
+        lifetimeByPlatform[p] = (lifetimeByPlatform[p] || 0) + (typeof t.amount === 'number' ? t.amount : 0);
       }
 
       let synced = 0;
       for (const t of incomeForPlatform) {
-        const p = (t.platform || 'other').toLowerCase();
-        const lifetime = lifetimeByPlatform[p] || 0;
-        const feeRate = getPlatformFee(p, t.amount, lifetime);
-        const fee = Math.round((t.amount || 0) * feeRate * 100) / 100;
-        const net = Math.round(((t.amount || 0) - fee) * 100) / 100;
+        if (!t) continue;
+        try {
+          const p = (t.platform || 'other').toLowerCase();
+          const lifetime = lifetimeByPlatform[p] || 0;
+          const feeRate = getPlatformFee(p, typeof t.amount === 'number' ? t.amount : 0, lifetime);
+          const fee = Math.round((typeof t.amount === 'number' ? t.amount : 0) * feeRate * 100) / 100;
+          const net = Math.round(((typeof t.amount === 'number' ? t.amount : 0) - fee) * 100) / 100;
 
-        // Estimate tax on net
-        const annualized = net * 26; // ~26 bi-weekly periods
-        const taxRate = estimateTaxRate(annualized);
-        const taxWithheld = Math.round(net * taxRate * 100) / 100;
+          // Estimate tax on net
+          const annualized = net * 26;
+          const taxRate = estimateTaxRate(annualized);
+          const taxWithheld = Math.round(net * taxRate * 100) / 100;
 
-        await base44.asServiceRole.entities.Transaction.update(t.id, {
-          platform_fee: fee,
-          platform_fee_pct: Math.round(feeRate * 100),
-          net_amount: net,
-          tax_withheld: taxWithheld,
-          tax_rate_pct: Math.round(taxRate * 100)
-        });
-        synced++;
+          await base44.asServiceRole.entities.Transaction.update(t.id, {
+            platform_fee: fee,
+            platform_fee_pct: Math.round(feeRate * 100),
+            net_amount: net,
+            tax_withheld: taxWithheld,
+            tax_rate_pct: Math.round(taxRate * 100)
+          });
+          synced++;
+        } catch (e) {
+          console.error(`Failed to sync transaction ${t?.id}:`, e.message);
+        }
       }
 
       return Response.json({ success: true, synced, platform: platform || 'all' });
@@ -215,11 +229,17 @@ Deno.serve(async (req) => {
     // ── ACTION: get_tax_report ─────────────────────────────────────────────────
     if (action === 'get_tax_report') {
       const { year = new Date().getFullYear() } = body;
-      const transactions = await base44.asServiceRole.entities.Transaction.list('-created_date', 1000);
+      const transactions = (await base44.asServiceRole.entities.Transaction.list('-created_date', 1000).catch(() => [])) || [];
+      const safeTxs = Array.isArray(transactions) ? transactions : [];
 
-      const yearTransactions = transactions.filter(t => {
-        const d = new Date(t.created_date);
-        return d.getFullYear() === year && t.type === 'income';
+      const yearTransactions = safeTxs.filter(t => {
+        if (!t || !t.created_date) return false;
+        try {
+          const d = new Date(t.created_date);
+          return d.getFullYear() === year && t.type === 'income';
+        } catch {
+          return false;
+        }
       });
 
       const quarterly = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
@@ -227,22 +247,27 @@ Deno.serve(async (req) => {
       const byPlatform = {};
 
       for (const t of yearTransactions) {
-        const month = new Date(t.created_date).getMonth();
-        const q = month < 3 ? 'Q1' : month < 6 ? 'Q2' : month < 9 ? 'Q3' : 'Q4';
-        quarterly[q] += t.net_amount || t.amount || 0;
-        quarterlyGross[q] += t.amount || 0;
-        const p = (t.platform || 'other').toLowerCase();
-        if (!byPlatform[p]) byPlatform[p] = { gross: 0, fees: 0, net: 0, tax_withheld: 0 };
-        byPlatform[p].gross += t.amount || 0;
-        byPlatform[p].fees += t.platform_fee || 0;
-        byPlatform[p].net += t.net_amount || t.amount || 0;
-        byPlatform[p].tax_withheld += t.tax_withheld || 0;
+        if (!t) continue;
+        try {
+          const month = new Date(t.created_date).getMonth();
+          const q = month < 3 ? 'Q1' : month < 6 ? 'Q2' : month < 9 ? 'Q3' : 'Q4';
+          quarterly[q] += typeof t.net_amount === 'number' ? t.net_amount : (typeof t.amount === 'number' ? t.amount : 0);
+          quarterlyGross[q] += typeof t.amount === 'number' ? t.amount : 0;
+          const p = (t.platform || 'other').toLowerCase();
+          if (!byPlatform[p]) byPlatform[p] = { gross: 0, fees: 0, net: 0, tax_withheld: 0 };
+          byPlatform[p].gross += typeof t.amount === 'number' ? t.amount : 0;
+          byPlatform[p].fees += typeof t.platform_fee === 'number' ? t.platform_fee : 0;
+          byPlatform[p].net += typeof t.net_amount === 'number' ? t.net_amount : (typeof t.amount === 'number' ? t.amount : 0);
+          byPlatform[p].tax_withheld += typeof t.tax_withheld === 'number' ? t.tax_withheld : 0;
+        } catch (e) {
+          console.error(`Failed to process transaction for tax report:`, e.message);
+        }
       }
 
-      const totalNet = Object.values(quarterly).reduce((s, v) => s + v, 0);
-      const effectiveRate = estimateTaxRate(totalNet);
+      const totalNet = Object.values(quarterly).reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0);
+      const effectiveRate = estimateTaxRate(typeof totalNet === 'number' ? totalNet : 0);
       const totalTaxDue = totalNet * effectiveRate;
-      const totalWithheld = yearTransactions.reduce((s, t) => s + (t.tax_withheld || 0), 0);
+      const totalWithheld = yearTransactions.reduce((s, t) => s + (typeof t?.tax_withheld === 'number' ? t.tax_withheld : 0), 0);
 
       return Response.json({
         success: true,

@@ -53,13 +53,13 @@ Deno.serve(async (req) => {
 async function getWalletSummary(base44, user) {
   try {
     // Get user's wallet data
-    const userGoals = await base44.entities.UserGoals.filter(
-      { created_by: user.email },
+    const userGoals = (await base44.entities.UserGoals.filter(
+      { created_by: user?.email },
       null,
       1
-    );
+    ).catch(() => [])) || [];
 
-    let wallet = userGoals?.[0];
+    let wallet = (Array.isArray(userGoals) && userGoals.length > 0) ? userGoals[0] : null;
 
     // Create wallet if doesn't exist
     if (!wallet) {
@@ -75,41 +75,48 @@ async function getWalletSummary(base44, user) {
     }
 
     // Get recent transactions
-    const transactions = await base44.entities.Transaction.filter(
-      { created_by: user.email },
+    const transactions = (await base44.entities.Transaction.filter(
+      { created_by: user?.email },
       '-created_date',
       20
-    );
+    ).catch(() => [])) || [];
 
     // Calculate current balance from transactions
     let calculatedBalance = 0;
-    transactions?.forEach(t => {
-      if (t.type === 'income') {
-        calculatedBalance += (t.net_amount || t.amount) - (t.tax_withheld || 0);
-      } else if (t.type === 'expense') {
-        calculatedBalance -= t.amount;
+    const safeTxs = Array.isArray(transactions) ? transactions : [];
+    safeTxs.forEach(t => {
+      if (!t) return;
+      try {
+        if (t.type === 'income') {
+          calculatedBalance += (typeof t.net_amount === 'number' ? t.net_amount : (typeof t.amount === 'number' ? t.amount : 0)) - (typeof t.tax_withheld === 'number' ? t.tax_withheld : 0);
+        } else if (t.type === 'expense') {
+          calculatedBalance -= typeof t.amount === 'number' ? t.amount : 0;
+        }
+      } catch (e) {
+        console.error('Transaction processing error:', e.message);
       }
     });
 
     // Get today's earnings
     const today = new Date().toDateString();
-    const todayTransactions = transactions?.filter(t => 
-      new Date(t.created_date).toDateString() === today && t.type === 'income'
-    ) || [];
-    const todayEarnings = todayTransactions.reduce((sum, t) => sum + (t.net_amount || t.amount), 0);
+    const todayTransactions = safeTxs.filter(t => {
+      if (!t || !t.created_date) return false;
+      try { return new Date(t.created_date).toDateString() === today && t.type === 'income'; } catch { return false; }
+    });
+    const todayEarnings = todayTransactions.reduce((sum, t) => sum + (typeof t?.net_amount === 'number' ? t.net_amount : (typeof t?.amount === 'number' ? t.amount : 0)), 0);
 
     return Response.json({
       success: true,
-      wallet_id: wallet.id,
-      current_balance: calculatedBalance || wallet.wallet_balance,
-      total_earned: wallet.total_earned || 0,
-      ai_total_earned: wallet.ai_total_earned || 0,
-      user_total_earned: wallet.user_total_earned || 0,
-      available_capital: wallet.available_capital || 0,
+      wallet_id: wallet?.id || null,
+      current_balance: calculatedBalance > 0 ? calculatedBalance : (typeof wallet?.wallet_balance === 'number' ? wallet.wallet_balance : 0),
+      total_earned: typeof wallet?.total_earned === 'number' ? wallet.total_earned : 0,
+      ai_total_earned: typeof wallet?.ai_total_earned === 'number' ? wallet.ai_total_earned : 0,
+      user_total_earned: typeof wallet?.user_total_earned === 'number' ? wallet.user_total_earned : 0,
+      available_capital: typeof wallet?.available_capital === 'number' ? wallet.available_capital : 0,
       today_earnings: todayEarnings,
-      daily_target: wallet.daily_target,
-      recent_transactions: transactions?.slice(0, 10) || [],
-      transaction_count: transactions?.length || 0
+      daily_target: typeof wallet?.daily_target === 'number' ? wallet.daily_target : 1000,
+      recent_transactions: Array.isArray(safeTxs) ? safeTxs.slice(0, 10) : [],
+      transaction_count: safeTxs.length || 0
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

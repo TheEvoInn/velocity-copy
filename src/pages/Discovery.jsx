@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useOpportunitiesV2, useUserGoalsV2, useActivityLogsV2 } from '@/lib/velocityHooks';
+import { useOpportunitiesByStatus, useUserGoals, useActivityLogs, useInvalidateQueries } from '@/hooks/useQueryHooks';
 import { getDeptStyle } from '@/lib/galaxyTheme';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,9 +15,12 @@ import AIDiscoveryCards from '@/components/discovery/AIDiscoveryCards';
 const style = getDeptStyle('discovery');
 
 export default function Discovery() {
-  const { opportunities, isLoading, refetch } = useOpportunitiesV2({ status: 'new' });
-  const { goals } = useUserGoalsV2();
-  const { logs } = useActivityLogsV2(20);
+  const { data: opportunities = [], isLoading, refetch } = useOpportunitiesByStatus('new');
+  const { data: goalsList = [], isLoading: goalsLoading } = useUserGoals();
+  const { data: logs = [], isLoading: logsLoading } = useActivityLogs(20);
+  const { invalidateOpportunities } = useInvalidateQueries();
+  
+  const goals = goalsList[0] || {};
   const [isScanning, setIsScanning] = useState(false);
   const [activeTab, setActiveTab] = useState('ai_discovery');
   const [discoveryOpps, setDiscoveryOpps] = useState([]);
@@ -27,6 +30,7 @@ export default function Discovery() {
     setIsScanning(true);
     try {
       await base44.functions.invoke('scanOpportunities', { action: 'scan', max_results: 20 });
+      invalidateOpportunities();
       refetch();
     } finally {
       setIsScanning(false);
@@ -48,10 +52,10 @@ export default function Discovery() {
   };
 
   useEffect(() => {
-    if (activeTab === 'ai_discovery' && discoveryOpps.length === 0) {
+    if (activeTab === 'ai_discovery' && discoveryOpps.length === 0 && !discoveryLoading) {
       handleDiscoveryScan();
     }
-  }, [activeTab]);
+  }, [activeTab, discoveryLoading]);
 
   const topOpps = opportunities
     .filter(o => o.overall_score >= 60)
@@ -63,6 +67,14 @@ export default function Discovery() {
     const cat = o.category || 'other';
     categories[cat] = (categories[cat] || 0) + 1;
   });
+
+  if (isLoading || goalsLoading) {
+    return (
+      <div className="min-h-screen galaxy-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen galaxy-bg p-4 md:p-6">

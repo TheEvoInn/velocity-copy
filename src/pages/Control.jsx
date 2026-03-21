@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 
-const SECTION_TABS = ['Identities', 'Autopilot', 'Accounts', 'Security', 'Goals'];
+const SECTION_TABS = ['Identities', 'Autopilot', 'Accounts', 'Security', 'Goals', 'Webhooks'];
 
 export default function Control() {
   const { identities, userGoals, DeptBus, DEPT_EVENTS } = useDepartmentSync();

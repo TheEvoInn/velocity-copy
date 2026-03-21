@@ -19,6 +19,7 @@ export default function StarshipBridgeScene({
   recentTasks = [],
   todayEarned = 0,
   onStationFocus = null,
+  onOpenSectorMap = null,
 }) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);

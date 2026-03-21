@@ -84,9 +84,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ACTION: Full end-to-end task reading
+    // ACTION: Full end-to-end task reading with debug overlay
     if (action === 'read_and_process') {
-      const { url, task_name } = payload;
+      const { url, task_name, enable_debug = false } = payload;
 
       // 1. Pre-scan sync
       const userContext = await pullUserContextForTask(user.email, base44);
@@ -99,8 +99,32 @@ Deno.serve(async (req) => {
       const actions = compileIntoActionList(understanding, userContext);
       const workflow = await generateOrMatchWorkflow(understanding, actions, userContext, base44);
 
-      // 4. Post-scan sync
+      // 4. Generate debug overlay if requested
+      let overlayScript = null;
+      if (enable_debug) {
+        overlayScript = generateDebugOverlay(understanding, actions, workflow.id);
+      }
+
+      // 5. Post-scan sync
       await pushTaskResultsToAllSystems(user.email, understanding, actions, workflow.id, base44);
+
+      // 6. Store analysis for audit trail
+      const analysis = await base44.entities.ExternalTaskAnalysis.create({
+        url,
+        task_name,
+        page_type: understanding.page_type,
+        understanding,
+        actions,
+        workflow_id: workflow.id,
+        execution_status: 'analyzed',
+        matched_workflow: workflow.matched,
+        credentials_required: understanding.credentials_required || [],
+        metadata: {
+          debug_enabled: enable_debug,
+          overlay_injected: enable_debug,
+          analysis_timestamp: new Date().toISOString()
+        }
+      });
 
       // Log the complete task reading
       await base44.entities.ActivityLog.create({
@@ -112,7 +136,9 @@ Deno.serve(async (req) => {
           actions_count: actions.length,
           workflow_id: workflow.id,
           understanding_confidence: understanding.confidence,
-          systems_synced: 8
+          systems_synced: 8,
+          debug_enabled: enable_debug,
+          analysis_id: analysis.id
         },
         severity: 'success'
       });
@@ -124,7 +150,14 @@ Deno.serve(async (req) => {
         understanding,
         actions,
         workflow,
-        ready_for_execution: true
+        ready_for_execution: true,
+        analysis_id: analysis.id,
+        debug_overlay: overlayScript ? 'enabled' : null,
+        debug_payload: enable_debug ? {
+          overlay_script: overlayScript,
+          injection_ready: true,
+          monitor_available: true
+        } : null
       });
     }
 
@@ -502,4 +535,22 @@ function shouldUseExistingWorkflow(workflow, understanding, actions) {
   );
 
   return hasFormActions === workflowHasFormActions;
+}
+
+/**
+ * Generate debug overlay code
+ */
+function generateDebugOverlay(understanding, actions, workflowId) {
+  // Simplified inline version - full version in taskReaderDebugOverlay.js
+  return `
+    window.VELOCITY_DEBUG_ENABLED = true;
+    window.VELOCITY_ANALYSIS = {
+      workflow_id: '${workflowId}',
+      form_fields: ${JSON.stringify(understanding.form_fields || [])},
+      actions: ${JSON.stringify(actions || [])},
+      confidence: ${understanding.confidence || 0.8},
+      page_type: '${understanding.page_type}'
+    };
+    console.log('✓ VELOCITY Task Reader Debug overlay ready');
+  `;
 }

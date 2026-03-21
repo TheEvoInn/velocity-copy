@@ -184,19 +184,19 @@ export default function DeepSpaceView({ department, onExit }) {
                 <div className="space-y-3">
                   <div>
                     <div className="text-xs text-slate-500 mb-1">Requests/min</div>
-                    <div className="text-2xl font-bold text-emerald-400">{Math.floor(Math.random() * 1000)}</div>
+                    <div className="text-2xl font-bold text-emerald-400">{apiMetrics.requests_per_min || 0}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 mb-1">Avg Response</div>
-                    <div className="text-2xl font-bold text-blue-400">{Math.floor(Math.random() * 500)}ms</div>
+                    <div className="text-2xl font-bold text-blue-400">{apiMetrics.avg_response_ms || 0}ms</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 mb-1">Error Rate</div>
-                    <div className="text-2xl font-bold text-red-400">{Math.random().toFixed(2)}%</div>
+                    <div className="text-2xl font-bold text-red-400">{(apiMetrics.error_rate || 0).toFixed(2)}%</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 mb-1">Active Tasks</div>
-                    <div className="text-2xl font-bold text-violet-400">{Math.floor(Math.random() * 50)}</div>
+                    <div className="text-2xl font-bold text-violet-400">{apiMetrics.active_tasks || 0}</div>
                   </div>
                 </div>
               </div>

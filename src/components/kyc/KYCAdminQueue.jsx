@@ -240,17 +240,17 @@ export default function KYCAdminQueue() {
 
   const { data: allKYC = [], isLoading, refetch } = useQuery({
     queryKey: ['kyc-admin-all'],
-    queryFn: () => base44.entities.KYCVerification.list('-created_date', 100),
+    queryFn: async () => {
+      const res = await base44.functions.invoke('kycAdminService', { action: 'list' });
+      return res.data?.records || [];
+    },
     initialData: [],
   });
 
   const actionMutation = useMutation({
     mutationFn: async ({ id, action, note }) => {
       const now = new Date().toISOString();
-      const updates = {
-        updated_date: now,
-        admin_notes: note || undefined,
-      };
+      const updates = { admin_notes: note || undefined };
 
       if (action === 'approve') {
         Object.assign(updates, {
@@ -273,35 +273,24 @@ export default function KYCAdminQueue() {
           allowed_modules: [],
         });
       } else if (action === 'under_review') {
-        Object.assign(updates, {
-          status: 'under_review',
-          admin_status: 'under_review',
-        });
+        Object.assign(updates, { status: 'under_review', admin_status: 'under_review' });
       } else if (action === 'request_info') {
-        Object.assign(updates, {
-          status: 'submitted',
-          admin_status: 'additional_info',
-          admin_request_note: note,
-        });
+        Object.assign(updates, { status: 'submitted', admin_status: 'additional_info', admin_request_note: note });
       } else if (action === 'flag') {
-        Object.assign(updates, {
-          admin_status: 'flagged',
-          admin_notes: `[FLAGGED] ${note}`,
-        });
+        Object.assign(updates, { admin_status: 'flagged', admin_notes: `[FLAGGED] ${note}` });
       }
 
-      // Log to KYC access log
-      const logEntry = {
+      // Append to access log via service role
+      const logRes = await base44.functions.invoke('kycAdminService', { action: 'get_access_log', id });
+      const existingLog = logRes.data?.access_log || [];
+      updates.access_log = [...existingLog, {
         accessed_at: now,
         accessed_by: 'admin',
         purpose: action,
         module: 'kyc_admin_review',
-      };
-      const existing = await base44.entities.KYCVerification.filter({ id });
-      const existingLog = existing[0]?.access_log || [];
-      updates.access_log = [...existingLog, logEntry];
+      }];
 
-      return base44.entities.KYCVerification.update(id, updates);
+      return base44.functions.invoke('kycAdminService', { action: 'update', id, updates });
     },
     onSuccess: (_, { action }) => {
       queryClient.invalidateQueries({ queryKey: ['kyc-admin-all'] });

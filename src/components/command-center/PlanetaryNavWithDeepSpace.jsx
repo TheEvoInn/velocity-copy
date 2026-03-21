@@ -46,20 +46,13 @@ const DEPARTMENTS = [
   }
 ];
 
-export default function PlanetaryNavWithDeepSpace({ stats }) {
-  const [deepSpaceDept, setDeepSpaceDept] = useState(null);
-
-  if (deepSpaceDept) {
-    return <DeepSpaceView department={deepSpaceDept} onExit={() => setDeepSpaceDept(null)} />;
-  }
-
+export default function PlanetaryNavWithDeepSpace({ stats = {} }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {DEPARTMENTS.map((dept) => (
         <div
           key={dept.name}
-          className="group cursor-pointer"
-          onClick={() => setDeepSpaceDept(dept.name)}
+          className="group"
         >
           <Link to={dept.path}>
             <div
@@ -108,5 +101,5 @@ export default function PlanetaryNavWithDeepSpace({ stats }) {
             </Link>
             ))}
             </div>
-  );
-}
+            );
+            }

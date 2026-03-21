@@ -281,9 +281,10 @@ export default function AppLayout() {
   );
 
   return (
-    <div className="min-h-screen text-white relative pointer-events-none" style={{ background: 'var(--galaxy-deep)' }}>
-      <StarfieldCanvas />
-      <GalaxyOrbs />
+    <CyberpunkCommandCenter>
+      <div className="min-h-screen text-white relative pointer-events-none" style={{ background: 'transparent' }}>
+        <StarfieldCanvas />
+        <GalaxyOrbs />
 
       {/* ── Top Bar ── */}
       <header

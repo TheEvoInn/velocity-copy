@@ -13,6 +13,7 @@ import RiskManagementPanel from '../components/autopilot/RiskManagementPanel';
 import ProfitTargetPanel from '../components/autopilot/ProfitTargetPanel';
 import AITaskFeed from '../components/autopilot/AITaskFeed';
 import DualStreamCard from '../components/autopilot/DualStreamCard';
+import AutopilotActivationDiagnostics from '../components/autopilot/AutopilotActivationDiagnostics';
 
 const TABS = [
   { key: 'hud', label: 'Mission HUD', icon: '🛰️' },
@@ -20,6 +21,7 @@ const TABS = [
   { key: 'targets', label: 'Profit Targets', icon: '🎯' },
   { key: 'risk', label: 'Risk Controls', icon: '🛡️' },
   { key: 'feed', label: 'Task Feed', icon: '⚡' },
+  { key: 'diagnostics', label: 'System Health', icon: '🔧' },
   { key: 'templates', label: 'Templates', icon: '📚', link: '/TemplatesLibrary' },
 ];
 
@@ -333,6 +335,16 @@ export default function AutoPilot() {
               </Button>
             </div>
             <AITaskFeed tasks={aiTasks} isRunning={isManualRunning} />
+          </div>
+        )}
+
+        {activeTab === 'diagnostics' && (
+          <div>
+            <div className="mb-4">
+              <h2 className="font-orbitron text-sm font-bold text-white tracking-wide">SYSTEM DIAGNOSTICS</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Monitor activation status and repair any issues preventing Autopilot from starting</p>
+            </div>
+            <AutopilotActivationDiagnostics />
           </div>
         )}
       </div>

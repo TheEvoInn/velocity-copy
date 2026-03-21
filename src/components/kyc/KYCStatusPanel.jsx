@@ -7,14 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import KYCUpdateForm from './KYCUpdateForm';
 
 const STATUS_CONFIG = {
-  pending:             { icon: Clock,         color: 'text-slate-400',   bg: 'bg-slate-700/30',     border: 'border-slate-700',   label: 'Not Submitted' },
-  submitted:           { icon: Clock,         color: 'text-blue-400',    bg: 'bg-blue-500/10',      border: 'border-blue-500/20', label: 'Pending Review' },
-  under_review:        { icon: Clock,         color: 'text-amber-400',   bg: 'bg-amber-500/10',     border: 'border-amber-500/20',label: 'Under Review' },
-  verified:            { icon: CheckCircle2,  color: 'text-emerald-400', bg: 'bg-emerald-500/10',   border: 'border-emerald-500/20', label: 'Verified' },
-  approved:            { icon: CheckCircle2,  color: 'text-emerald-400', bg: 'bg-emerald-500/10',   border: 'border-emerald-500/20', label: 'Approved' },
-  rejected:            { icon: XCircle,       color: 'text-red-400',     bg: 'bg-red-500/10',       border: 'border-red-500/20',  label: 'Denied' },
-  expired:             { icon: AlertCircle,   color: 'text-amber-400',   bg: 'bg-amber-500/10',     border: 'border-amber-500/20',label: 'Expired' },
-  additional_info:     { icon: MessageSquare, color: 'text-yellow-400',  bg: 'bg-yellow-500/10',    border: 'border-yellow-500/20',label: 'Additional Info Required' },
+pending:             { icon: Clock,         color: 'text-slate-400',   bg: 'bg-slate-700/30',     border: 'border-slate-700',   label: 'Not Submitted' },
+submitted:           { icon: Clock,         color: 'text-blue-400',    bg: 'bg-blue-500/10',      border: 'border-blue-500/20', label: 'Pending Review' },
+under_review:        { icon: Clock,         color: 'text-amber-400',   bg: 'bg-amber-500/10',     border: 'border-amber-500/20',label: 'Under Review' },
+verified:            { icon: CheckCircle2,  color: 'text-emerald-400', bg: 'bg-emerald-500/10',   border: 'border-emerald-500/20', label: 'Verified' },
+approved:            { icon: CheckCircle2,  color: 'text-emerald-400', bg: 'bg-emerald-500/10',   border: 'border-emerald-500/20', label: 'Approved' },
+rejected:            { icon: XCircle,       color: 'text-red-400',     bg: 'bg-red-500/10',       border: 'border-red-500/20',  label: 'Denied' },
+expired:             { icon: AlertCircle,   color: 'text-amber-400',   bg: 'bg-amber-500/10',     border: 'border-amber-500/20',label: 'Expired' },
+additional_info:     { icon: MessageSquare, color: 'text-yellow-400',  bg: 'bg-yellow-500/10',    border: 'border-yellow-500/20',label: 'Additional Info Required' },
+check_again_required: { icon: AlertCircle, color: 'text-purple-400',  bg: 'bg-purple-500/10',    border: 'border-purple-500/20',label: 'Check Again Required' },
 };
 
 export default function KYCStatusPanel({ onStartKYC }) {
@@ -118,6 +119,21 @@ export default function KYCStatusPanel({ onStartKYC }) {
           </div>
         )}
 
+        {/* Check Again Request */}
+        {statusKey === 'check_again_required' && kycRecord.check_again_fields?.length > 0 && (
+          <div className="bg-purple-950/30 border border-purple-800/30 rounded-lg p-3">
+            <p className="text-xs font-semibold text-purple-400 mb-2">Fields to Review:</p>
+            <div className="space-y-1">
+              {kycRecord.check_again_fields.map(field => (
+                <p key={field} className="text-xs text-purple-300">• {field.replace(/_/g, ' ').toUpperCase()}</p>
+              ))}
+            </div>
+            {kycRecord.admin_request_note && (
+              <p className="text-xs text-purple-200 mt-2 italic">"{kycRecord.admin_request_note}"</p>
+            )}
+          </div>
+        )}
+
         {/* Details */}
         <div className="space-y-2 text-xs">
           <div className="flex justify-between">
@@ -170,16 +186,18 @@ export default function KYCStatusPanel({ onStartKYC }) {
           </div>
         )}
 
-        {/* Resubmit if denied/expired/additional info */}
-        {(statusKey === 'rejected' || statusKey === 'expired' || statusKey === 'additional_info') && (
+        {/* Resubmit if denied/expired/additional info/check again */}
+        {(statusKey === 'rejected' || statusKey === 'expired' || statusKey === 'additional_info' || statusKey === 'check_again_required') && (
           <div className="flex gap-2">
             <Button onClick={() => setShowUpdateForm(true)} className="flex-1 text-xs bg-blue-600 hover:bg-blue-500 gap-1.5">
               <FileText className="w-3 h-3" />
-              Update Information
+              {statusKey === 'check_again_required' ? 'Review & Update' : 'Update Information'}
             </Button>
-            <Button onClick={onStartKYC} variant="outline" className="flex-1 text-xs border-slate-600 text-slate-300">
-              New Submission
-            </Button>
+            {statusKey !== 'check_again_required' && (
+              <Button onClick={onStartKYC} variant="outline" className="flex-1 text-xs border-slate-600 text-slate-300">
+                New Submission
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

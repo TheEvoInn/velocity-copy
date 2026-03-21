@@ -24,6 +24,9 @@ export default function WebhookConfiguration() {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] });
       setDialogOpen(false);
       setEditingWebhook(null);
+    },
+    onError: (error) => {
+      console.error('Failed to create webhook:', error);
     }
   });
 
@@ -33,6 +36,9 @@ export default function WebhookConfiguration() {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] });
       setDialogOpen(false);
       setEditingWebhook(null);
+    },
+    onError: (error) => {
+      console.error('Failed to update webhook:', error);
     }
   });
 
@@ -40,6 +46,9 @@ export default function WebhookConfiguration() {
     mutationFn: (id) => base44.entities.WebhookConfig.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] });
+    },
+    onError: (error) => {
+      console.error('Failed to delete webhook:', error);
     }
   });
 

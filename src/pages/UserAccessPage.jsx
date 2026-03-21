@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Settings, Shield, Zap, Globe, Bell, Link as LinkIcon } from 'lucide-react';
+import { User, Settings, Shield, Zap, Globe, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import UserAccountSettings from '../components/account/UserAccountSettings';
 import IdentitySettings from '../components/account/IdentitySettings';
@@ -177,10 +177,7 @@ export default function UserAccessPage() {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700 text-center text-xs text-slate-500">
-          Last updated: {new Date().toLocaleDateString()}
-        </div>
+
       </div>
     </div>
   );

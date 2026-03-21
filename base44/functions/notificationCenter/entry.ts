@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 // Centralized notification hub for auto-execute rules, verification alerts, and errors
 Deno.serve(async (req) => {

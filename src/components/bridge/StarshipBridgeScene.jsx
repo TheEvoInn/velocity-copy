@@ -16,6 +16,8 @@ import StationInteractionController from './StationInteractionController';
 import NotificationDataBinding from './NotificationDataBinding';
 import BridgePerformanceTracker from './BridgePerformanceTracker';
 import KeyboardControlScheme from './KeyboardControlScheme';
+import CockpitEnvironment from './CockpitEnvironment';
+import CockpitDataBinding from './CockpitDataBinding';
 
 export default function StarshipBridgeScene() {
   const canvasRef = useRef(null);
@@ -36,11 +38,14 @@ export default function StarshipBridgeScene() {
   const notificationBindingRef = useRef(null);
   const performanceTrackerRef = useRef(null);
   const keyboardSchemeRef = useRef(null);
+  const cockpitEnvironmentRef = useRef(null);
+  const cockpitDataBindingRef = useRef(null);
   
   const [focusedStation, setFocusedStation] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [particleCount, setParticleCount] = useState(700);
   const [performanceStats, setPerformanceStats] = useState({});
+  const [cockpitData, setCockpitData] = useState({});
   
   // Subscribe to backend alerts
   useBridgeAlerts((alertEvent) => {
@@ -79,22 +84,44 @@ export default function StarshipBridgeScene() {
     rendererRef.current = renderer;
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 10, 7);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    directionalLight.position.set(20, 15, 20);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
     scene.add(directionalLight);
 
-    const pointLight = new THREE.PointLight(0x6699ff, 0.5);
-    pointLight.position.set(-5, 2, 2);
+    const pointLight = new THREE.PointLight(0x00ffff, 0.8);
+    pointLight.position.set(-15, 8, 10);
     scene.add(pointLight);
 
-    // Create bridge environment
-    createBridgeEnvironment(scene);
+    const accentLight = new THREE.PointLight(0xff2ec4, 0.6);
+    accentLight.position.set(15, 6, -10);
+    scene.add(accentLight);
+
+    // Build full cockpit environment
+    cockpitEnvironmentRef.current = new CockpitEnvironment(scene);
+    cockpitEnvironmentRef.current.buildCockpit();
+    cockpitEnvironmentRef.current.buildSpaceEnvironment();
+
+    // Create platform department objects in space
+    const departments = [
+      { name: 'Autopilot Command', type: 'autopilot', pos: new THREE.Vector3(-30, 20, -50) },
+      { name: 'NED Mining', type: 'ned', pos: new THREE.Vector3(35, 15, -45) },
+      { name: 'VIPZ Prime', type: 'vipz', pos: new THREE.Vector3(-25, 30, 60) },
+      { name: 'Wallet Core', type: 'wallet', pos: new THREE.Vector3(40, 25, 50) },
+      { name: 'Identity', type: 'identity', pos: new THREE.Vector3(0, 35, -80) },
+      { name: 'Discovery', type: 'discovery', pos: new THREE.Vector3(-45, 10, 40) }
+    ];
+
+    departments.forEach(dept => {
+      const obj = cockpitEnvironmentRef.current.createDepartmentObject(dept.name, dept.type, dept.pos);
+      cockpitDataBindingRef.current = new CockpitDataBinding(scene, povControllerRef.current);
+      cockpitDataBindingRef.current.registerDepartmentObject(dept.type, obj);
+    });
 
     // Initialize controllers
     povControllerRef.current = new BridgePOVController(camera, scene, renderer);
@@ -165,6 +192,10 @@ export default function StarshipBridgeScene() {
       alertSystemRef.current?.handleAlert(alertEvent);
     });
     notificationBindingRef.current.initialize();
+
+    // Initialize cockpit data binding
+    cockpitDataBindingRef.current = new CockpitDataBinding(scene, povControllerRef.current);
+    await cockpitDataBindingRef.current.initialize();
     
     // Add screens to stations
     stations.forEach(station => {
@@ -252,6 +283,14 @@ export default function StarshipBridgeScene() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('resize', onWindowResize);
+      
+      // Cleanup cockpit systems
+      if (cockpitDataBindingRef.current) {
+        cockpitDataBindingRef.current.dispose();
+      }
+      if (cockpitEnvironmentRef.current) {
+        cockpitEnvironmentRef.current.dispose();
+      }
       
       // Cleanup Phase 4 systems
       if (notificationBindingRef.current) {

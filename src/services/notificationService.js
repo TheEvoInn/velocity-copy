@@ -148,4 +148,51 @@ class NotificationService {
   }
 }
 
+// Export individual notification methods for convenience
+export const notifyRuleTriggered = NotificationService.notifyRuleTriggered;
+export const notifyVerificationRequired = NotificationService.notifyVerificationRequired;
+export const notifyOnboardingError = NotificationService.notifyOnboardingError;
+export const createNotification = NotificationService.createNotification;
+export const getUnreadNotifications = NotificationService.getUnreadNotifications;
+
+// Legacy exports for backward compatibility
+export const notifyHighValueOpportunity = async (opportunityId, title, estimatedValue) => {
+  return NotificationService.createNotification(
+    `High-Value Opportunity: ${title}`,
+    `Estimated value: $${estimatedValue}`,
+    'opportunity_alert',
+    'info',
+    'Opportunity',
+    opportunityId,
+    'review_required',
+    { estimated_value: estimatedValue }
+  );
+};
+
+export const notifyTaskFailure = async (taskId, errorMessage) => {
+  return NotificationService.createNotification(
+    'Task Execution Failed',
+    errorMessage,
+    'system_alert',
+    'warning',
+    'AITask',
+    taskId,
+    'user_input_required',
+    { error: errorMessage }
+  );
+};
+
+export const notifyAutopilotAction = async (actionType, description) => {
+  return NotificationService.createNotification(
+    `Autopilot: ${actionType}`,
+    description,
+    'autopilot_execution',
+    'info',
+    null,
+    null,
+    'none',
+    { action_type: actionType }
+  );
+};
+
 export default NotificationService;

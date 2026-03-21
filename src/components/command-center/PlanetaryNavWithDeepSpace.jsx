@@ -92,7 +92,6 @@ export default function PlanetaryNavWithDeepSpace({ stats = {} }) {
               <div className="mt-3 pt-2.5 border-t" style={{ borderColor: dept.color + '20' }}>
                 <p className={`text-xs font-orbitron font-semibold tracking-wide ${dept.textColor}`}>{dept.label}</p>
                 <p className="text-[10px] text-slate-500 mt-0.5">{dept.subtitle}</p>
-                <p className="text-[10px] text-slate-600 mt-1.5">→ Click to enter Deep Space</p>
               </div>
             </div>
             </div>

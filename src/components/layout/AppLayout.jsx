@@ -72,6 +72,18 @@ const DEPARTMENTS = [
     planet: '🛍️',
   },
   {
+    path: '/CryptoProfitSystems',
+    icon: Coins,
+    label: 'Crypto',
+    subtitle: 'Earnings & Mining',
+    color: '#06b6d4',
+    glow: 'rgba(6,182,212,0.5)',
+    gradient: 'from-cyan-500/20 to-blue-600/10',
+    activeBorder: 'border-cyan-400/60',
+    textActive: 'text-cyan-300',
+    planet: '💰',
+  },
+  {
     path: '/Control',
     icon: SlidersHorizontal,
     label: 'Control',

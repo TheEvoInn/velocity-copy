@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Settings, Shield, Zap, Globe, Bell } from 'lucide-react';
+import { User, Settings, Shield, Zap, Globe, Bell, Link as LinkIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import UserAccountSettings from '../components/account/UserAccountSettings';
 import IdentitySettings from '../components/account/IdentitySettings';
 import AutopilotSettings from '../components/account/AutopilotSettings';
@@ -10,6 +13,20 @@ import NotificationsHub from '../components/notifications/NotificationsHub';
 
 export default function UserAccessPage() {
   const [activeTab, setActiveTab] = useState('account');
+
+  const { data: kycList = [] } = useQuery({
+    queryKey: ['kycStatus_sidebar'],
+    queryFn: async () => {
+      const me = await base44.auth.me();
+      return base44.entities.KYCVerification.filter({ created_by: me.email }, '-created_date', 1);
+    }
+  });
+  const { data: goalsList = [] } = useQuery({
+    queryKey: ['userGoals'],
+    queryFn: () => base44.entities.UserGoals.list(),
+  });
+  const kyc = kycList[0];
+  const goals = goalsList[0] || {};
 
   const tabs = [
     {
@@ -101,23 +118,34 @@ export default function UserAccessPage() {
 
           {/* Sidebar Info */}
           <div className="space-y-4">
-            {/* Quick Stats */}
+            {/* Live Status */}
             <Card className="bg-slate-900/50 border-slate-700">
               <CardHeader>
-                <CardTitle className="text-sm">Quick Status</CardTitle>
+                <CardTitle className="text-sm">Live Status</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Account Status</span>
+                  <span className="text-slate-500">Account</span>
                   <span className="text-emerald-400 font-medium">Active</span>
                 </div>
                 <div className="flex justify-between items-center border-t border-slate-700 pt-3">
                   <span className="text-slate-500">KYC Status</span>
-                  <span className="text-blue-400 font-medium">Pending</span>
+                  <span className={`font-medium ${
+                    kyc?.status === 'approved' ? 'text-emerald-400' :
+                    kyc?.status === 'rejected' ? 'text-red-400' :
+                    kyc?.status === 'under_review' ? 'text-blue-400' :
+                    kyc ? 'text-amber-400' : 'text-slate-500'
+                  }`}>{kyc?.status ? kyc.status.replace(/_/g, ' ') : 'Not Started'}</span>
                 </div>
                 <div className="flex justify-between items-center border-t border-slate-700 pt-3">
                   <span className="text-slate-500">Autopilot</span>
-                  <span className="text-amber-400 font-medium">Enabled</span>
+                  <span className={`font-medium ${goals.autopilot_enabled ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    {goals.autopilot_enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-t border-slate-700 pt-3">
+                  <span className="text-slate-500">Daily Target</span>
+                  <span className="text-cyan-400 font-medium">${goals.daily_target || 1000}</span>
                 </div>
               </CardContent>
             </Card>
@@ -125,15 +153,14 @@ export default function UserAccessPage() {
             {/* Help & Support */}
             <Card className="bg-slate-900/50 border-slate-700">
               <CardHeader>
-                <CardTitle className="text-sm">Need Help?</CardTitle>
+                <CardTitle className="text-sm">Quick Links</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-xs">
-                <a href="/SystemDocumentation" className="block text-blue-400 hover:text-blue-300">
-                  → View Documentation
-                </a>
-                <a href="/Chat" className="block text-blue-400 hover:text-blue-300">
-                  → Chat with Mission AI
-                </a>
+                <Link to="/SystemDocumentation" className="block text-blue-400 hover:text-blue-300">→ Documentation</Link>
+                <Link to="/Chat" className="block text-blue-400 hover:text-blue-300">→ Mission AI</Link>
+                <Link to="/AutoPilot" className="block text-blue-400 hover:text-blue-300">→ Autopilot Dashboard</Link>
+                <Link to="/KYCManagement" className="block text-blue-400 hover:text-blue-300">→ KYC Verification</Link>
+                <Link to="/TemplatesLibrary" className="block text-blue-400 hover:text-blue-300">→ Templates Library</Link>
               </CardContent>
             </Card>
 

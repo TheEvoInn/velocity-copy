@@ -49,6 +49,7 @@ import PageCustomizer from './pages/PageCustomizer';
 import CryptoProfitSystems from './pages/CryptoProfitSystems';
 import GlobalTaskOrchestrator from './pages/GlobalTaskOrchestrator';
 import NotificationsDashboard from './pages/NotificationsDashboard';
+import WorkflowBuilder from './pages/WorkflowBuilder';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -114,6 +115,7 @@ const AuthenticatedApp = () => {
         <Route path="/CryptoProfitSystems" element={<CryptoProfitSystems />} />
         <Route path="/GlobalTaskOrchestrator" element={<GlobalTaskOrchestrator />} />
         <Route path="/NotificationsDashboard" element={<NotificationsDashboard />} />
+        <Route path="/WorkflowBuilder" element={<WorkflowBuilder />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

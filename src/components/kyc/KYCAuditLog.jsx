@@ -16,7 +16,15 @@ const ACTION_CONFIG = {
 export default function KYCAuditLog() {
   const { data: allKYC = [] } = useQuery({
     queryKey: ['kyc-admin-all'],
-    queryFn: () => base44.entities.KYCVerification.list('-created_date', 100),
+    queryFn: async () => {
+      try {
+        const res = await base44.functions.invoke('kycAdminService', { action: 'list' });
+        return res.data?.records || [];
+      } catch (err) {
+        console.error('Failed to fetch KYC records:', err);
+        return [];
+      }
+    },
     initialData: [],
   });
 

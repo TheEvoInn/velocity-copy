@@ -487,7 +487,7 @@ export default function KYCAdminQueue() {
     mutationFn: async ({ id, action, note, docUpdates }) => {
       const fields = docUpdates?.fields || [];
       const now = new Date().toISOString();
-      const updates = { admin_notes: note || undefined };
+      const updates = {};
 
       if (action === 'approve') {
         Object.assign(updates, {
@@ -499,6 +499,7 @@ export default function KYCAdminQueue() {
           allowed_modules: ['financial_onboarding', 'payment_payout', 'prize_claiming', 'tax_compliance', 'government_compliance'],
           admin_denial_reason: null,
           admin_request_note: null,
+          admin_notes: note || undefined,
         });
       } else if (action === 'deny') {
         Object.assign(updates, {
@@ -508,11 +509,12 @@ export default function KYCAdminQueue() {
           admin_denial_reason: note,
           user_approved_for_autopilot: false,
           allowed_modules: [],
+          admin_notes: note || undefined,
         });
       } else if (action === 'under_review') {
         Object.assign(updates, { status: 'under_review', admin_status: 'under_review' });
       } else if (action === 'request_info') {
-        Object.assign(updates, { status: 'submitted', admin_status: 'additional_info', admin_request_note: note });
+        Object.assign(updates, { status: 'submitted', admin_status: 'additional_info', admin_request_note: note, admin_notes: note || undefined });
       } else if (action === 'flag') {
         Object.assign(updates, { admin_status: 'flagged', admin_notes: `[FLAGGED] ${note}` });
       } else if (action === 'submit_docs') {
@@ -528,6 +530,7 @@ export default function KYCAdminQueue() {
           admin_status: 'check_again_required',
           admin_request_note: note || 'Please review and correct the selected fields.',
           check_again_fields: docUpdates?.fields || [],
+          admin_notes: note || undefined,
         });
       }
 
@@ -545,7 +548,8 @@ export default function KYCAdminQueue() {
     },
     onSuccess: (_, { action }) => {
       queryClient.invalidateQueries({ queryKey: ['kyc-admin-all'] });
-      queryClient.invalidateQueries({ queryKey: ['kyc'] });
+      queryClient.invalidateQueries({ queryKey: ['kyc_my'] });
+      queryClient.invalidateQueries({ queryKey: ['kyc_admin_notifications'] });
       const messages = {
         approve: '✅ KYC approved',
         deny: '❌ KYC denied',
@@ -557,10 +561,10 @@ export default function KYCAdminQueue() {
       };
       toast.success(messages[action] || 'Updated');
     },
-    onError: (err) => toast.error(`Error: ${err.message}`),
+    onError: (err) => toast.error(`Error: ${err.message || 'Unknown error'}`),
   });
 
-  const handleAction = (id, action, { note, docUpdates, fields } = {}) => {
+  const handleAction = (id, action, { note = '', docUpdates = {}, fields = [] } = {}) => {
     actionMutation.mutate({ id, action, note, docUpdates: { ...docUpdates, fields } });
   };
 

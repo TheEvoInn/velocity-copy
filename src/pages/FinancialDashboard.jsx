@@ -28,7 +28,7 @@ export default function FinancialDashboard() {
     queryFn: () => base44.auth.me(),
   });
 
-  // Fetch transactions
+  // Fetch transactions - real-time refresh every 10s
   const { data: transactions = [], isLoading: transLoading } = useQuery({
     queryKey: ['transactions', user?.email],
     queryFn: () => base44.entities.Transaction.filter(
@@ -37,6 +37,8 @@ export default function FinancialDashboard() {
       50
     ),
     enabled: !!user?.email,
+    refetchInterval: 10000,
+    staleTime: 0
   });
 
   // Fetch user goals (for balance/earnings info) - real-time refresh every 5s

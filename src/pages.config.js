@@ -60,6 +60,7 @@ import Chat from './pages/Chat';
 import ActivityPage from './pages/ActivityPage';
 import AdminControlPanel from './pages/AdminControlPanel';
 import CryptoAutomation from './pages/CryptoAutomation';
+import WebhookEngine from './pages/WebhookEngine';
 import AppLayout from './components/layout/AppLayout.jsx';
 
 const PAGES = {
@@ -74,7 +75,8 @@ const PAGES = {
 	Chat,
 	ActivityPage,
 	AdminControlPanel,
-	CryptoAutomation
+	CryptoAutomation,
+	WebhookEngine
 };
 
 export const pagesConfig = {

@@ -289,7 +289,7 @@ async function generateSequenceEmails(sequenceType, offerType, productId, produc
       {
         sequence_number: 5,
         subject: `{{first_name}}, your access expires in 24 hours`,
-        preview_text: 'Don't lose this opportunity...',
+        preview_text: 'Do not lose this opportunity...',
         delay_days: 8,
         cta_text: 'Get Access Today',
         body: `<h1>Last Chance {{first_name}}!</h1><p>Your exclusive access and bonus expires tomorrow. Don't miss this.</p>`

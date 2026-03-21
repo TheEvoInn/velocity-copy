@@ -159,50 +159,19 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Planet Department Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {DEPT_CARDS.map(({ path, icon: Icon, label, subtitle, color, textColor, glow, planet, statsKey }) => {
-          const stat = deptStats[statsKey];
-          return (
-            <Link key={path} to={path}>
-              <div
-                className="tilt-card relative rounded-2xl p-4 transition-all cursor-pointer group overflow-hidden"
-                style={{
-                  background: `linear-gradient(135deg, ${color}12, ${color}06, rgba(5,7,20,0.8))`,
-                  border: `1px solid ${color}25`,
-                }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 30px ${glow}, 0 0 60px ${glow.replace('0.4','0.15')}`; e.currentTarget.style.borderColor = color + '50'; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = color + '25'; }}
-              >
-                {/* Subtle background grid */}
-                <div className="absolute inset-0 opacity-5"
-                  style={{ backgroundImage: `radial-gradient(circle, ${color} 1px, transparent 1px)`, backgroundSize: '20px 20px' }} />
+      {/* ── Mission Control HUD ── */}
+      <GalaxyCommandHUD
+        todayEarned={todayEarned}
+        walletBalance={walletBalance}
+        activeTasks={activeTasks}
+        activeOpps={activeOpps}
+        failedTasks={failedTasks}
+        reviewTasks={reviewTasks}
+      />
 
-                <div className="relative">
-                  <div className="flex items-start justify-between mb-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                      style={{ background: `${color}18`, border: `1px solid ${color}30` }}
-                    >
-                      {planet}
-                    </div>
-                    <ChevronRight className={`w-3.5 h-3.5 ${textColor} opacity-0 group-hover:opacity-100 transition-all`} />
-                  </div>
-                  <p className={`text-2xl font-orbitron font-bold ${textColor} mb-0.5`}
-                    style={{ textShadow: `0 0 20px ${color}` }}>
-                    {stat.main}
-                  </p>
-                  <p className="text-xs text-slate-300 font-medium">{stat.label}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{stat.sub}</p>
-                  <div className="mt-3 pt-2.5 border-t" style={{ borderColor: color + '20' }}>
-                    <p className={`text-xs font-orbitron font-semibold tracking-wide ${textColor}`}>{label}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">{subtitle}</p>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          );
-        })}
+      {/* ── Planetary Navigation System ── */}
+      <div className="mt-6">
+        <PlanetaryNav stats={deptStats} />
       </div>
 
       {/* Main Grid */}

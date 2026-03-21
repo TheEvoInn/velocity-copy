@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
   try {
@@ -137,23 +137,24 @@ Deno.serve(async (req) => {
             is_user_specific: true
           });
 
-          // Create LinkedAccountCreation record
-          await base44.entities.LinkedAccountCreation.create({
-            platform: platform,
-            identity_id: identity_id,
-            identity_name: identity.name,
-            username: generatedUsername,
-            email: generatedEmail,
-            account_status: 'created',
-            is_ai_created: true,
-            credential_vault_id: credentialEntry.id,
-            profile_url: `https://${platform}.com/${generatedUsername}`,
-            health_status: 'healthy',
-            profile_completeness: 85,
-            verification_status: 'verified',
-            created_by: user.email,
-            is_user_specific: true
-          });
+          // Create LinkedAccountCreation record with onboarding tracking
+               const linkedAccount = await base44.entities.LinkedAccountCreation.create({
+                 platform: platform,
+                 identity_id: identity_id,
+                 identity_name: identity.name,
+                 username: generatedUsername,
+                 email: generatedEmail,
+                 account_status: 'onboarding',
+                 is_ai_created: true,
+                 credential_vault_id: credentialEntry.id,
+                 profile_url: `https://${platform}.com/${generatedUsername}`,
+                 health_status: 'healthy',
+                 profile_completeness: 0,
+                 activation_status: 'pending',
+                 onboarding_completed: false,
+                 created_by: user.email,
+                 is_user_specific: true
+               });
 
           createdAccounts.push({
             platform: platform,

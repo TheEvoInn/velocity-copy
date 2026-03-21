@@ -5,12 +5,12 @@ export default function LiveMetricsBar({ goals = {}, transactions = [], opportun
   const today = new Date().toDateString();
 
   // Earnings from live transaction data
-  const incomeTxs = transactions.filter(t => t.type === 'income');
-  const totalEarned = incomeTxs.reduce((sum, t) => sum + (t.net_amount ?? t.amount ?? 0), 0);
+  const incomeTxs = transactions.filter(t => t.transaction_type && !t.transaction_type.includes('withdrawal') && t.status === 'completed');
+  const totalEarned = incomeTxs.reduce((sum, t) => sum + (t.value_usd ?? 0), 0);
   const todayEarned = incomeTxs
-    .filter(t => new Date(t.created_date).toDateString() === today)
-    .reduce((sum, t) => sum + (t.net_amount ?? t.amount ?? 0), 0);
-  const walletBalance = goals.wallet_balance > 0 ? goals.wallet_balance : totalEarned;
+    .filter(t => new Date(t.timestamp || t.created_date).toDateString() === today)
+    .reduce((sum, t) => sum + (t.value_usd ?? 0), 0);
+  const walletBalance = goals.wallet_balance ?? 0;
 
   // Opportunity pipeline
   const oppQueued    = opportunities.filter(o => o.status === 'queued').length;

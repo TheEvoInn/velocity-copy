@@ -48,6 +48,8 @@ import EmailMarketing from './pages/EmailMarketing';
 import PageCustomizer from './pages/PageCustomizer';
 import CryptoProfitSystems from './pages/CryptoProfitSystems';
 import GlobalTaskOrchestrator from './pages/GlobalTaskOrchestrator';
+import VIPZ from './pages/VIPZ';
+import NED from './pages/NED';
 import NotificationsDashboard from './pages/NotificationsDashboard';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import WebhookConfiguration from './pages/WebhookConfiguration';
@@ -82,9 +84,9 @@ const AuthenticatedApp = () => {
       <Route path="/Execution" element={<Execution />} />
       <Route path="/Finance" element={<Finance />} />
       <Route path="/Control" element={<Control />} />
-      {/* New Departments */}
-      <Route path="/VIPZ" element={<CryptoProfitSystems />} />
-      <Route path="/NED" element={<CryptoProfitSystems />} />
+      {/* AI Agent Departments */}
+      <Route path="/VIPZ" element={<VIPZ />} />
+      <Route path="/NED" element={<NED />} />
       <Route path="/DigitalResellers" element={<DigitalResellers />} />
       <Route path="/CryptoProfitSystems" element={<CryptoProfitSystems />} />
       <Route element={<AppLayout />}>

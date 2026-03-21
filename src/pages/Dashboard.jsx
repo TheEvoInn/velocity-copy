@@ -174,88 +174,27 @@ export default function Dashboard() {
         <PlanetaryNav stats={deptStats} />
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
-          {/* Recent Opportunities */}
-          <div className="glass-card rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2 font-orbitron tracking-wide">
-                <span className="text-base">🔭</span>
-                Top Active Opportunities
-              </h2>
-              <Link to="/Discovery" className="text-xs text-amber-400/70 hover:text-amber-400 transition-colors flex items-center gap-1">
-                Discovery dept <ChevronRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {activeOpps.slice(0, 5).map(opp => (
-                <Link key={opp.id} to="/Discovery">
-                  <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-800/50 transition-colors cursor-pointer">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-white font-medium truncate">{opp.title}</p>
-                      <p className="text-xs text-slate-500">{opp.platform} · {opp.category}</p>
-                    </div>
-                    <span className="text-xs text-emerald-400 font-medium shrink-0">
-                      ${opp.profit_estimate_high || 0}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-              {activeOpps.length === 0 && (
-                <div className="text-center py-5">
-                  <p className="text-xs text-slate-500 mb-2">No active opportunities</p>
-                  <Button
-                    size="sm"
-                    onClick={() => scanMutation.mutate()}
-                    disabled={isScanning}
-                    className="bg-amber-600 hover:bg-amber-500 text-white text-xs h-7 gap-1"
-                  >
-                    <Zap className={`w-3 h-3 ${isScanning ? 'animate-spin' : ''}`} />
-                    {isScanning ? 'Scanning...' : 'Scan Now'}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
+      {/* ── Department Activity Vitals ── */}
+      <div className="mt-6">
+        <DepartmentActivityRings
+          opportunities={opportunities}
+          tasks={tasks}
+          transactions={transactions}
+          identities={identities}
+        />
+      </div>
 
-          {/* Active Tasks */}
-          <div className="glass-card rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2 font-orbitron tracking-wide">
-                <span className="text-base">🚀</span>
-                Execution Pipeline
-              </h2>
-              <Link to="/Execution" className="text-xs text-blue-400/70 hover:text-blue-400 transition-colors flex items-center gap-1">
-                Execution dept <ChevronRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {activeTasks.slice(0, 5).map(task => (
-                <div key={task.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/30">
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${
-                    task.status === 'completed' ? 'bg-emerald-500' :
-                    task.status === 'failed' ? 'bg-red-500' :
-                    task.status === 'queued' ? 'bg-amber-500' : 'bg-blue-500'
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-white font-medium truncate">{task.platform || task.opportunity_type || 'Task'}</p>
-                    <p className="text-xs text-slate-500 capitalize">{task.status}</p>
-                  </div>
-                  {task.estimated_value && task.estimated_value > 0 && (
-                    <span className="text-xs text-emerald-400 font-medium">${task.estimated_value}</span>
-                  )}
-                </div>
-              ))}
-              {activeTasks.length === 0 && (
-                <p className="text-xs text-slate-500 text-center py-4">No active tasks in queue.</p>
-              )}
-            </div>
-          </div>
+      {/* ── Main Intelligence Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
+        <div className="lg:col-span-2 space-y-4">
+          {/* Realtime Opportunities */}
+          <RealtimeOpportunitiesViewer opportunities={activeOpps} />
+
+          {/* Execution Pipeline */}
+          <ExecutionPipelineMonitor tasks={activeTasks} />
         </div>
 
-        {/* Right Column */}
+        {/* Right Intelligence Column */}
         <div className="space-y-4">
           <DailyGoalTracker
             target={userGoals.daily_target || 1000}
@@ -264,6 +203,7 @@ export default function Dashboard() {
             walletBalance={walletBalance}
           />
           <SystemAuditChecker />
+          <AIInsightsPanel />
           <div className="glass-card rounded-2xl p-4">
             <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2 font-orbitron tracking-wide">
               <span className="text-base">✦</span>
@@ -271,18 +211,6 @@ export default function Dashboard() {
             </h3>
             <ActivityFeed logs={activityLogs} />
           </div>
-          <Link to="/GlobalTaskOrchestrator">
-            <div className="glass-card rounded-2xl p-4 hover:border-cyan-500/50 transition-colors cursor-pointer">
-              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2 font-orbitron tracking-wide">
-                <Workflow className="w-4 h-4 text-cyan-400" />
-                Task Orchestration
-              </h3>
-              <p className="text-xs text-slate-400 mb-3">Create cross-department task dependencies</p>
-              <Button size="sm" className="w-full bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-500/30 text-xs">
-                Manage Rules
-              </Button>
-            </div>
-          </Link>
           <N8nMcpPanel />
         </div>
       </div>

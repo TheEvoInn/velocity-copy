@@ -6,7 +6,6 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 
 export default function SubPageNav() {
   const navItems = [
-    { label: 'Dashboard', path: '/Dashboard' },
     { label: 'Bridge', path: '/StarshipBridge' },
     { label: 'Control', path: '/Control' },
     { label: 'AutoPilot', path: '/AutoPilot' },

@@ -134,6 +134,28 @@ export default function KYCStatusPanel({ onStartKYC }) {
           )}
         </div>
 
+        {/* Autopilot clearance unlock status */}
+        {(statusKey === 'approved' || statusKey === 'verified') && kycRecord.ai_analysis?.autopilot_clearance && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">Autopilot Clearance</p>
+            {[
+              { key: 'can_submit_w9',                  label: 'Tax Form Submissions' },
+              { key: 'can_submit_grant_applications',  label: 'Grant Applications' },
+              { key: 'can_use_government_portals',     label: 'Government Portals' },
+              { key: 'can_submit_financial_onboarding',label: 'Financial Onboarding' },
+              { key: 'can_attach_id_documents',        label: 'ID Document Tasks' },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex items-center gap-2 text-[11px]">
+                {kycRecord.ai_analysis.autopilot_clearance[key]
+                  ? <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                  : <Shield className="w-3 h-3 text-slate-600 shrink-0" />
+                }
+                <span className={kycRecord.ai_analysis.autopilot_clearance[key] ? 'text-slate-300' : 'text-slate-600'}>{label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Feature Lock Notice */}
         {statusKey !== 'approved' && statusKey !== 'verified' && (
           <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 flex gap-2">

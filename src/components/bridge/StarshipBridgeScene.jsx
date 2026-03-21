@@ -12,6 +12,10 @@ import AudioUIFeedback from './AudioUIFeedback';
 import BridgeAudioIntegration from './BridgeAudioIntegration';
 import BridgeSystemRefinements from './BridgeSystemRefinements';
 import BridgePerformanceMonitor from './BridgePerformanceMonitor';
+import StationInteractionController from './StationInteractionController';
+import NotificationDataBinding from './NotificationDataBinding';
+import BridgePerformanceTracker from './BridgePerformanceTracker';
+import KeyboardControlScheme from './KeyboardControlScheme';
 
 export default function StarshipBridgeScene() {
   const canvasRef = useRef(null);
@@ -28,9 +32,15 @@ export default function StarshipBridgeScene() {
   const audioUIFeedbackRef = useRef(null);
   const audioIntegrationRef = useRef(null);
   
+  const interactionControllerRef = useRef(null);
+  const notificationBindingRef = useRef(null);
+  const performanceTrackerRef = useRef(null);
+  const keyboardSchemeRef = useRef(null);
+  
   const [focusedStation, setFocusedStation] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [particleCount, setParticleCount] = useState(700);
+  const [performanceStats, setPerformanceStats] = useState({});
   
   // Subscribe to backend alerts
   useBridgeAlerts((alertEvent) => {
@@ -116,6 +126,42 @@ export default function StarshipBridgeScene() {
     // Create interactive stations
     const stations = createStations(scene);
     
+    // Initialize Phase 4 systems
+    performanceTrackerRef.current = new BridgePerformanceTracker();
+    interactionControllerRef.current = new StationInteractionController(stations, camera, renderer);
+    keyboardSchemeRef.current = new KeyboardControlScheme();
+    
+    // Setup interaction callbacks
+    interactionControllerRef.current.registerCallback('station:focused', (data) => {
+      setFocusedStation(data.station);
+      povControllerRef.current?.focusStation(data.mesh);
+      particleManagerRef.current?.focusStation(data.mesh, data.color);
+      stationScreensRef.current?.focusScreen(data.station);
+      audioIntegrationRef.current?.focusStation(data.station);
+    });
+    
+    interactionControllerRef.current.registerCallback('station:unfocused', () => {
+      setFocusedStation(null);
+      povControllerRef.current?.returnToCenter();
+      particleManagerRef.current?.unfocusStation();
+      stationScreensRef.current?.unfocusScreen();
+      audioIntegrationRef.current?.unfocusStation();
+    });
+    
+    // Setup keyboard controls
+    keyboardSchemeRef.current.registerCallback('unfocus', () => {
+      interactionControllerRef.current.unfocusStation();
+    });
+    keyboardSchemeRef.current.registerCallback('center', () => {
+      interactionControllerRef.current.unfocusStation();
+    });
+    
+    // Initialize notification binding
+    notificationBindingRef.current = new NotificationDataBinding((alertEvent) => {
+      alertSystemRef.current?.handleAlert(alertEvent);
+    });
+    notificationBindingRef.current.initialize();
+    
     // Add screens to stations
     stations.forEach(station => {
       stationScreensRef.current.createStationScreen(
@@ -124,55 +170,28 @@ export default function StarshipBridgeScene() {
       );
     });
     
-    // Raycaster for click detection
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-
+    // Event handlers delegated to controllers
     const onMouseClick = (event) => {
-      if (povControllerRef.current.isAnimating) return;
-
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(stations.map(s => s.mesh));
-
-      if (intersects.length > 0) {
-        const clickedMesh = intersects[0].object;
-        const station = stations.find(s => s.mesh === clickedMesh);
-        
-        if (station) {
-          setFocusedStation(station.name);
-          povControllerRef.current.focusStation(station.mesh);
-          particleManagerRef.current.focusStation(station.mesh, station.color);
-          stationScreensRef.current.focusScreen(station.name);
-          audioIntegrationRef.current.focusStation(station.name);
-        }
-      } else {
-        // Clicked background - return to center
-        if (focusedStation) {
-          setFocusedStation(null);
-          povControllerRef.current.returnToCenter();
-          particleManagerRef.current.unfocusStation();
-          stationScreensRef.current.unfocusScreen();
-          audioIntegrationRef.current.unfocusStation();
-        }
-      }
+      if (povControllerRef.current?.isAnimating) return;
+      interactionControllerRef.current.handleClick(event);
     };
 
-    // Keyboard handler
+    const onMouseMove = (event) => {
+      interactionControllerRef.current.handleMouseMove(event);
+    };
+
     const onKeyDown = (event) => {
-      if (event.key === 'Escape' && focusedStation) {
-        setFocusedStation(null);
-        povControllerRef.current.returnToCenter();
-        particleManagerRef.current.unfocusStation();
-        stationScreensRef.current.unfocusScreen();
-        audioIntegrationRef.current.unfocusStation();
-      }
+      keyboardSchemeRef.current.handleKeyDown(event);
+    };
+
+    const onKeyUp = (event) => {
+      keyboardSchemeRef.current.handleKeyUp(event);
     };
 
     window.addEventListener('click', onMouseClick);
+    window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
 
     // Handle window resize
     const onWindowResize = () => {
@@ -195,14 +214,19 @@ export default function StarshipBridgeScene() {
     const animate = () => {
       requestAnimationFrame(animate);
 
+      // Track performance
+      performanceTrackerRef.current.recordFrame();
+      if (frameCount % 60 === 0) {
+        setPerformanceStats(performanceTrackerRef.current.getStats());
+      }
+
       // Update controllers
-      povControllerRef.current.update();
-      particleManagerRef.current.update();
+      povControllerRef.current?.update();
+      particleManagerRef.current?.update();
       
       // Update particle count display
-      setParticleCount(particleManagerRef.current.getParticleCount());
+      setParticleCount(particleManagerRef.current?.getParticleCount() || 0);
 
-      // FPS monitoring (rough)
       frameCount++;
       const now = performance.now();
       if (now - fpsTime >= 1000) {
@@ -212,7 +236,7 @@ export default function StarshipBridgeScene() {
       }
 
       // Render with post-processing
-      postProcessingRef.current.render();
+      postProcessingRef.current?.render();
     };
 
     animate();
@@ -220,8 +244,15 @@ export default function StarshipBridgeScene() {
     // Cleanup
     return () => {
       window.removeEventListener('click', onMouseClick);
+      window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('resize', onWindowResize);
+      
+      // Cleanup Phase 4 systems
+      if (notificationBindingRef.current) {
+        notificationBindingRef.current.dispose();
+      }
       
       // Cleanup audio systems
       if (audioIntegrationRef.current) {

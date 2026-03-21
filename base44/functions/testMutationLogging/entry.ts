@@ -19,18 +19,24 @@ Deno.serve(async (req) => {
       steps: []
     };
 
-    // Step 1: Create
-    console.log('Step 1: Creating test opportunity...');
-    const created = await base44.entities.Opportunity.create({
-      title: '[TEST] Mutation Logging Verify',
-      category: 'arbitrage',
-      status: 'new',
-      auto_execute: false,
-      profit_estimate_low: 100,
-      profit_estimate_high: 500,
-      velocity_score: 50,
-      overall_score: 50
+    // Step 1: Create via universal logger
+    console.log('Step 1: Creating test opportunity via universal logger...');
+    const createRes = await base44.functions.invoke('universalMutationLogger', {
+      entity_name: 'Opportunity',
+      operation: 'create',
+      data: {
+        title: '[TEST] Mutation Logging Verify',
+        category: 'arbitrage',
+        status: 'new',
+        auto_execute: false,
+        profit_estimate_low: 100,
+        profit_estimate_high: 500,
+        velocity_score: 50,
+        overall_score: 50
+      }
     });
+    
+    const created = createRes.data?.result;
 
     results.steps.push({
       action: 'create',
@@ -40,12 +46,19 @@ Deno.serve(async (req) => {
 
     await new Promise(r => setTimeout(r, 500));
 
-    // Step 2: Update
-    console.log(`Step 2: Updating record ${created.id}...`);
-    const updated = await base44.entities.Opportunity.update(created.id, {
-      status: 'reviewing',
-      notes: 'Test update - should be logged'
+    // Step 2: Update via universal logger
+    console.log(`Step 2: Updating record ${created.id} via universal logger...`);
+    const updateRes = await base44.functions.invoke('universalMutationLogger', {
+      entity_name: 'Opportunity',
+      operation: 'update',
+      record_id: created.id,
+      data: {
+        status: 'reviewing',
+        notes: 'Test update - should be logged'
+      }
     });
+    
+    const updated = updateRes.data?.result;
 
     results.steps.push({
       action: 'update',
@@ -79,9 +92,15 @@ Deno.serve(async (req) => {
       total_activity_logs: logsArray.length
     });
 
-    // Step 4: Delete
-    console.log(`Step 4: Deleting record ${created.id}...`);
-    const deleted = await base44.entities.Opportunity.delete(created.id);
+    // Step 4: Delete via universal logger
+    console.log(`Step 4: Deleting record ${created.id} via universal logger...`);
+    const deleteRes = await base44.functions.invoke('universalMutationLogger', {
+      entity_name: 'Opportunity',
+      operation: 'delete',
+      record_id: created.id
+    });
+    
+    const deleted = deleteRes.data?.success;
 
     results.steps.push({
       action: 'delete',

@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
 
     // ── BULK DISMISS ────────────────────────────────────────────────────────
     if (action === 'dismiss_all_by_type') {
-      const { notification_type } = await req.json().catch(() => ({}));
+      const { notification_type } = body;
       if (!notification_type) return Response.json({ error: 'notification_type required' }, { status: 400 });
 
       const notifs = (await base44.asServiceRole.entities.Notification.filter(

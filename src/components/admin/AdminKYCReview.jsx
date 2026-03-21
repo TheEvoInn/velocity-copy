@@ -285,6 +285,12 @@ export default function AdminKYCReview() {
     refetchInterval: 20000,
   });
 
+  const { data: allIdentities = [] } = useQuery({
+    queryKey: ['aiIdentities'],
+    queryFn: () => base44.entities.AIIdentity.list(),
+    initialData: []
+  });
+
   const FILTERS = [
     { id: 'pending',      label: 'Pending Review', count: kycs.filter(k => ['pending','submitted'].includes(k.status)).length },
     { id: 'under_review', label: 'Under Review',   count: kycs.filter(k => k.admin_status === 'under_review').length },

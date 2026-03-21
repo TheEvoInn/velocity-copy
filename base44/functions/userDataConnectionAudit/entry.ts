@@ -256,14 +256,19 @@ Deno.serve(async (req) => {
     }
 
     // Log the audit
-    await base44.asServiceRole.entities.EngineAuditLog.create({
-      event_type: 'user_data_connection_audit',
-      module: 'userDataConnectionAudit',
-      status: audit.status,
-      details: { user_email, issues_found: audit.issues_found, repairs_made: audit.repairs_made },
-      actor: 'admin',
-      user_id: user?.id || null
-    });
+    try {
+      await base44.asServiceRole.entities.EngineAuditLog.create({
+        action_type: 'user_data_connection_audit',
+        event_type: 'user_data_connection_audit',
+        module: 'userDataConnectionAudit',
+        status: audit.status,
+        details: { user_email, issues_found: audit.issues_found, repairs_made: audit.repairs_made },
+        actor: 'admin',
+        user_id: user?.id || null
+      });
+    } catch (e) {
+      // If audit log fails, continue anyway
+    }
 
     return Response.json({
       success: true,

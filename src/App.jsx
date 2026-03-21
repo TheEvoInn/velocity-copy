@@ -50,6 +50,7 @@ import CryptoProfitSystems from './pages/CryptoProfitSystems';
 import GlobalTaskOrchestrator from './pages/GlobalTaskOrchestrator';
 import NotificationsDashboard from './pages/NotificationsDashboard';
 import WorkflowBuilder from './pages/WorkflowBuilder';
+import WebhookConfiguration from './pages/WebhookConfiguration';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -116,6 +117,7 @@ const AuthenticatedApp = () => {
         <Route path="/GlobalTaskOrchestrator" element={<GlobalTaskOrchestrator />} />
         <Route path="/NotificationsDashboard" element={<NotificationsDashboard />} />
         <Route path="/WorkflowBuilder" element={<WorkflowBuilder />} />
+        <Route path="/WebhookConfiguration" element={<WebhookConfiguration />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

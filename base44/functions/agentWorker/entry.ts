@@ -45,6 +45,12 @@ Deno.serve(async (req) => {
 
     if (action === 'execute_task') return await executeTask(base44, payload);
     if (action === 'execute_next_task') return await executeNextTask(base44);
+    if (action === 'get_live_session') return await getLiveSession(base44, payload);
+    if (action === 'pause_execution') return await pauseExecution(base44, payload);
+    if (action === 'resume_execution') return await resumeExecution(base44, payload);
+    if (action === 'stop_execution') return await stopExecution(base44, payload);
+    if (action === 'intervene') return await interveneExecution(base44, payload);
+    
     // Remaining actions require user auth
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -811,4 +817,104 @@ async function getStats(base44) {
   });
   stats.success_rate = allTasks.length > 0 ? Math.round((successCount / allTasks.length) * 100) : 0;
   return Response.json({ success: true, stats });
+}
+
+// ─── Live Monitoring ────────────────────────────────────────────────────────
+
+async function getLiveSession(base44, payload) {
+  const { task_id } = payload;
+  if (!task_id) return Response.json({ error: 'task_id required' }, { status: 400 });
+
+  const tasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+    { id: task_id }, null, 1
+  );
+  const task = tasks?.[0];
+  
+  if (!task) return Response.json({ error: 'Task not found' }, { status: 404 });
+
+  return Response.json({
+    success: true,
+    status: task.status,
+    current_step: task.current_step || task.execution_log?.[task.execution_log.length - 1]?.step || 'Initializing',
+    execution_time_seconds: task.execution_time_seconds || 0,
+    fields_filled: task.form_fields_detected?.filter(f => f.value_filled)?.length || 0,
+    total_fields: task.form_fields_detected?.length || 0,
+    screenshot_url: task.screenshot_url || null,
+    current_interaction: task.current_interaction || null,
+    execution_log: task.execution_log || [],
+    alerts: task.error_message ? [task.error_message] : [],
+    submission_success: task.submission_success || false
+  });
+}
+
+async function pauseExecution(base44, payload) {
+  const { task_id } = payload;
+  if (!task_id) return Response.json({ error: 'task_id required' }, { status: 400 });
+
+  await base44.asServiceRole.entities.TaskExecutionQueue.update(task_id, {
+    status: 'paused'
+  }).catch(() => {});
+
+  return Response.json({ success: true, message: 'Task paused' });
+}
+
+async function resumeExecution(base44, payload) {
+  const { task_id } = payload;
+  if (!task_id) return Response.json({ error: 'task_id required' }, { status: 400 });
+
+  await base44.asServiceRole.entities.TaskExecutionQueue.update(task_id, {
+    status: 'executing'
+  }).catch(() => {});
+
+  return Response.json({ success: true, message: 'Task resumed' });
+}
+
+async function stopExecution(base44, payload) {
+  const { task_id } = payload;
+  if (!task_id) return Response.json({ error: 'task_id required' }, { status: 400 });
+
+  const tasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+    { id: task_id }, null, 1
+  );
+  const task = tasks?.[0];
+
+  await base44.asServiceRole.entities.TaskExecutionQueue.update(task_id, {
+    status: 'cancelled',
+    completion_timestamp: new Date().toISOString()
+  }).catch(() => {});
+
+  if (task?.opportunity_id) {
+    await base44.asServiceRole.entities.Opportunity.update(task.opportunity_id, {
+      status: 'dismissed'
+    }).catch(() => {});
+  }
+
+  return Response.json({ success: true, message: 'Task stopped' });
+}
+
+async function interveneExecution(base44, payload) {
+  const { task_id, instruction } = payload;
+  if (!task_id) return Response.json({ error: 'task_id required' }, { status: 400 });
+
+  const tasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+    { id: task_id }, null, 1
+  );
+  const task = tasks?.[0];
+
+  if (!task) return Response.json({ error: 'Task not found' }, { status: 404 });
+
+  const execLog = task.execution_log || [];
+  execLog.push({
+    timestamp: new Date().toISOString(),
+    step: 'admin_intervention',
+    status: 'completed',
+    details: instruction || 'Admin intervention triggered'
+  });
+
+  await base44.asServiceRole.entities.TaskExecutionQueue.update(task_id, {
+    status: 'executing',
+    execution_log: execLog
+  }).catch(() => {});
+
+  return Response.json({ success: true, message: 'Intervention sent' });
 }

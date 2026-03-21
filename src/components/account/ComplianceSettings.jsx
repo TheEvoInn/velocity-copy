@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Shield, AlertCircle, FileText, CheckCircle } from 'lucide-react';
+import KYCWebhookSettings from '@/components/account/KYCWebhookSettings';
 
 export default function ComplianceSettings() {
   // Fetch KYC verification

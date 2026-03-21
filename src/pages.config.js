@@ -50,10 +50,34 @@
 
 import Dashboard from './pages/Dashboard';
 import StarshipBridge from './pages/StarshipBridge';
+import Control from './pages/Control';
+import AutoPilot from './pages/AutoPilot';
+import Discovery from './pages/Discovery';
+import Execution from './pages/Execution';
+import Finance from './pages/Finance';
+import CryptoAutomation from './pages/CryptoAutomation';
+import DigitalResellers from './pages/DigitalResellers';
+import NED from './pages/NED';
+import VIPZ from './pages/VIPZ';
+import IdentityManager from './pages/IdentityManager';
+import AdminControlPanel from './pages/AdminControlPanel';
+import Chat from './pages/Chat';
 
 export const PAGES = {
 	"Dashboard": Dashboard,
 	"StarshipBridge": StarshipBridge,
+	"Control": Control,
+	"AutoPilot": AutoPilot,
+	"Discovery": Discovery,
+	"Execution": Execution,
+	"Finance": Finance,
+	"CryptoAutomation": CryptoAutomation,
+	"DigitalResellers": DigitalResellers,
+	"NED": NED,
+	"VIPZ": VIPZ,
+	"IdentityManager": IdentityManager,
+	"AdminControlPanel": AdminControlPanel,
+	"Chat": Chat,
 }
 
 export const pagesConfig = {

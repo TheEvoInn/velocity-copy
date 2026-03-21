@@ -16,8 +16,7 @@ class PostProcessingComposer {
     
     this.renderTarget = new THREE.WebGLRenderTarget(width, height, {
       type: THREE.HalfFloatType,
-      format: THREE.RGBAFormat,
-      encoding: THREE.sRGBColorSpace
+      format: THREE.RGBAFormat
     });
     
     // Create shader passes

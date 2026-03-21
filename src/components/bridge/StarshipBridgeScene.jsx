@@ -87,9 +87,23 @@ export default function StarshipBridgeScene() {
       null, // AudioEngine added in Phase 3
       setAlerts
     );
+    
+    // Initialize post-processing
+    postProcessingRef.current = new PostProcessingComposer(renderer, camera, scene);
+    
+    // Initialize station screens
+    stationScreensRef.current = new StationScreenRenderer(scene);
 
     // Create interactive stations
     const stations = createStations(scene);
+    
+    // Add screens to stations
+    stations.forEach(station => {
+      stationScreensRef.current.createStationScreen(
+        station.name,
+        new THREE.Vector3(station.position.x, station.position.y + 0.8, station.position.z)
+      );
+    });
     
     // Raycaster for click detection
     const raycaster = new THREE.Raycaster();

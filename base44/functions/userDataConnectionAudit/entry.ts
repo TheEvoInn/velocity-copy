@@ -7,10 +7,23 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { user_email } = await req.json();
+    
+    let user_email = '';
+    try {
+      const body = await req.json();
+      user_email = body.user_email;
+    } catch (e) {
+      // If no body, try to get from auth
+      user_email = null;
+    }
 
     if (!user_email) {
-      return Response.json({ error: 'user_email required' }, { status: 400 });
+      const authenticatedUser = await base44.auth.me();
+      if (authenticatedUser?.email) {
+        user_email = authenticatedUser.email;
+      } else {
+        return Response.json({ error: 'user_email required in payload or user must be authenticated' }, { status: 400 });
+      }
     }
 
     const audit = {

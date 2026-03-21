@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   ShoppingCart, Zap, TrendingUp, Globe, Sparkles, AlertCircle,
-  Play, Pause, RotateCw, Plus, Eye, Settings, Trash2, Lock
+  Play, Pause, RotateCw, Plus, Eye, Settings, Trash2, Lock, Wand2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 import { CheckCircle2 } from 'lucide-react';
+import { Link as RouterLink } from 'react-router-dom';
 
 export default function DigitalResellers() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -357,9 +358,11 @@ export default function DigitalResellers() {
                     <Button size="sm" variant="outline" className="text-xs">
                       <Eye className="w-3 h-3 mr-1" /> View
                     </Button>
-                    <Button size="sm" variant="outline" className="text-xs">
-                      <Settings className="w-3 h-3 mr-1" /> Edit
-                    </Button>
+                    <RouterLink to={`/PageCustomizer?id=${storefront.id}`}>
+                      <Button size="sm" variant="outline" className="text-xs gap-1">
+                        <Wand2 className="w-3 h-3" /> Customize
+                      </Button>
+                    </RouterLink>
                     <Button size="sm" variant="outline" className="text-xs">
                       <Trash2 className="w-3 h-3 mr-1" /> Delete
                     </Button>

@@ -24,15 +24,29 @@ export default function UnifiedAutopilotControl() {
   // Toggle autopilot mutation
   const toggleMutation = useMutation({
     mutationFn: async (enabled) => {
-      const res = await base44.functions.invoke('unifiedOrchestrator', {
-        action: 'toggle_autopilot',
-        enabled
-      });
-      return res?.data;
+      if (enabled) {
+        // When enabling, trigger immediate activation sequence
+        const activationRes = await base44.functions.invoke('autopilotActivationTrigger', {
+          trigger_type: 'manual_toggle',
+          force_immediate: true
+        });
+        return activationRes?.data;
+      } else {
+        // When disabling, use orchestrator
+        const res = await base44.functions.invoke('unifiedOrchestrator', {
+          action: 'toggle_autopilot',
+          enabled: false
+        });
+        return res?.data;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       refetchState();
       qc.invalidateQueries({ queryKey: ['platformState'] });
+      if (data?.success) {
+        // Show activation success message
+        console.log('Autopilot activated with response:', data);
+      }
     }
   });
 

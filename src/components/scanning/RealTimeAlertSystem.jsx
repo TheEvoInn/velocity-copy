@@ -1,64 +1,109 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Clock, Zap, TrendingUp, CheckCircle } from 'lucide-react';
+import { AlertCircle, Clock, Zap, TrendingUp, CheckCircle, RefreshCw } from 'lucide-react';
 
 export default function RealTimeAlertSystem() {
-  const [alerts, setAlerts] = useState(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const queryClient = useQueryClient();
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Generate smart alerts
-  const generateAlertsMutation = useMutation({
-    mutationFn: async () => {
-      setIsGenerating(true);
+  // Real-time query for alerts with auto-refresh
+  const { data: alertsData = {}, isLoading, error, refetch } = useQuery({
+    queryKey: ['realtimeAlerts'],
+    queryFn: async () => {
       const res = await base44.functions.invoke('advancedScanningEngine', {
         action: 'generate_smart_alerts',
         payload: {}
       });
-      return res.data;
+      return res.data || {};
     },
-    onSuccess: (data) => {
-      setAlerts(data);
-      setIsGenerating(false);
-    },
-    onError: () => {
-      setIsGenerating(false);
-    }
+    refetchInterval: autoRefresh ? 5 * 60 * 1000 : false, // 5 min auto-refresh if enabled
+    staleTime: 1000 * 60 * 4, // 4 min
+    retry: 2,
+    enabled: true
   });
 
-  // Auto-generate alerts on mount
+  // Subscribe to real-time updates via base44
   useEffect(() => {
-    generateAlertsMutation.mutate();
+    if (!autoRefresh) return;
+
     const interval = setInterval(() => {
-      generateAlertsMutation.mutate();
-    }, 5 * 60 * 1000); // Refresh every 5 minutes
+      refetch();
+    }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [autoRefresh, refetch]);
 
-  if (!alerts) {
+  const alerts = alertsData || {};
+  const totalAlerts = typeof alerts.total_alerts === 'number' ? alerts.total_alerts : 0;
+
+  if (isLoading) {
     return (
       <Card className="bg-slate-900/50 border-slate-700">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-400" />
+            <AlertCircle className="w-4 h-4 text-amber-400 animate-pulse" />
             Real-Time Alerts
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-xs text-slate-500">Generating alerts...</p>
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <RefreshCw className="w-3 h-3 animate-spin" />
+            Loading alerts...
+          </div>
         </CardContent>
       </Card>
     );
   }
 
-  const totalAlerts = alerts.total_alerts || 0;
+  if (error) {
+    return (
+      <Card className="bg-slate-900/50 border-slate-700">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-400" />
+            Alert System Error
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-red-400 mb-3">Failed to load alerts</p>
+          <Button size="sm" variant="outline" onClick={() => refetch()} className="text-xs">
+            <RefreshCw className="w-3 h-3 mr-1" />
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const immediateAction = Array.isArray(alerts?.immediate_action) ? alerts.immediate_action : [];
+  const expiringSoon = Array.isArray(alerts?.expiring_soon) ? alerts.expiring_soon : [];
+  const highValue = Array.isArray(alerts?.high_value_alerts) ? alerts.high_value_alerts : [];
 
   return (
     <div className="space-y-3">
+      {/* Controls */}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant={autoRefresh ? 'default' : 'outline'}
+          onClick={() => setAutoRefresh(!autoRefresh)}
+          className="text-xs"
+        >
+          <RefreshCw className="w-3 h-3 mr-1" />
+          {autoRefresh ? 'Auto: ON' : 'Auto: OFF'}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => refetch()}
+          className="text-xs"
+        >
+          <RefreshCw className="w-3 h-3" />
+        </Button>
+      </div>
+
       {/* Alert Summary */}
       <Card className="bg-slate-900/50 border-slate-700">
         <CardHeader className="pb-3">
@@ -74,17 +119,17 @@ export default function RealTimeAlertSystem() {
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Immediate Action Alerts */}
-          {alerts.immediate_action && alerts.immediate_action.length > 0 && (
+          {immediateAction.length > 0 && (
             <div className="space-y-2">
               <div className="text-xs font-semibold text-red-400 flex items-center gap-1.5">
                 <AlertCircle className="w-3 h-3" />
-                🚨 Immediate Action ({alerts.immediate_action.length})
+                🚨 Immediate Action ({immediateAction.length})
               </div>
-              {alerts.immediate_action.map((alert) => (
-                <div key={alert.id} className="rounded-lg bg-red-950/30 border border-red-500/30 p-2.5 text-xs">
-                  <div className="font-medium text-red-300 truncate">{alert.title}</div>
+              {immediateAction.map((alert) => (
+                <div key={alert?.id || Math.random()} className="rounded-lg bg-red-950/30 border border-red-500/30 p-2.5 text-xs">
+                  <div className="font-medium text-red-300 truncate">{alert?.title || 'Untitled'}</div>
                   <div className="text-red-400 text-[10px] mt-1">
-                    ⏱️ {alert.minutes_remaining} minutes remaining • ${alert.profit_estimate}
+                    ⏱️ {typeof alert?.minutes_remaining === 'number' ? alert.minutes_remaining : '—'} min • ${typeof alert?.profit_estimate === 'number' ? alert.profit_estimate : '0'}
                   </div>
                 </div>
               ))}
@@ -92,17 +137,17 @@ export default function RealTimeAlertSystem() {
           )}
 
           {/* Expiring Soon Alerts */}
-          {alerts.expiring_soon && alerts.expiring_soon.length > 0 && (
+          {expiringSoon.length > 0 && (
             <div className="space-y-2">
               <div className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
                 <Clock className="w-3 h-3" />
-                ⏰ Expiring Soon ({alerts.expiring_soon.length})
+                ⏰ Expiring Soon ({expiringSoon.length})
               </div>
-              {alerts.expiring_soon.slice(0, 3).map((alert) => (
-                <div key={alert.id} className="rounded-lg bg-amber-950/30 border border-amber-500/30 p-2.5 text-xs">
-                  <div className="font-medium text-amber-300 truncate">{alert.title}</div>
+              {expiringSoon.slice(0, 3).map((alert) => (
+                <div key={alert?.id || Math.random()} className="rounded-lg bg-amber-950/30 border border-amber-500/30 p-2.5 text-xs">
+                  <div className="font-medium text-amber-300 truncate">{alert?.title || 'Untitled'}</div>
                   <div className="text-amber-400 text-[10px] mt-1">
-                    ⏰ {alert.hours_remaining}h remaining • ${alert.profit_estimate}
+                    ⏰ {typeof alert?.hours_remaining === 'number' ? alert.hours_remaining : '—'}h • ${typeof alert?.profit_estimate === 'number' ? alert.profit_estimate : '0'}
                   </div>
                 </div>
               ))}
@@ -110,17 +155,17 @@ export default function RealTimeAlertSystem() {
           )}
 
           {/* High Value Alerts */}
-          {alerts.high_value_alerts && alerts.high_value_alerts.length > 0 && (
+          {highValue.length > 0 && (
             <div className="space-y-2">
               <div className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
                 <TrendingUp className="w-3 h-3" />
-                💰 High Value ({alerts.high_value_alerts.length})
+                💰 High Value ({highValue.length})
               </div>
-              {alerts.high_value_alerts.slice(0, 3).map((alert) => (
-                <div key={alert.id} className="rounded-lg bg-emerald-950/30 border border-emerald-500/30 p-2.5 text-xs">
-                  <div className="font-medium text-emerald-300 truncate">{alert.title}</div>
+              {highValue.slice(0, 3).map((alert) => (
+                <div key={alert?.id || Math.random()} className="rounded-lg bg-emerald-950/30 border border-emerald-500/30 p-2.5 text-xs">
+                  <div className="font-medium text-emerald-300 truncate">{alert?.title || 'Untitled'}</div>
                   <div className="text-emerald-400 text-[10px] mt-1">
-                    💰 ${alert.profit_high} • Score: {alert.score}/100 • {alert.platform}
+                    💰 ${typeof alert?.profit_high === 'number' ? alert.profit_high : '0'} • Score: {typeof alert?.score === 'number' ? alert.score : '—'}/100 • {alert?.platform || 'unknown'}
                   </div>
                 </div>
               ))}

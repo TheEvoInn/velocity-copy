@@ -374,6 +374,7 @@ export default function CockpitHUD({ hoveredModule, onNavigate }) {
   const { data: opportunities = [] } = useOpportunities();
 
   const [autopilotMode, setAutopilotMode] = useState('auto');
+  const [showOrbitView, setShowOrbitView] = useState(false);
 
   const handleAutopilotChange = async (mode) => {
     setAutopilotMode(mode);
@@ -384,6 +385,9 @@ export default function CockpitHUD({ hoveredModule, onNavigate }) {
 
   return (
     <>
+      {/* ── Workflow Orbit View overlay ───────────────────────────────────────── */}
+      {showOrbitView && <WorkflowOrbitView onClose={() => setShowOrbitView(false)} />}
+
       {/* ── Overlay HUD grid ─────────────────────────────────────────────────── */}
       <div className="absolute inset-0 pointer-events-none z-20" style={{ paddingBottom: '52px' }}>
         <div className="h-full grid grid-cols-[220px_1fr_220px] gap-0">

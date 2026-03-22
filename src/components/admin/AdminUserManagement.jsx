@@ -68,11 +68,12 @@ function Badge({ status, text }) {
 
 function UserRow({ user, identities, goals, connections, kycs, onAudit }) {
   const [expanded, setExpanded] = useState(false);
+  const [approving, setApproving] = useState(null);
 
-  const userIdentities  = identities.filter(i => i.created_by === user.email);
-  const userGoal        = goals.find(g => g.created_by === user.email);
-  const userConnections = connections.filter(c => c.created_by === user.email);
-  const userKyc         = kycs.find(k => k.created_by === user.email);
+  const userIdentities  = identities.filter(i => (i.created_by === user.email || i.user_email === user.email));
+  const userGoal        = goals.find(g => (g.created_by === user.email || g.user_email === user.email));
+  const userConnections = connections.filter(c => (c.created_by === user.email || c.user_email === user.email));
+  const userKyc         = kycs.find(k => (k.created_by === user.email || k.user_email === user.email));
 
   const identityStatus = userIdentities.length > 0 ? 'complete' : 'not_started';
   const onboardStatus  = userGoal?.onboarded ? 'complete' : userGoal ? 'partial' : 'not_started';

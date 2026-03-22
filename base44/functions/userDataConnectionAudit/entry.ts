@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
     if (!userGoal) {
       repairs.push(
         base44.asServiceRole.entities.UserGoals.create({
-          user_email: user_email,
+          user_email: user_email,  // REQUIRED — Enables admin filtering
           daily_target: 1000,
           available_capital: 0,
           risk_tolerance: 'moderate',
@@ -240,7 +240,9 @@ Deno.serve(async (req) => {
           wallet_balance: 0,
           total_earned: 0,
           onboarded: false,
-          autopilot_enabled: false
+          autopilot_enabled: false,
+          ai_preferred_categories: [],
+          preferred_categories: []
         }).then(() => {
           audit.connections.user_goals.repair = 'created';
           audit.repairs_made++;

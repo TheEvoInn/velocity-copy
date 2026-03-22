@@ -155,8 +155,8 @@ export default function CockpitScene({ onModuleSelect, onHover, activityLevels =
       // Rotate/float planets
       S.planets.forEach((p, i) => {
         p.mesh.rotation.y += p.rotSpeed;
-        p.ring?.rotation.z += 0.003 + i * 0.001;
-        p.orbitGroup?.rotation.y += 0.008 + i * 0.002;
+        if (p.ring) p.ring.rotation.z += 0.003 + i * 0.001;
+        if (p.orbitGroup) p.orbitGroup.rotation.y += 0.008 + i * 0.002;
         // Glow pulse based on activity
         if (p.glowMat) {
           p.glowMat.opacity = 0.18 + Math.sin(t * 1.5 + i) * 0.08 + (activityLevels[p.name] || 0) * 0.2;
@@ -166,8 +166,8 @@ export default function CockpitScene({ onModuleSelect, onHover, activityLevels =
       // Rotate stations
       S.stations.forEach((s, i) => {
         s.mesh.rotation.y += 0.005;
-        s.ring1?.rotation.x += 0.01;
-        s.ring2?.rotation.z += 0.008;
+        if (s.ring1) s.ring1.rotation.x += 0.01;
+        if (s.ring2) s.ring2.rotation.z += 0.008;
       });
 
       // Animate particle trails

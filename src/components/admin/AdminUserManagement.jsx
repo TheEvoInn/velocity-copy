@@ -498,15 +498,15 @@ export default function AdminUserManagement() {
           { label: 'Total Users',    value: users.length,      color: '#a855f7', icon: Users },
           { label: 'Onboarded',      value: onboarded,         color: '#10b981', icon: CheckCircle2 },
           { label: 'With Identities', value: withIdentities,   color: '#06b6d4', icon: Bot },
-          { label: 'Connected Accounts', value: withConnections, color: '#f59e0b', icon: Link2 },
-          { label: 'Pending KYC',    value: pendingKyc,        color: '#ef4444', icon: Clock },
+          { label: 'Connected Platforms', value: withConnections, color: '#f59e0b', icon: Link2 },
+          { label: 'Earned (Total)', value: `$${totalEarned.toFixed(0)}`,        color: '#06b981', icon: Zap },
         ].map(({ label, value, color, icon: Icon }) => (
           <div key={label} className="rounded-xl p-3" style={{ background: `${color}10`, border: `1px solid ${color}25` }}>
             <div className="flex items-center gap-2 mb-1">
               <Icon className="w-3.5 h-3.5" style={{ color }} />
               <p className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</p>
             </div>
-            <p className="text-xl font-orbitron font-bold" style={{ color }}>{value}</p>
+            <p className="text-lg font-orbitron font-bold" style={{ color }}>{value}</p>
           </div>
         ))}
       </div>

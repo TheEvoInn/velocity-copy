@@ -269,27 +269,31 @@ function buildCockpitInterior(scene) {
   const group = new THREE.Group();
   scene.add(group);
 
-  // All cockpit elements sit just in front of camera (camera at z=10, looking at z=-20)
-  // Dashboard and consoles at z=8 fill the lower portion of the view
+  // Cockpit sits at the very bottom of the view — well below the planet horizon.
+  // Camera is at z=10 looking toward z=-20. Y=-6 pushes everything below the viewport center.
+
+  // Main dashboard slab (bottom strip)
   const dashMat = new THREE.MeshStandardMaterial({ color: 0x050a1a, metalness: 0.85, roughness: 0.2 });
-  const dash = new THREE.Mesh(new THREE.BoxGeometry(18, 2.5, 1.5), dashMat);
-  dash.position.set(0, -3.5, 7); dash.rotation.x = -0.3; group.add(dash);
+  const dash = new THREE.Mesh(new THREE.BoxGeometry(20, 2, 1.2), dashMat);
+  dash.position.set(0, -6.5, 6); dash.rotation.x = -0.5; group.add(dash);
 
-  const leftConsole = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 1.2), new THREE.MeshStandardMaterial({ color: 0x0a0a1e, metalness: 0.9, roughness: 0.15, emissive: 0xa855f7, emissiveIntensity: 0.06 }));
-  leftConsole.position.set(-8, -1.5, 7.5); leftConsole.rotation.y = 0.4; group.add(leftConsole);
+  // Left console — angled inward, low and to the side
+  const leftConsole = new THREE.Mesh(new THREE.BoxGeometry(3.5, 2.5, 1), new THREE.MeshStandardMaterial({ color: 0x0a0a1e, metalness: 0.9, roughness: 0.15, emissive: 0xa855f7, emissiveIntensity: 0.08 }));
+  leftConsole.position.set(-9, -6.2, 6.5); leftConsole.rotation.y = 0.45; group.add(leftConsole);
 
-  const rightConsole = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 1.2), new THREE.MeshStandardMaterial({ color: 0x0a0a1e, metalness: 0.9, roughness: 0.15, emissive: 0x00e8ff, emissiveIntensity: 0.06 }));
-  rightConsole.position.set(8, -1.5, 7.5); rightConsole.rotation.y = -0.4; group.add(rightConsole);
+  // Right console
+  const rightConsole = new THREE.Mesh(new THREE.BoxGeometry(3.5, 2.5, 1), new THREE.MeshStandardMaterial({ color: 0x0a0a1e, metalness: 0.9, roughness: 0.15, emissive: 0x00e8ff, emissiveIntensity: 0.08 }));
+  rightConsole.position.set(9, -6.2, 6.5); rightConsole.rotation.y = -0.45; group.add(rightConsole);
 
-  // Holographic screens
+  // Small angled screens — tilted steeply down so they don't block the sky
   const screens = [];
   const screenData = [
-    { x: -6, y: 0.5, z: 7.8, rx: -0.2, ry: 0.3, color: 0xa855f7, w: 3, h: 2 },
-    { x:  0, y: 0.8, z: 7.0, rx: -0.1, ry: 0,   color: 0x00e8ff, w: 4, h: 2.5 },
-    { x:  6, y: 0.5, z: 7.8, rx: -0.2, ry:-0.3, color: 0x10b981, w: 3, h: 2 },
+    { x: -7, y: -5.5, z: 6.8, rx: -1.1, ry: 0.3, color: 0xa855f7, w: 2.5, h: 1.5 },
+    { x:  0, y: -5.2, z: 6.2, rx: -1.0, ry: 0,   color: 0x00e8ff, w: 3.5, h: 1.8 },
+    { x:  7, y: -5.5, z: 6.8, rx: -1.1, ry:-0.3, color: 0x10b981, w: 2.5, h: 1.5 },
   ];
   screenData.forEach((sd) => {
-    const mat = new THREE.MeshStandardMaterial({ color: sd.color, emissive: sd.color, emissiveIntensity: 0.35, transparent: true, opacity: 0.85 });
+    const mat = new THREE.MeshStandardMaterial({ color: sd.color, emissive: sd.color, emissiveIntensity: 0.5, transparent: true, opacity: 0.9 });
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(sd.w, sd.h), mat);
     mesh.position.set(sd.x, sd.y, sd.z);
     mesh.rotation.set(sd.rx, sd.ry, 0);
@@ -297,44 +301,35 @@ function buildCockpitInterior(scene) {
     screens.push(mesh);
 
     const edges = new THREE.EdgesGeometry(new THREE.PlaneGeometry(sd.w, sd.h));
-    const border = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: sd.color, transparent: true, opacity: 0.5 }));
+    const border = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: sd.color, transparent: true, opacity: 0.7 }));
     border.position.copy(mesh.position);
     border.rotation.copy(mesh.rotation);
     group.add(border);
   });
 
-  // Control buttons
+  // Control buttons along the dash
   const buttons = [];
   const buttonColors = [0x00e8ff, 0xff2ec4, 0xf9d65c, 0x10b981, 0xa855f7, 0x3b82f6];
   for (let i = 0; i < 12; i++) {
     const col = buttonColors[i % buttonColors.length];
     const btn = new THREE.Mesh(
       new THREE.CylinderGeometry(0.12, 0.12, 0.1, 12),
-      new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.6, metalness: 0.5 })
+      new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.8, metalness: 0.5 })
     );
-    btn.position.set(-3.5 + (i % 6) * 1.4, -2.5, 8.2 - Math.floor(i/6)*0.4);
+    btn.position.set(-3.5 + (i % 6) * 1.4, -5.8, 7.2 - Math.floor(i/6)*0.3);
     group.add(btn);
     buttons.push(btn);
   }
 
-  // Gauge rings
-  [-4.5, 4.5].forEach((x, i) => {
+  // Gauge rings on dash corners
+  [-5, 5].forEach((x, i) => {
     const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.5, 0.04, 8, 48),
-      new THREE.MeshStandardMaterial({ color: i === 0 ? 0xa855f7 : 0x00e8ff, emissive: i === 0 ? 0xa855f7 : 0x00e8ff, emissiveIntensity: 1 })
+      new THREE.TorusGeometry(0.45, 0.04, 8, 48),
+      new THREE.MeshStandardMaterial({ color: i === 0 ? 0xa855f7 : 0x00e8ff, emissive: i === 0 ? 0xa855f7 : 0x00e8ff, emissiveIntensity: 1.2 })
     );
-    ring.position.set(x, -2.2, 8.2);
+    ring.position.set(x, -5.7, 7.3); ring.rotation.x = -0.5;
     group.add(ring);
   });
-
-  // Floor grating
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(20, 10),
-    new THREE.MeshStandardMaterial({ color: 0x08091e, metalness: 0.8, roughness: 0.4, emissive: 0x00e8ff, emissiveIntensity: 0.02 })
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.set(0, -5, 5);
-  group.add(floor);
 
   return { screens, buttons, scanLine: null };
 }

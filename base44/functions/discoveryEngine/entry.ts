@@ -452,29 +452,32 @@ Deno.serve(async (req) => {
       // Phase 1: Curated high-quality opportunities
       let allOpportunities = getCuratedOpportunities(user.email);
 
-      // Phase 2: AI-powered internet scan for additional live opportunities
+      // Phase 2: AI-powered internet scan for additional live opportunities (only if LLM keys available)
+      const hasLLM = !!(GEMINI_KEY || OPENAI_KEY);
       const scanCategories = categories.length > 0
         ? categories
-        : Object.keys(KEYWORD_MAP).slice(0, 8); // Scan top 8 categories with AI
+        : Object.keys(KEYWORD_MAP).slice(0, 8);
 
       const aiScanResults = [];
-      for (const cat of scanCategories.slice(0, 6)) {
-        try {
-          const catData = KEYWORD_MAP[cat];
-          if (!catData) continue;
-          const aiOpps = await scanCategoryWithAI(cat, catData.primary.concat(catData.expanded), catData.platforms);
-          for (const opp of aiOpps) {
-            aiScanResults.push({
-              ...opp,
-              category: cat,
-              user_email: user.email,
-              status: 'discovered',
-              score: scoreOpportunity({ ...opp, online_only: true, can_ai_complete: opp.can_ai_complete }),
-              pay_currency: 'USD',
-            });
+      if (hasLLM) {
+        for (const cat of scanCategories.slice(0, 6)) {
+          try {
+            const catData = KEYWORD_MAP[cat];
+            if (!catData) continue;
+            const aiOpps = await scanCategoryWithAI(cat, catData.primary.concat(catData.expanded), catData.platforms);
+            for (const opp of aiOpps) {
+              aiScanResults.push({
+                ...opp,
+                category: cat,
+                user_email: user.email,
+                status: 'discovered',
+                score: scoreOpportunity({ ...opp, online_only: true, can_ai_complete: opp.can_ai_complete }),
+                pay_currency: 'USD',
+              });
+            }
+          } catch (e) {
+            console.error(`AI scan failed for ${cat}:`, e.message);
           }
-        } catch (e) {
-          console.error(`AI scan failed for ${cat}:`, e.message);
         }
       }
 

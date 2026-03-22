@@ -44,13 +44,14 @@ const CATEGORIES = {
 
 const DIFFICULTY_COLOR = { beginner: '#10b981', intermediate: '#f9d65c', advanced: '#ef4444' };
 const SCAN_STEPS = [
-  '🔍 Expanding keywords across 25+ categories...',
-  '🌐 Targeting: Upwork · Fiverr · Rev · Appen · MTurk · Scale.ai...',
-  '🤖 Running AI compatibility filter...',
-  '🚫 Filtering out non-online & physical tasks...',
-  '📊 Scoring all opportunities by pay, speed, and AI-fit...',
-  '⚡ Syncing top picks to your dashboard...',
-  '✅ Discovery complete — opportunities loaded!',
+  '⚙️ Initializing keyword expansion engine...',
+  '🔍 Expanding 200+ search terms across 30 categories...',
+  '🌐 Scanning: Upwork · Fiverr · Rev · Appen · MTurk · Scale.ai · Outlier.ai · Remotasks...',
+  '🤖 AI internet discovery — live scraping active opportunities...',
+  '🚫 Filtering physical, phone-required, and non-online tasks...',
+  '📊 Scoring by pay rate, speed, AI-fit, platform reliability...',
+  '⚡ Task Reader parsing — converting to executable workflows...',
+  '✅ Discovery complete — syncing to your Autopilot queue!',
 ];
 
 function OppCard({ opp, onQueueAutopilot }) {

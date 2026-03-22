@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { action } = await req.json().catch(() => ({}));
+    const { action, filter_email } = await req.json().catch(() => ({}));
 
     // ─────────────────────────────────────────────────────────────────────────
     // PARALLEL FETCH: All admin-visible data in one request

@@ -358,7 +358,7 @@ export default function AdminPanel() {
                                 <p>Name: <span className="text-white">{userKYC.full_legal_name || '—'}</span></p>
                                 <p>Verified: <span className="text-white">{userKYC.verified_at ? new Date(userKYC.verified_at).toLocaleString() : '—'}</span></p>
                                 {userKYC.admin_notes && <p>Notes: <span className="text-slate-400">{userKYC.admin_notes}</span></p>}
-                                <div className="flex gap-2 mt-3">
+                                <div className="flex flex-wrap gap-2 mt-3">
                                   {userKYC.status !== 'approved' && (
                                     <Button
                                       size="sm"
@@ -379,14 +379,13 @@ export default function AdminPanel() {
                                       <XCircle className="w-3 h-3" /> Deny
                                     </Button>
                                   )}
-                                  {!userKYC.verified_at && (
+                                  {userKYC.verified_at && (
                                     <Button
                                       size="sm"
-                                      onClick={() => verifyKYCMutation.mutate(userKYC.id)}
-                                      disabled={verifyKYCMutation.isPending}
-                                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1"
+                                      disabled
+                                      className="bg-slate-700 text-slate-400 text-xs gap-1"
                                     >
-                                      <Eye className="w-3 h-3" /> Verify
+                                      <Eye className="w-3 h-3" /> Verified
                                     </Button>
                                   )}
                                 </div>

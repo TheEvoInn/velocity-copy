@@ -9,7 +9,7 @@
  *   log_identity_action — appends an audit event for this identity
  *   get_audit_log       — returns filtered identity audit events
  */
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
   try {

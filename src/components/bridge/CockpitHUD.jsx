@@ -397,31 +397,45 @@ export default function CockpitHUD({ hoveredModule, onNavigate }) {
       {/* ── Workflow Orbit View overlay ───────────────────────────────────────── */}
       {showOrbitView && <WorkflowOrbitView onClose={() => setShowOrbitView(false)} />}
 
-      {/* ── Overlay HUD grid ─────────────────────────────────────────────────── */}
-      <div className="absolute inset-0 pointer-events-none z-20" style={{ paddingBottom: '52px' }}>
-        <div className="h-full grid grid-cols-[220px_1fr_220px] gap-0">
+      {/* ── Minimize toggle button ────────────────────────────────────────────── */}
+      <button
+        onClick={() => setHudMinimized(m => !m)}
+        className="absolute top-2 right-2 z-30 pointer-events-auto flex items-center gap-1.5 px-2 py-1 rounded font-orbitron text-[8px] tracking-widest transition-all"
+        style={{ background: 'rgba(5,7,20,0.8)', border: '1px solid rgba(0,232,255,0.2)', color: hudMinimized ? '#00e8ff' : '#64748b' }}
+        title={hudMinimized ? 'Show HUD' : 'Minimize HUD'}
+      >
+        {hudMinimized ? '▲ HUD' : '▼ HUD'}
+      </button>
 
-          {/* ── LEFT CONSOLE ──────────────────────────────────────────────────── */}
-          <div className="h-full flex flex-col justify-start pt-4 pl-4 pr-2 pointer-events-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 100px)' }}>
-            <EngineStatusPanel navigate={handleNav} />
+      {!hudMinimized && (
+        <>
+          {/* ── Overlay HUD grid ─────────────────────────────────────────────────── */}
+          <div className="absolute inset-0 pointer-events-none z-20" style={{ paddingBottom: '52px' }}>
+            <div className="h-full grid grid-cols-[220px_1fr_220px] gap-0">
+
+              {/* ── LEFT CONSOLE ──────────────────────────────────────────────────── */}
+              <div className="h-full flex flex-col justify-start pt-4 pl-4 pr-2 pointer-events-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 100px)' }}>
+                <EngineStatusPanel navigate={handleNav} />
+              </div>
+
+              {/* ── CENTER DISPLAY (top only, 3D shows through bottom) ──────────── */}
+              <div className="flex flex-col pt-4 px-3 pointer-events-auto" style={{ maxHeight: '60vh' }}>
+                <MainDisplay goals={goals} tasks={tasks} wallets={wallets} logs={logs} opportunities={opportunities} />
+              </div>
+
+              {/* ── RIGHT CONSOLE ─────────────────────────────────────────────────── */}
+              <div className="h-full flex flex-col justify-start pt-4 pl-2 pr-4 pointer-events-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 100px)' }}>
+                <NavigationPanel navigate={handleNav} hoveredModule={hoveredModule} />
+              </div>
+            </div>
           </div>
 
-          {/* ── CENTER DISPLAY (top only, 3D shows through bottom) ──────────── */}
-          <div className="flex flex-col pt-4 px-3 pointer-events-auto" style={{ maxHeight: '60vh' }}>
-            <MainDisplay goals={goals} tasks={tasks} wallets={wallets} logs={logs} opportunities={opportunities} />
+          {/* ── Autopilot throttle floating (below main display) ─────────────────── */}
+          <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-auto" style={{ top: 'calc(60vh + 8px)', width: '200px' }}>
+            <AutopilotThrottle mode={autopilotMode} onChange={handleAutopilotChange} loading={false} />
           </div>
-
-          {/* ── RIGHT CONSOLE ─────────────────────────────────────────────────── */}
-          <div className="h-full flex flex-col justify-start pt-4 pl-2 pr-4 pointer-events-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 100px)' }}>
-            <NavigationPanel navigate={handleNav} hoveredModule={hoveredModule} />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Autopilot throttle floating (below main display) ─────────────────── */}
-      <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-auto" style={{ top: 'calc(60vh + 8px)', width: '200px' }}>
-        <AutopilotThrottle mode={autopilotMode} onChange={handleAutopilotChange} loading={false} />
-      </div>
+        </>
+      )}
 
       {/* ── Lower control strip ──────────────────────────────────────────────── */}
       <LowerControlStrip

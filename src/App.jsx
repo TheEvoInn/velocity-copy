@@ -53,6 +53,8 @@ const AuthenticatedApp = () => {
         <Route path="/WalletDashboard" element={Pages.WalletDashboard ? <Pages.WalletDashboard /> : <PageNotFound />} />
         <Route path="/AutoPilotEngine" element={Pages.AutoPilotEngine ? <Pages.AutoPilotEngine /> : <PageNotFound />} />
         <Route path="/WorkDiscovery" element={Pages.WorkDiscovery ? <Pages.WorkDiscovery /> : <PageNotFound />} />
+        <Route path="/IdentityManager" element={Pages.IdentityManager ? <Pages.IdentityManager /> : <PageNotFound />} />
+        <Route path="/SystemAuditDashboard" element={Pages.SystemAuditDashboard ? <Pages.SystemAuditDashboard /> : <PageNotFound />} />
         {/* Nested 404 for module paths */}
         <Route path="*" element={<PageNotFound />} />
       </Route>

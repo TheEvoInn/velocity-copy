@@ -3,15 +3,18 @@
  * Shows active AI personas, assigned credentials, platform authorization matrix,
  * success metrics. Full 2-way sync via useUserIdentities hook.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useUserIdentities } from '@/hooks/useUserData';
-import { Plus, RefreshCw, Shield, Radio, Power, Users, Activity } from 'lucide-react';
+import { Plus, RefreshCw, Shield, Radio, Power, Users, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import IdentityPersonaCard from '@/components/identity/IdentityPersonaCard';
 import IdentityMetricsPanel from '@/components/identity/IdentityMetricsPanel';
 import IdentityCreateForm from '@/components/identity/IdentityCreateForm';
+import IdentityOnboardingWizard from '@/components/identity/IdentityOnboardingWizard';
+import IdentityHealthBadge, { getIdentityHealthStatus } from '@/components/identity/IdentityHealthBadge';
 
 export default function IdentityManager() {
   const qc = useQueryClient();

@@ -193,19 +193,45 @@ export default function IdentityManager() {
       {/* ── AGGREGATE METRICS ── */}
       <IdentityMetricsPanel identities={identities} linkedAccounts={allLinkedAccounts} />
 
+      {/* ── ONBOARDING NOTICE BANNER ── */}
+      {identities.some(i => !i.onboarding_complete) && (
+        <div className="mb-5 p-4 rounded-2xl flex items-center justify-between gap-4"
+          style={{ background: 'rgba(249,214,92,0.05)', border: '1px solid rgba(249,214,92,0.2)' }}>
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <div>
+              <p className="text-xs font-orbitron text-amber-400 tracking-widest">ONBOARDING REQUIRED</p>
+              <p className="text-[10px] text-amber-300/60 mt-0.5">
+                {identities.filter(i => !i.onboarding_complete).length} identity(ies) must complete onboarding before Autopilot can use them.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const pending = identities.find(i => !i.onboarding_complete);
+              if (pending) setOnboardingIdentity(pending);
+            }}
+            className="text-xs font-orbitron px-3 py-1.5 rounded-xl shrink-0 transition-all"
+            style={{ background: 'rgba(249,214,92,0.1)', border: '1px solid rgba(249,214,92,0.3)', color: '#f9d65c' }}>
+            Resume Onboarding →
+          </button>
+        </div>
+      )}
+
       {/* ── FILTER TABS ── */}
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2 mb-5 flex-wrap">
         {[
           { key: 'all', label: `All (${identities.length})` },
-          { key: 'active', label: 'Active' },
+          { key: 'active', label: `Active (${identities.filter(i => i.is_active).length})` },
+          { key: 'onboarding', label: `Onboarding (${identities.filter(i => !i.onboarding_complete).length})`, warn: identities.some(i => !i.onboarding_complete) },
           { key: 'inactive', label: 'Inactive' },
         ].map(tab => (
           <button key={tab.key} onClick={() => setFilter(tab.key)}
             className="px-4 py-2 rounded-xl text-xs font-orbitron tracking-wide transition-all"
             style={{
               background: filter === tab.key ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${filter === tab.key ? 'rgba(168,85,247,0.35)' : 'rgba(255,255,255,0.06)'}`,
-              color: filter === tab.key ? '#a855f7' : '#64748b',
+              border: `1px solid ${filter === tab.key ? 'rgba(168,85,247,0.35)' : tab.warn ? 'rgba(249,214,92,0.2)' : 'rgba(255,255,255,0.06)'}`,
+              color: filter === tab.key ? '#a855f7' : tab.warn ? '#f9d65c' : '#64748b',
             }}>
             {tab.label}
           </button>

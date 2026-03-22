@@ -16,6 +16,7 @@ import AITaskFeed from '../components/autopilot/AITaskFeed';
 import DualStreamCard from '../components/autopilot/DualStreamCard';
 import AutopilotActivationDiagnostics from '../components/autopilot/AutopilotActivationDiagnostics';
 import AutoExecuteRuleBuilder from '../components/autopilot/AutoExecuteRuleBuilder';
+import RealtimeCommandHub from '../components/autopilot/RealtimeCommandHub';
 
 const TABS = [
   { key: 'hud', label: 'Mission HUD', icon: '🛰️' },

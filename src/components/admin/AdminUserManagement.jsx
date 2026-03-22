@@ -266,7 +266,58 @@ export default function AdminUserManagement() {
   const [search, setSearch] = useState('');
   const [auditUser, setAuditUser] = useState(null);
   const [auditResult, setAuditResult] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [userDataProfile, setUserDataProfile] = useState(null);
   const qc = useQueryClient();
+
+  // User search mutation
+  const searchMutation = useMutation({
+    mutationFn: async (searchTerm) => {
+      const res = await base44.functions.invoke('userIdentificationLinker', {
+        action: 'search_users',
+        search_term: searchTerm
+      });
+      return res.data?.results || [];
+    },
+    onSuccess: (results) => {
+      setSearchResults(results);
+      setShowSearchResults(true);
+    },
+    onError: (err) => toast.error(err.message)
+  });
+
+  // User data identification mutation
+  const identifyMutation = useMutation({
+    mutationFn: async (userEmail) => {
+      const res = await base44.functions.invoke('userIdentificationLinker', {
+        action: 'identify_user_data',
+        user_email: userEmail
+      });
+      return res.data?.profile;
+    },
+    onSuccess: (profile) => {
+      setUserDataProfile(profile);
+      toast.success(`Found ${profile.data_summary.total_records} records for user`);
+    },
+    onError: (err) => toast.error(err.message)
+  });
+
+  // Repair user links mutation
+  const repairLinksMutation = useMutation({
+    mutationFn: async (userEmail) => {
+      const res = await base44.functions.invoke('userIdentificationLinker', {
+        action: 'repair_user_links',
+        user_email: userEmail
+      });
+      return res.data?.repairs;
+    },
+    onSuccess: (repairs) => {
+      toast.success(`Repaired ${repairs.summary.successful} data links`);
+      refetch();
+    },
+    onError: (err) => toast.error(err.message)
+  });
 
   // ─────────────────────────────────────────────────────────────────────────
   // REAL-TIME SUBSCRIPTIONS — Auto-update when user data changes

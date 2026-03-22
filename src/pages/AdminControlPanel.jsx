@@ -101,23 +101,51 @@ export default function AdminControlPanel() {
 
         {/* Summary Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[
-            { label: 'Total Users', value: metadata.total_users || 0, color: '#a855f7', icon: Users },
-            { label: 'Onboarded', value: metadata.users_onboarded || 0, color: '#10b981', icon: CheckCircle2 },
-            { label: 'With Identities', value: metadata.users_with_identities || 0, color: '#06b6d4', icon: Bot },
-            { label: 'Connected Platforms', value: metadata.users_with_connections || 0, color: '#f59e0b', icon: Link2 },
-            { label: 'Total Earned', value: `$${(metadata.total_earned_across_users || 0).toFixed(0)}`, color: '#10b981', icon: Zap },
-          ].map(({ label, value, color, icon: Icon }) => (
-            <Card key={label} className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className="w-4 h-4" style={{ color }} />
-                  <p className="text-xs font-medium text-slate-600 uppercase">{label}</p>
-                </div>
-                <p className="text-2xl font-bold text-slate-900">{value}</p>
-              </CardContent>
-            </Card>
-          ))}
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-4 h-4" style={{ color: '#a855f7' }} />
+                <p className="text-xs font-medium text-slate-600 uppercase">Total Users</p>
+              </div>
+              <p className="text-2xl font-bold text-slate-900">{metadata.total_users || 0}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle2 className="w-4 h-4" style={{ color: '#10b981' }} />
+                <p className="text-xs font-medium text-slate-600 uppercase">Onboarded</p>
+              </div>
+              <p className="text-2xl font-bold text-slate-900">{metadata.users_onboarded || 0}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Bot className="w-4 h-4" style={{ color: '#06b6d4' }} />
+                <p className="text-xs font-medium text-slate-600 uppercase">With Identities</p>
+              </div>
+              <p className="text-2xl font-bold text-slate-900">{metadata.users_with_identities || 0}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Link2 className="w-4 h-4" style={{ color: '#f59e0b' }} />
+                <p className="text-xs font-medium text-slate-600 uppercase">Connected Platforms</p>
+              </div>
+              <p className="text-2xl font-bold text-slate-900">{metadata.users_with_connections || 0}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="w-4 h-4" style={{ color: '#10b981' }} />
+                <p className="text-xs font-medium text-slate-600 uppercase">Total Earned</p>
+              </div>
+              <p className="text-2xl font-bold text-slate-900">${(metadata.total_earned_across_users || 0).toFixed(0)}</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Search Bar */}

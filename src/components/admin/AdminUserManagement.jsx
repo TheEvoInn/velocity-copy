@@ -375,9 +375,14 @@ export default function AdminUserManagement() {
     u.full_name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const onboarded   = goals.filter(g => g.onboarded).length;
-  const autopilotOn = goals.filter(g => g.autopilot_enabled).length;
-  const pendingKyc  = kycs.filter(k => ['pending', 'submitted', 'under_review'].includes(k.status)).length;
+  // ─────────────────────────────────────────────────────────────────────────
+  // COMPUTE DASHBOARD METRICS (from all fetched data)
+  // ─────────────────────────────────────────────────────────────────────────
+  const onboarded   = goals.filter(g => g.onboarded === true).length;
+  const autopilotOn = goals.filter(g => g.autopilot_enabled === true).length;
+  const pendingKyc  = kycs.filter(k => !['approved', 'verified'].includes(k?.status)).length;
+  const withIdentities = identities.filter(id => id.user_email).length;
+  const withConnections = connections.filter(c => c.user_email).length;
 
   return (
     <div className="space-y-4">

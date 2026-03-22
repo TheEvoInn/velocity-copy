@@ -452,12 +452,13 @@ export default function AdminUserManagement() {
       )}
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
-          { label: 'Total Users',    value: users.length,  color: '#a855f7', icon: Users },
-          { label: 'Onboarded',      value: onboarded,      color: '#10b981', icon: CheckCircle2 },
-          { label: 'Autopilot On',   value: autopilotOn,    color: '#06b6d4', icon: Bot },
-          { label: 'Pending KYC',    value: pendingKyc,     color: '#f59e0b', icon: Clock },
+          { label: 'Total Users',    value: users.length,      color: '#a855f7', icon: Users },
+          { label: 'Onboarded',      value: onboarded,         color: '#10b981', icon: CheckCircle2 },
+          { label: 'With Identities', value: withIdentities,   color: '#06b6d4', icon: Bot },
+          { label: 'Connected Accounts', value: withConnections, color: '#f59e0b', icon: Link2 },
+          { label: 'Pending KYC',    value: pendingKyc,        color: '#ef4444', icon: Clock },
         ].map(({ label, value, color, icon: Icon }) => (
           <div key={label} className="rounded-xl p-3" style={{ background: `${color}10`, border: `1px solid ${color}25` }}>
             <div className="flex items-center gap-2 mb-1">

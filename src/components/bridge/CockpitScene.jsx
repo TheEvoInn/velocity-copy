@@ -212,7 +212,18 @@ export default function CockpitScene({ onModuleSelect, onHover, activityLevels =
           const obj = hits[0].object;
           return d.mesh === obj || d.mesh.children?.includes(obj);
         });
-        if (hit && onModuleSelect) onModuleSelect(hit.route, hit.name);
+        if (hit) {
+          // Find planet/dept color for the trail
+          const dept = DEPARTMENTS.find(d => d.name === hit.name);
+          const trailColor = dept ? dept.color : 0x00e8ff;
+          // Get world position of the target mesh
+          const targetPos = new THREE.Vector3();
+          hit.mesh.getWorldPosition(targetPos);
+          // Spawn the light trail
+          spawnTrajectoryTrail(scene, targetPos, trailColor);
+          // Navigate after the trail animation completes
+          if (onModuleSelect) setTimeout(() => onModuleSelect(hit.route, hit.name), 600);
+        }
       }
     };
 

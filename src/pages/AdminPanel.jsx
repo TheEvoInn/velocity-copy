@@ -418,10 +418,14 @@ export default function AdminPanel() {
                           )}
 
                           {/* Admin Actions */}
-                          <div className="flex gap-2 pt-2">
+                          <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-700">
                             <Button
                               size="sm"
-                              onClick={() => deleteUserMutation.mutate(user.email)}
+                              onClick={() => {
+                                if (confirm(`Delete ${user.full_name} and all related data?`)) {
+                                  deleteUserMutation.mutate(user.email);
+                                }
+                              }}
                               disabled={deleteUserMutation.isPending}
                               variant="destructive"
                               className="text-xs gap-1"

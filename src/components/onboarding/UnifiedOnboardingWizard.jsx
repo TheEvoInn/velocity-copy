@@ -163,9 +163,9 @@ const ONBOARDING_STEPS = [
       {
         id: 'proof_of_address',
         label: 'Proof of Address',
-        type: 'text',
+        type: 'file',
         required: true,
-        placeholder: 'Upload via file selector',
+        accept: '.pdf,.jpg,.jpeg,.png',
         helpText: 'Utility bill, bank statement, or lease (< 90 days old)',
       },
     ],

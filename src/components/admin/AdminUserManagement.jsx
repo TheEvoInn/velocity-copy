@@ -507,12 +507,106 @@ export default function AdminUserManagement() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-        <Input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name or email..."
-          className="pl-9 bg-slate-800/60 border-slate-700 text-white text-sm h-9" />
+      {/* Advanced Search */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Input 
+            value={search} 
+            onChange={e => {
+              setSearch(e.target.value);
+              if (e.target.value.length > 2) {
+                searchMutation.mutate(e.target.value);
+              } else {
+                setShowSearchResults(false);
+              }
+            }}
+            placeholder="Search users by email, name, or ID..."
+            className="pl-9 bg-slate-800/60 border-slate-700 text-white text-sm h-9" />
+          {searchMutation.isPending && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 animate-spin" />
+          )}
+        </div>
+
+        {/* Search Results Modal */}
+        {showSearchResults && searchResults.length > 0 && (
+          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-3 space-y-2 max-h-64 overflow-y-auto">
+            <p className="text-xs text-slate-400">Found {searchResults.length} user(s):</p>
+            {searchResults.map((u) => (
+              <div key={u.id} className="flex items-center justify-between p-2 bg-slate-900/50 rounded border border-slate-700">
+                <div className="flex-1">
+                  <p className="text-sm text-white font-medium">{u.full_name || '—'}</p>
+                  <p className="text-xs text-slate-400">{u.email}</p>
+                </div>
+                <div className="flex gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      identifyMutation.mutate(u.email);
+                      setShowSearchResults(false);
+                    }}
+                  >
+                    Profile
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      setSearch('');
+                      setShowSearchResults(false);
+                      // Scroll to user in main list
+                      const userRow = document.querySelector(`[data-user-id="${u.id}"]`);
+                      userRow?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }}
+                  >
+                    Go
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* User Data Profile Modal */}
+        {userDataProfile && (
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-white">User Data Profile</h3>
+              <button 
+                onClick={() => setUserDataProfile(null)}
+                className="text-slate-400 hover:text-white text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+              {Object.entries(userDataProfile.data_summary).map(([key, val]) => (
+                <div key={key} className="bg-slate-800/50 p-2 rounded border border-slate-700">
+                  <p className="text-slate-400 capitalize">{key.replace(/_/g, ' ')}</p>
+                  <p className="text-base font-bold text-cyan-400">{val}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="text-xs">
+              <p className="text-slate-400 mb-2">Identified by: {userDataProfile.identified_by.join(', ') || 'unknown'}</p>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm"
+                  onClick={() => repairLinksMutation.mutate(userDataProfile.user_email)}
+                  disabled={repairLinksMutation.isPending}
+                  className="text-xs h-7"
+                >
+                  {repairLinksMutation.isPending ? 'Repairing...' : 'Repair Data Links'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* User List */}

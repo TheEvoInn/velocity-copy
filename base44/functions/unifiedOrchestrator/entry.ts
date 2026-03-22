@@ -341,19 +341,34 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
  */
 async function runScan(base44, user) {
   try {
-    const scanRes = await base44.asServiceRole.functions.invoke('scanOpportunities', {
-      action: 'scan',
-      sources: ['ai_web', 'rapidapi'],
-      max_results: 20
+    // Use discoveryEngine v3 for per-user isolated, multi-category scan
+    const scanRes = await base44.asServiceRole.functions.invoke('discoveryEngine', {
+      action: 'full_scan',
+      user_email: user?.email,
+      filters: { ai_only: true }
     });
     return {
       success: true,
-      opportunities_found: scanRes.data?.opportunities?.length || scanRes.data?.total || 0,
-      created: scanRes.data?.created || 0
+      opportunities_found: scanRes.data?.found || 0,
+      created: scanRes.data?.created || 0,
+      ai_compatible: scanRes.data?.ai_compatible || 0,
+      categories: scanRes.data?.categories || {}
     };
   } catch (e) {
-    console.error('[Orchestrator] Scan error:', e.message);
-    return { success: false, error: e.message, opportunities_found: 0 };
+    // Fallback to legacy scan
+    try {
+      const fallback = await base44.asServiceRole.functions.invoke('scanOpportunities', {
+        action: 'scan', max_results: 20
+      });
+      return {
+        success: true,
+        opportunities_found: fallback.data?.scan?.found || 0,
+        created: fallback.data?.scan?.created || 0
+      };
+    } catch (e2) {
+      console.error('[Orchestrator] Scan error:', e2.message);
+      return { success: false, error: e2.message, opportunities_found: 0 };
+    }
   }
 }
 

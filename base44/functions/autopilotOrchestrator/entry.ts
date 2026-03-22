@@ -11,7 +11,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 const GEMINI_KEY = Deno.env.get('GOOGLE_AI_API_KEY');
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY');
 
+const hasLLM = !!(GEMINI_KEY || OPENAI_KEY);
+
 async function llmGenerate(prompt, maxTokens = 2000) {
+  if (!hasLLM) return null;
   if (GEMINI_KEY) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;

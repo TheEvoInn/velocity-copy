@@ -22,7 +22,19 @@ export default function IdentityManager() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(null);
-  const [filter, setFilter] = useState('all'); // all | active | inactive
+  const [filter, setFilter] = useState('all'); // all | active | inactive | onboarding
+  const [onboardingIdentity, setOnboardingIdentity] = useState(null); // identity being onboarded
+
+  // Auto-detect newly created identities that need onboarding
+  useEffect(() => {
+    if (!identities.length) return;
+    const needsOnboarding = identities.find(i =>
+      !i.onboarding_complete && i.onboarding_status === 'pending' && !onboardingIdentity
+    );
+    if (needsOnboarding) {
+      setOnboardingIdentity(needsOnboarding);
+    }
+  }, [identities]);
 
   // Fetch all linked accounts for all identities at once
   const allLinkedIds = [...new Set(identities.flatMap(i => i.linked_account_ids || []))];

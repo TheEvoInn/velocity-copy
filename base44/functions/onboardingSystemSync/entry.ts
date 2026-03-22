@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
       // Create spending policy for Autopilot
       if (onboarding_data.max_task_value || onboarding_data.risk_level) {
         await base44.entities.SpendingPolicy.create({
+          user_email: user.email,
           category: 'global',
           max_per_task: parseFloat(onboarding_data.max_task_value) || 50,
           max_per_day: parseFloat(onboarding_data.daily_earning_target) * 0.5 || 250,
@@ -142,31 +143,33 @@ Deno.serve(async (req) => {
         });
 
         // Update withdrawal policy
-        await base44.entities.WithdrawalPolicy.create({
-          label: `${onboarding_data.bank_name} - ${onboarding_data.account_type}`,
-          engine_enabled: true,
-          min_withdrawal_threshold: 100,
-          payout_frequency: onboarding_data.payout_frequency || 'weekly',
-          bank_accounts: [
-            {
-              vault_credential_id: 'banking_' + identity_id,
-              label: `${onboarding_data.bank_name}`,
-              bank_name: onboarding_data.bank_name,
-              account_type: onboarding_data.account_type,
-              last_four: onboarding_data.account_number.slice(-4),
-              routing_last_four: onboarding_data.routing_number.slice(-4),
-              allocation_pct: 100,
-              priority: 1,
-              is_primary: true,
-            },
-          ],
-        });
+          await base44.entities.WithdrawalPolicy.create({
+            user_email: user.email,
+            label: `${onboarding_data.bank_name} - ${onboarding_data.account_type}`,
+            engine_enabled: true,
+            min_withdrawal_threshold: 100,
+            payout_frequency: onboarding_data.payout_frequency || 'weekly',
+            bank_accounts: [
+              {
+                vault_credential_id: 'banking_' + identity_id,
+                label: `${onboarding_data.bank_name}`,
+                bank_name: onboarding_data.bank_name,
+                account_type: onboarding_data.account_type,
+                last_four: onboarding_data.account_number.slice(-4),
+                routing_last_four: onboarding_data.routing_number.slice(-4),
+                allocation_pct: 100,
+                priority: 1,
+                is_primary: true,
+              },
+            ],
+          });
         addLog('WalletEngine', 'success', 'Bank account configured');
       }
 
       // Store crypto wallet if provided
       if (onboarding_data.crypto_address && onboarding_data.crypto_type) {
         await base44.entities.IdentityWallet.create({
+          user_email: user.email,
           identity_id,
           wallet_type: onboarding_data.crypto_type,
           wallet_address: onboarding_data.crypto_address,
@@ -175,14 +178,15 @@ Deno.serve(async (req) => {
         });
         addLog('WalletEngine', 'success', 'Crypto wallet registered');
       }
-    } catch (e) {
+      } catch (e) {
       addLog('WalletEngine', 'error', e.message);
-    }
+      }
 
     // ─── 5. CREATE KYC VERIFICATION RECORD ─────────────────────────────────────
     try {
       if (onboarding_data.government_id_type) {
         await base44.entities.KYCVerification.create({
+          user_email: user.email,
           identity_id,
           government_id_type: onboarding_data.government_id_type,
           government_id_number: onboarding_data.government_id_number,

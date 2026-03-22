@@ -26,8 +26,7 @@ function StatusPulse({ active, size = 3 }) {
   );
 }
 
-function ModuleCard({ to, icon: IconComponent, title, subtitle, color, stat, statLabel, active }) {
-  const Icon = IconComponent;
+function ModuleCard({ to, icon: Icon, title, subtitle, color, stat, statLabel, active }) {
   return (
     <Link to={to}>
       <div

@@ -193,13 +193,53 @@ Deno.serve(async (req) => {
           government_id_expiry: onboarding_data.id_expiry,
           full_legal_name: `${onboarding_data.first_name} ${onboarding_data.last_name}`,
           date_of_birth: onboarding_data.date_of_birth,
-          status: 'pending_review',
+          status: 'pending',
           submitted_at: new Date().toISOString(),
         });
         addLog('KYCEngine', 'success', 'Verification record created');
       }
     } catch (e) {
       addLog('KYCEngine', 'error', e.message);
+    }
+
+    // ─── 5B. CREATE USER GOALS ────────────────────────────────────────────────
+    try {
+      await base44.entities.UserGoals.create({
+        user_email: user.email,
+        daily_target: parseFloat(onboarding_data.daily_earning_target) || 1000,
+        available_capital: 0,
+        risk_tolerance: onboarding_data.risk_level || 'moderate',
+        preferred_categories: onboarding_data.work_categories
+          ? onboarding_data.work_categories.split(',').map(c => c.trim()).filter(c => c)
+          : [],
+        hours_per_day: 8,
+        wallet_balance: 0,
+        total_earned: 0,
+        onboarded: false,
+        autopilot_enabled: false,
+        ai_daily_target: (parseFloat(onboarding_data.daily_earning_target) || 1000) * 0.5,
+        user_daily_target: (parseFloat(onboarding_data.daily_earning_target) || 1000) * 0.5,
+      });
+      addLog('UserGoalsEngine', 'success', 'User goals record created');
+    } catch (e) {
+      addLog('UserGoalsEngine', 'error', e.message);
+    }
+
+    // ─── 5C. CREATE PLATFORM CONNECTION RECORD ────────────────────────────────
+    try {
+      if (onboarding_data.platform_name) {
+        await base44.entities.PlatformConnection.create({
+          user_email: user.email,
+          platform: onboarding_data.platform_name,
+          status: 'connected',
+          username: onboarding_data.platform_username || '',
+          is_active: true,
+          connected_at: new Date().toISOString(),
+        });
+        addLog('PlatformEngine', 'success', 'Platform connection recorded');
+      }
+    } catch (e) {
+      addLog('PlatformEngine', 'error', e.message);
     }
 
     // ─── 6. CONFIGURE NOTIFICATIONS ───────────────────────────────────────────

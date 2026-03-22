@@ -8,11 +8,47 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users, CheckCircle2, Clock, XCircle, Bot, Shield,
-  Search, ChevronDown, ChevronUp, RefreshCw, Wrench
+  Search, ChevronDown, ChevronUp, RefreshCw, Wrench,
+  ArrowRight, Bell, AlertTriangle, Zap, Link2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+
+// Send a notification to the user via the Notification entity
+async function sendUserNotification(userEmail, title, message, type = 'action_required') {
+  try {
+    await base44.entities.Notification.create({
+      user_email: userEmail,
+      title,
+      message,
+      type,
+      is_read: false,
+      created_by: userEmail,
+    });
+    toast.success(`Notification sent to ${userEmail}`);
+  } catch (e) {
+    toast.error(`Failed to send notification: ${e.message}`);
+  }
+}
+
+// Resolution trigger button — shown when a status needs action
+function TriggerButton({ label, icon: Icon, color, onClick, loading }) {
+  const [busy, setBusy] = React.useState(false);
+  const handle = async () => {
+    setBusy(true);
+    await onClick();
+    setBusy(false);
+  };
+  return (
+    <button onClick={handle} disabled={busy}
+      className="mt-1.5 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition-all active:scale-95 disabled:opacity-50"
+      style={{ background: `${color}10`, border: `1px solid ${color}30`, color }}>
+      {busy ? <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" /> : <Icon className="w-2.5 h-2.5" />}
+      {busy ? 'Sending…' : label}
+    </button>
+  );
+}
 
 const STATUS_BADGE = {
   complete:    { color: '#10b981', label: 'Complete' },
@@ -75,31 +111,91 @@ function UserRow({ user, identities, goals, connections, kycs, onAudit }) {
 
       {expanded && (
         <div className="p-4 border-t border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-slate-900/40">
+
+          {/* Onboarding */}
           <div>
             <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Onboarding</p>
             <Badge status={onboardStatus} />
             {userGoal?.daily_target && (
               <p className="text-slate-400 mt-1">Target: ${userGoal.daily_target}/day</p>
             )}
+            {onboardStatus === 'not_started' && (
+              <TriggerButton
+                label="Nudge to Onboard"
+                icon={ArrowRight}
+                color="#f9d65c"
+                onClick={() => sendUserNotification(
+                  user.email,
+                  '🚀 Complete Your Onboarding',
+                  'Your account setup is not started yet. Visit your dashboard and complete onboarding to activate Autopilot and start earning.',
+                  'action_required'
+                )}
+              />
+            )}
+            {onboardStatus === 'partial' && (
+              <TriggerButton
+                label="Resume Onboarding"
+                icon={ArrowRight}
+                color="#f97316"
+                onClick={() => sendUserNotification(
+                  user.email,
+                  '⏳ Finish Your Setup',
+                  "You're halfway through onboarding! Return to the app to complete your profile, set your earning targets, and activate Autopilot.",
+                  'action_required'
+                )}
+              />
+            )}
           </div>
+
+          {/* Identities */}
           <div>
             <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Identities</p>
             {userIdentities.length === 0
-              ? <p className="text-slate-600">None created</p>
+              ? <>
+                  <p className="text-slate-600">None created</p>
+                  <TriggerButton
+                    label="Prompt to Create"
+                    icon={Bell}
+                    color="#a855f7"
+                    onClick={() => sendUserNotification(
+                      user.email,
+                      '🤖 Set Up Your AI Identity',
+                      'Create an AI persona so Autopilot can apply to platforms, communicate with clients, and execute tasks on your behalf. Go to Identity Vault to get started.',
+                      'action_required'
+                    )}
+                  />
+                </>
               : userIdentities.map(i => (
                 <p key={i.id} className="text-violet-300">• {i.name} ({i.role_label})</p>
               ))
             }
           </div>
+
+          {/* Platform Connections */}
           <div>
             <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Platform Connections</p>
             {userConnections.length === 0
-              ? <p className="text-slate-600">None connected</p>
+              ? <>
+                  <p className="text-slate-600">None connected</p>
+                  <TriggerButton
+                    label="Prompt to Connect"
+                    icon={Link2}
+                    color="#3b82f6"
+                    onClick={() => sendUserNotification(
+                      user.email,
+                      '🔗 Connect Your Platforms',
+                      'Link your freelance and gig accounts (Upwork, Fiverr, etc.) so Autopilot can apply to real jobs and deposit earnings automatically.',
+                      'action_required'
+                    )}
+                  />
+                </>
               : userConnections.map(c => (
                 <p key={c.id} className="text-blue-300">• {c.platform} ({c.status})</p>
               ))
             }
           </div>
+
+          {/* KYC */}
           <div>
             <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">KYC Status</p>
             {kycStatus
@@ -107,8 +203,38 @@ function UserRow({ user, identities, goals, connections, kycs, onAudit }) {
                   text={kycStatus.replace('_', ' ')} />
               : <p className="text-slate-600">Not submitted</p>
             }
+            {(!kycStatus || kycStatus === 'not_started') && (
+              <TriggerButton
+                label="Request KYC"
+                icon={AlertTriangle}
+                color="#ef4444"
+                onClick={() => sendUserNotification(
+                  user.email,
+                  '🪪 Complete Identity Verification (KYC)',
+                  'KYC verification is required to unlock higher-value tasks and enable payouts. Go to KYC Management in your dashboard to submit your documents.',
+                  'action_required'
+                )}
+              />
+            )}
+            {kycStatus === 'pending' || kycStatus === 'submitted' ? (
+              <TriggerButton
+                label="Send Reminder"
+                icon={Bell}
+                color="#f59e0b"
+                onClick={() => sendUserNotification(
+                  user.email,
+                  '⏳ KYC Under Review',
+                  'Your KYC documents are being reviewed. You\'ll be notified once approved. Make sure all submitted documents are clear and valid.',
+                  'info'
+                )}
+              />
+            ) : null}
+            {kycStatus === 'approved' && (
+              <p className="text-[10px] text-emerald-500 mt-1">✓ Verified</p>
+            )}
             <p className="text-[10px] text-slate-600 mt-1">⚠️ No private data shown</p>
           </div>
+
         </div>
       )}
     </div>

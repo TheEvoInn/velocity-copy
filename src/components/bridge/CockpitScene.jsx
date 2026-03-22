@@ -188,9 +188,7 @@ export default function CockpitScene({ onModuleSelect, onHover, activityLevels =
         S.cockpit.buttons?.forEach((b, i) => {
           if (b.material) b.material.emissiveIntensity = 0.5 + Math.sin(t * 3 + i * 0.7) * 0.3;
         });
-        if (S.cockpit.scanLine) {
-          S.cockpit.scanLine.position.y = 0.5 + ((t * 0.4) % 2.5) * 1.2;
-        }
+
       }
 
       // Raycaster hover

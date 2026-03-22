@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   Zap, Radio, Target, TrendingUp, Activity, Bell, Map, AlertTriangle,
   ChevronRight, Power, Navigation, Cpu, Database, Shield, Settings,
-  User, Wallet, BarChart2, Layers, GitBranch, Radar
+  User, Wallet, BarChart2, Layers, GitBranch, Radar, Navigation2
 } from 'lucide-react';
 
 // ── Panel primitives ──────────────────────────────────────────────────────────

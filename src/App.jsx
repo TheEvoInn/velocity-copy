@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import PlatformLayout from '@/components/layout/PlatformLayout';
+import PlatformLayout from '@/components/layout/PlatformLayout.jsx';
 const { Pages, Layout, mainPage } = pagesConfig;
 const MainPage = Pages[mainPage] ?? null;
 
@@ -50,6 +50,9 @@ const AuthenticatedApp = () => {
           .map(([path, Page]) => (
             <Route key={path} path={`/${path}`} element={Page ? <Page /> : <PageNotFound />} />
           ))}
+        <Route path="/WalletDashboard" element={Pages.WalletDashboard ? <Pages.WalletDashboard /> : <PageNotFound />} />
+        <Route path="/AutoPilotEngine" element={Pages.AutoPilotEngine ? <Pages.AutoPilotEngine /> : <PageNotFound />} />
+        <Route path="/WorkDiscovery" element={Pages.WorkDiscovery ? <Pages.WorkDiscovery /> : <PageNotFound />} />
         {/* Nested 404 for module paths */}
         <Route path="*" element={<PageNotFound />} />
       </Route>

@@ -267,22 +267,34 @@ export default function AdminUserManagement() {
 
   const { data: identities = [] } = useQuery({
     queryKey: ['admin_all_identities'],
-    queryFn: () => base44.entities.AIIdentity.list('-created_date', 200),
+    queryFn: async () => {
+      const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_identities' });
+      return res?.data?.identities || [];
+    },
   });
 
   const { data: goals = [] } = useQuery({
     queryKey: ['admin_all_goals'],
-    queryFn: () => base44.entities.UserGoals.list('-created_date', 200),
+    queryFn: async () => {
+      const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_goals' });
+      return res?.data?.goals || [];
+    },
   });
 
   const { data: connections = [] } = useQuery({
     queryKey: ['admin_all_connections'],
-    queryFn: () => base44.entities.PlatformConnection.list('-created_date', 200),
+    queryFn: async () => {
+      const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_connections' });
+      return res?.data?.connections || [];
+    },
   });
 
   const { data: kycs = [] } = useQuery({
     queryKey: ['admin_all_kycs'],
-    queryFn: () => base44.entities.KYCVerification.list('-created_date', 200),
+    queryFn: async () => {
+      const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_kycs' });
+      return res?.data?.kycs || [];
+    },
   });
 
   const filtered = users.filter(u =>

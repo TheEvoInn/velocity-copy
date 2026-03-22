@@ -101,51 +101,41 @@ export default function AdminControlPanel() {
 
         {/* Summary Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="w-4 h-4" style={{ color: '#a855f7' }} />
-                <p className="text-xs font-medium text-slate-600 uppercase">Total Users</p>
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{metadata.total_users || 0}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle2 className="w-4 h-4" style={{ color: '#10b981' }} />
-                <p className="text-xs font-medium text-slate-600 uppercase">Onboarded</p>
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{metadata.users_onboarded || 0}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Bot className="w-4 h-4" style={{ color: '#06b6d4' }} />
-                <p className="text-xs font-medium text-slate-600 uppercase">With Identities</p>
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{metadata.users_with_identities || 0}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Link2 className="w-4 h-4" style={{ color: '#f59e0b' }} />
-                <p className="text-xs font-medium text-slate-600 uppercase">Connected Platforms</p>
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{metadata.users_with_connections || 0}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="w-4 h-4" style={{ color: '#10b981' }} />
-                <p className="text-xs font-medium text-slate-600 uppercase">Total Earned</p>
-              </div>
-              <p className="text-2xl font-bold text-slate-900">${(metadata.total_earned_across_users || 0).toFixed(0)}</p>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-4 h-4" style={{ color: '#a855f7' }} />
+              <p className="text-xs font-medium text-slate-600 uppercase">Total Users</p>
+            </div>
+            <p className="text-2xl font-bold text-slate-900">{metadata.total_users || 0}</p>
+          </div>
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle2 className="w-4 h-4" style={{ color: '#10b981' }} />
+              <p className="text-xs font-medium text-slate-600 uppercase">Onboarded</p>
+            </div>
+            <p className="text-2xl font-bold text-slate-900">{metadata.users_onboarded || 0}</p>
+          </div>
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Bot className="w-4 h-4" style={{ color: '#06b6d4' }} />
+              <p className="text-xs font-medium text-slate-600 uppercase">With Identities</p>
+            </div>
+            <p className="text-2xl font-bold text-slate-900">{metadata.users_with_identities || 0}</p>
+          </div>
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Link2 className="w-4 h-4" style={{ color: '#f59e0b' }} />
+              <p className="text-xs font-medium text-slate-600 uppercase">Connected Platforms</p>
+            </div>
+            <p className="text-2xl font-bold text-slate-900">{metadata.users_with_connections || 0}</p>
+          </div>
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="w-4 h-4" style={{ color: '#10b981' }} />
+              <p className="text-xs font-medium text-slate-600 uppercase">Total Earned</p>
+            </div>
+            <p className="text-2xl font-bold text-slate-900">${(metadata.total_earned_across_users || 0).toFixed(0)}</p>
+          </div>
         </div>
 
         {/* Search Bar */}

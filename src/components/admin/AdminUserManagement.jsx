@@ -381,25 +381,28 @@ export default function AdminUserManagement() {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // SECURE QUERIES: Fetch all admin-visible data in parallel
+  // SECURE QUERIES: Fetch all admin-visible data in parallel with enriched profiles
   // ─────────────────────────────────────────────────────────────────────────
-  const { data: adminData = { users: [], goals: [], identities: [], connections: [], kycs: [] }, 
+  const { data: adminData = { users: [], goals: [], identities: [], connections: [], kycs: [], metadata: {} }, 
           isLoading: loadingUsers, 
           refetch } = useQuery({
     queryKey: ['admin_user_management_secure'],
     queryFn: async () => {
-      const res = await base44.functions.invoke('adminPanelSecureQuery', {});
+      const res = await base44.functions.invoke('adminPanelSecureQuery', {
+        filter_email: search.length > 2 ? search : null
+      });
       return res.data;
     },
     refetchInterval: 10000,  // Real-time: update every 10 seconds
   });
 
-  // Destructure for backward compatibility
+  // Destructure enriched profiles
   const users = adminData.users || [];
   const goals = adminData.goals || [];
   const identities = adminData.identities || [];
   const connections = adminData.connections || [];
   const kycs = adminData.kycs || [];
+  const metadata = adminData.metadata || {};
 
   // Dummy refetch functions for backward compatibility
   const refetchIdentities = () => refetch();

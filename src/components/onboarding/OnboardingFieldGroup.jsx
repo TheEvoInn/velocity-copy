@@ -119,7 +119,51 @@ export default function OnboardingFieldGroup({
       </div>
 
       {/* Input */}
-      {type === 'textarea' ? (
+      {type === 'file' ? (
+        <div className="space-y-2">
+          {value ? (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-950/20 border border-emerald-800">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <span className="text-xs text-emerald-400 truncate">{value.split('/').pop()}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveFile}
+                className="text-emerald-600 hover:text-emerald-400 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <label className={`${baseInputClasses} flex items-center justify-center cursor-pointer hover:border-cyan-400 transition-colors`}>
+              <input
+                type="file"
+                accept={fieldConfig?.accept || '*'}
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                className="hidden"
+              />
+              <div className="flex items-center gap-2 text-slate-400">
+                {isUploading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs">Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    <span className="text-xs">Click to upload or drag & drop</span>
+                  </>
+                )}
+              </div>
+            </label>
+          )}
+          {fieldConfig?.helpText && (
+            <p className="text-xs text-slate-500">{fieldConfig.helpText}</p>
+          )}
+        </div>
+      ) : type === 'textarea' ? (
         <textarea
           value={value}
           onChange={handleChange}

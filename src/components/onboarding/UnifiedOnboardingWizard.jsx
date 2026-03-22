@@ -469,18 +469,22 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
           });
         });
 
-        // Sync to backend via identity update + system sync function
-        await base44.entities.AIIdentity.update(identityId, {
-          onboarding_complete: true,
-          onboarding_status: 'complete',
-          onboarding_config: JSON.stringify(allData),
-        });
+        // Get current user email
+        const user = await base44.auth.me();
 
-        // Trigger system sync to propagate to all modules
-        await base44.functions.invoke('onboardingSystemSync', {
-          identity_id: identityId,
-          onboarding_data: allData,
-        });
+        // Sync to backend via identity update + system sync function
+          await base44.entities.AIIdentity.update(identityId, {
+            user_email: user?.email,
+            onboarding_complete: true,
+            onboarding_status: 'complete',
+            onboarding_config: JSON.stringify(allData),
+          });
+
+          // Trigger system sync to propagate to all modules
+          await base44.functions.invoke('onboardingSystemSync', {
+            identity_id: identityId,
+            onboarding_data: allData,
+          });
 
         qc.invalidateQueries({ queryKey: ['identities'] });
         onComplete?.();

@@ -430,6 +430,7 @@ export default function CockpitHUD({ hoveredModule, onNavigate }) {
         goals={goals}
         onAutopilotChange={handleAutopilotChange}
         autopilotMode={autopilotMode}
+        onOrbitView={setShowOrbitView}
       />
     </>
   );

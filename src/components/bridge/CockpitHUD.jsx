@@ -129,19 +129,22 @@ function NavigationPanel({ navigate, hoveredModule }) {
           </div>
         </GlassPanel>
       )}
-      {navItems.map(n => (
-        <button key={n.route} onClick={() => navigate(n.route)} className="w-full text-left group">
-          <GlassPanel className="p-2.5 hover:border-cyan-400/40 transition-all">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <n.icon className={`w-3 h-3 ${n.color}`} />
-                <span className={`font-orbitron text-[9px] tracking-wider ${n.color} group-hover:text-white transition-colors`}>{n.label}</span>
+      {navItems.map(n => {
+        const NavIcon = n.icon;
+        return (
+          <button key={n.route} onClick={() => navigate(n.route)} className="w-full text-left group">
+            <GlassPanel className="p-2.5 hover:border-cyan-400/40 transition-all">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <NavIcon className={`w-3 h-3 ${n.color}`} />
+                  <span className={`font-orbitron text-[9px] tracking-wider ${n.color} group-hover:text-white transition-colors`}>{n.label}</span>
+                </div>
+                <ChevronRight className="w-3 h-3 text-slate-700 group-hover:text-cyan-400 transition-colors" />
               </div>
-              <ChevronRight className="w-3 h-3 text-slate-700 group-hover:text-cyan-400 transition-colors" />
-            </div>
-          </GlassPanel>
-        </button>
-      ))}
+            </GlassPanel>
+          </button>
+        );
+      })}
     </div>
   );
 }

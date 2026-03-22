@@ -14,7 +14,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { base44 } from '@/api/base44Client';
 
 // Send a notification to the user via the Notification entity
 async function sendUserNotification(userEmail, title, message, type = 'action_required') {

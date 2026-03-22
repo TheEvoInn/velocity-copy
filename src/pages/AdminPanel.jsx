@@ -13,8 +13,8 @@ import { toast } from 'sonner';
 
 export default function AdminPanel() {
   const [searchEmail, setSearchEmail] = useState('');
-  const [selectedUser, setSelectedUser] = useState(null);
   const [expandedUser, setExpandedUser] = useState(null);
+  const [liveUpdates, setLiveUpdates] = useState(0);
   const queryClient = useQueryClient();
 
   // Fetch all users with service role access
@@ -30,8 +30,39 @@ export default function AdminPanel() {
       }
     },
     staleTime: 0,
-    refetchInterval: 30000
+    refetchInterval: 10000
   });
+
+  // Real-time subscriptions for live updates
+  useEffect(() => {
+    const unsubscribeUser = base44.entities.User.subscribe((event) => {
+      setLiveUpdates(prev => prev + 1);
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      toast.info(`User ${event.type}d: ${event.data?.email}`);
+    });
+
+    const unsubscribeKYC = base44.entities.KYCVerification.subscribe((event) => {
+      setLiveUpdates(prev => prev + 1);
+      queryClient.invalidateQueries({ queryKey: ['adminKYCs'] });
+    });
+
+    const unsubscribeIdentity = base44.entities.AIIdentity.subscribe((event) => {
+      setLiveUpdates(prev => prev + 1);
+      queryClient.invalidateQueries({ queryKey: ['adminIdentities'] });
+    });
+
+    const unsubscribeConnection = base44.entities.PlatformConnection.subscribe((event) => {
+      setLiveUpdates(prev => prev + 1);
+      queryClient.invalidateQueries({ queryKey: ['adminConnections'] });
+    });
+
+    return () => {
+      unsubscribeUser();
+      unsubscribeKYC();
+      unsubscribeIdentity();
+      unsubscribeConnection();
+    };
+  }, [queryClient]);
 
   // Fetch user-related data
   const { data: kycs = [] } = useQuery({

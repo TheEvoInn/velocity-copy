@@ -108,7 +108,7 @@ function EngineStatusPanel({ navigate }) {
 // ── Navigation Panel (Right Console) ─────────────────────────────────────────
 function NavigationPanel({ navigate, hoveredModule }) {
   const navItems = [
-    { label: 'GALAXY MAP',          icon: Map,        route: '/StarshipBridge',  color: 'text-cyan-400' },
+    { label: 'GALAXY MAP',          icon: Navigation2,route: '/StarshipBridge',  color: 'text-cyan-400' },
     { label: 'CONTROL CENTER',      icon: Shield,     route: '/Control',         color: 'text-violet-400' },
     { label: 'OPPORTUNITY SCANNER', icon: Radar,      route: '/Discovery',       color: 'text-amber-400' },
     { label: 'FINANCE CORE',        icon: Wallet,     route: '/Finance',         color: 'text-emerald-400' },

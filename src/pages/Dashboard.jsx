@@ -155,8 +155,8 @@ export default function Dashboard() {
       color: '#b537f2', stat: null, statLabel: '', active: false
     },
     {
-      to: '/AdminSettings', icon: Settings, title: 'ADMIN SETTINGS',
-      subtitle: 'Platform settings, user management, and admin controls',
+      to: '/AdminPanel', icon: Settings, title: 'ADMIN PANEL',
+      subtitle: 'User management, verification, approvals, and full platform control',
       color: '#64748b', stat: null, statLabel: '', active: false
     },
   ];

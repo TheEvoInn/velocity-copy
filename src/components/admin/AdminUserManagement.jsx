@@ -328,47 +328,32 @@ export default function AdminUserManagement() {
     onError: (err) => toast.error(err.message)
   });
 
-  const { data: users = [], isLoading: loadingUsers, refetch } = useQuery({
-    queryKey: ['admin_all_users'],
-    queryFn: () => base44.entities.User.list('-created_date', 100),
-    refetchInterval: 30000,
+  // ─────────────────────────────────────────────────────────────────────────
+  // SECURE QUERIES: Fetch all admin-visible data in parallel
+  // ─────────────────────────────────────────────────────────────────────────
+  const { data: adminData = { users: [], goals: [], identities: [], connections: [], kycs: [] }, 
+          isLoading: loadingUsers, 
+          refetch } = useQuery({
+    queryKey: ['admin_user_management_secure'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('adminPanelSecureQuery', {});
+      return res.data;
+    },
+    refetchInterval: 10000,  // Real-time: update every 10 seconds
   });
 
-  const { data: identities = [], refetch: refetchIdentities } = useQuery({
-    queryKey: ['admin_all_identities'],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_identities' });
-      return res?.data?.identities || [];
-    },
-    refetchInterval: 10000,
-  });
+  // Destructure for backward compatibility
+  const users = adminData.users || [];
+  const goals = adminData.goals || [];
+  const identities = adminData.identities || [];
+  const connections = adminData.connections || [];
+  const kycs = adminData.kycs || [];
 
-  const { data: goals = [], refetch: refetchGoals } = useQuery({
-    queryKey: ['admin_all_goals'],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_goals' });
-      return res?.data?.goals || [];
-    },
-    refetchInterval: 10000,
-  });
-
-  const { data: connections = [], refetch: refetchConnections } = useQuery({
-    queryKey: ['admin_all_connections'],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_connections' });
-      return res?.data?.connections || [];
-    },
-    refetchInterval: 10000,
-  });
-
-  const { data: kycs = [], refetch: refetchKycs } = useQuery({
-    queryKey: ['admin_all_kycs'],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_kycs' });
-      return res?.data?.kycs || [];
-    },
-    refetchInterval: 10000,
-  });
+  // Dummy refetch functions for backward compatibility
+  const refetchIdentities = () => refetch();
+  const refetchGoals = () => refetch();
+  const refetchConnections = () => refetch();
+  const refetchKycs = () => refetch();
 
   const filtered = users.filter(u =>
     u.email?.toLowerCase().includes(search.toLowerCase()) ||

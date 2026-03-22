@@ -141,7 +141,12 @@ export function useUserIdentities() {
   });
 
   const createIdentity = useMutation({
-    mutationFn: (data) => base44.entities.AIIdentity.create({ ...data }),
+    mutationFn: (data) => base44.entities.AIIdentity.create({
+      ...data,
+      is_active: false,              // must complete onboarding before activation
+      onboarding_complete: false,
+      onboarding_status: 'pending',  // triggers onboarding wizard in UI
+    }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['identities', user?.email] }),
   });
 

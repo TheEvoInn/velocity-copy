@@ -297,34 +297,14 @@ export default function Discovery() {
         </div>
       </div>
 
-      {/* ── SCAN PROGRESS ── */}
-      {isScanning && (
-        <div className="mb-5 p-4 rounded-2xl"
-          style={{ background: 'rgba(249,214,92,0.04)', border: '1px solid rgba(249,214,92,0.15)' }}>
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-orbitron text-xs text-amber-400 tracking-widest">DISCOVERY IN PROGRESS</span>
-            <span className="font-orbitron text-xs text-amber-400">{scanProgress}%</span>
-          </div>
-          <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
-            <div className="h-full rounded-full transition-all duration-300"
-              style={{ width: `${scanProgress}%`, background: 'linear-gradient(90deg, #f9d65c, #ff2ec4)' }} />
-          </div>
-          <p className="text-xs text-amber-400/60 font-mono">{scanStep}</p>
-        </div>
-      )}
-
-      {/* ── LAST SCAN RESULT ── */}
-      {lastScanResult && !isScanning && (
-        <div className="mb-5 p-4 rounded-2xl flex items-center justify-between"
-          style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)' }}>
-          <div className="text-sm text-emerald-400 font-orbitron">
-            ✅ {lastScanResult.created} new opportunities imported · {lastScanResult.ai_compatible} AI-compatible · ${(lastScanResult.top_opportunities || []).reduce((s, o) => s + (o.estimated_pay || 0), 0).toFixed(0)} total potential
-          </div>
-          <button onClick={() => setLastScanResult(null)}>
-            <X className="w-4 h-4 text-slate-600 hover:text-slate-400" />
-          </button>
-        </div>
-      )}
+      {/* ── SCAN STATUS (progress + results) ── */}
+      <DiscoveryScanStatus
+        isScanning={isScanning}
+        progress={scanProgress}
+        currentStep={scanStep}
+        lastResult={lastScanResult}
+        onDismiss={() => setLastScanResult(null)}
+      />
 
       {/* ── FILTER PANEL ── */}
       {showFilters && (

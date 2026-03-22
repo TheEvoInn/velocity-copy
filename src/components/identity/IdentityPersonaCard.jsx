@@ -66,7 +66,7 @@ function MetricBar({ value, max = 100, color }) {
   );
 }
 
-export default function IdentityPersonaCard({ identity, linkedAccounts = [], onSwitch, onDelete, onUpdate, isSwitching }) {
+export default function IdentityPersonaCard({ identity, linkedAccounts = [], onSwitch, onDelete, onUpdate, isSwitching, onResumeOnboarding }) {
   const [expanded, setExpanded] = useState(false);
   const isActive = identity.is_active;
   const color = identity.color || '#a855f7';

@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
 
     // ━━━━ CHECK: KYC Verification ━━━━
     const kycs = await base44.asServiceRole.entities.KYCVerification.filter(
-      { created_by: user_email },
+      { $or: [{ created_by: user_email }, { user_email }] },
       '-created_date',
       1
     );
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
 
     // ━━━━ CHECK: User Goals ━━━━
     const goals = await base44.asServiceRole.entities.UserGoals.filter(
-      { created_by: user_email },
+      { $or: [{ created_by: user_email }, { user_email }] },
       null,
       1
     );
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
 
     // ━━━━ CHECK: AI Identities ━━━━
     const identities = await base44.asServiceRole.entities.AIIdentity.filter(
-      { created_by: user_email },
+      { $or: [{ created_by: user_email }, { user_email }] },
       null,
       10
     );
@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
 
     // ━━━━ CHECK: Task Execution Queue ━━━━
     const taskQueues = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
-      { created_by: user_email },
+      { $or: [{ created_by: user_email }, { user_email }] },
       null,
       1
     );
@@ -246,7 +246,7 @@ Deno.serve(async (req) => {
 
     // ━━━━ CHECK: Opportunities ━━━━
     const opps = await base44.asServiceRole.entities.Opportunity.filter(
-      { created_by: user_email },
+      { $or: [{ created_by: user_email }, { user_email }] },
       null,
       1
     );
@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
 
     // ━━━━ CHECK: Transactions ━━━━
     const transactions = await base44.asServiceRole.entities.Transaction.filter(
-      { created_by: user_email },
+      { $or: [{ created_by: user_email }, { user_email }] },
       '-created_date',
       1
     );

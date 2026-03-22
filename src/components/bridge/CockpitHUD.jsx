@@ -383,6 +383,7 @@ export default function CockpitHUD({ hoveredModule, onNavigate }) {
 
   const [autopilotMode, setAutopilotMode] = useState('auto');
   const [showOrbitView, setShowOrbitView] = useState(false);
+  const [hudMinimized, setHudMinimized] = useState(false);
 
   const handleAutopilotChange = async (mode) => {
     setAutopilotMode(mode);

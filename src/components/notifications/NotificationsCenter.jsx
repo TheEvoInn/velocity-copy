@@ -239,6 +239,7 @@ export default function NotificationsCenter() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

@@ -5,14 +5,14 @@ import { X, Play, RotateCcw, AlertCircle, CheckCircle2, Clock, Zap, Loader2 } fr
 
 // ── Execution node definitions (mapped to real backend functions) ────────────
 const EXECUTION_NODES = [
-  { id: 'autopilot',    label: 'AUTOPILOT CYCLE',    fn: 'autopilotCycle',         color: 0x00e8ff, hex: '#00e8ff', orbit: 8,  speed: 0.008, angle: 0 },
-  { id: 'discovery',   label: 'DISCOVERY SCAN',      fn: 'aiDiscoveryEngine',      color: 0xf59e0b, hex: '#f59e0b', orbit: 12, speed: 0.006, angle: 1.2 },
-  { id: 'orchestrate', label: 'ORCHESTRATOR',         fn: 'unifiedOrchestrator',    color: 0xa855f7, hex: '#a855f7', orbit: 16, speed: 0.004, angle: 2.5 },
-  { id: 'identity',    label: 'IDENTITY ENGINE',      fn: 'identityEngine',         color: 0x06b6d4, hex: '#06b6d4', orbit: 20, speed: 0.003, angle: 0.8 },
-  { id: 'finance',     label: 'FINANCIAL TRACKER',    fn: 'financialTracker',       color: 0x10b981, hex: '#10b981', orbit: 10, speed: 0.007, angle: 3.8 },
-  { id: 'ned',         label: 'NED CRYPTO',           fn: 'nedCryptoOrchestrator',  color: 0xf9d65c, hex: '#f9d65c', orbit: 14, speed: 0.005, angle: 5.1 },
-  { id: 'vipz',        label: 'VIPZ ENGINE',          fn: 'opportunityIngestionV2', color: 0xff2ec4, hex: '#ff2ec4', orbit: 18, speed: 0.004, angle: 4.2 },
-  { id: 'webhooks',    label: 'WEBHOOK ENGINE',       fn: 'webhookEventEngine',     color: 0xec4899, hex: '#ec4899', orbit: 6,  speed: 0.010, angle: 2.0 },
+  { id: 'autopilot',    label: 'AUTOPILOT CYCLE',    fn: 'autopilotCycle',         color: 0x00e8ff, hex: '#00e8ff', orbit: 8,  speed: 0.003, angle: 0 },
+  { id: 'discovery',   label: 'DISCOVERY SCAN',      fn: 'aiDiscoveryEngine',      color: 0xf59e0b, hex: '#f59e0b', orbit: 12, speed: 0.002, angle: 1.2 },
+  { id: 'orchestrate', label: 'ORCHESTRATOR',         fn: 'unifiedOrchestrator',    color: 0xa855f7, hex: '#a855f7', orbit: 16, speed: 0.0015, angle: 2.5 },
+  { id: 'identity',    label: 'IDENTITY ENGINE',      fn: 'identityEngine',         color: 0x06b6d4, hex: '#06b6d4', orbit: 20, speed: 0.001, angle: 0.8 },
+  { id: 'finance',     label: 'FINANCIAL TRACKER',    fn: 'financialTracker',       color: 0x10b981, hex: '#10b981', orbit: 10, speed: 0.0025, angle: 3.8 },
+  { id: 'ned',         label: 'NED CRYPTO',           fn: 'nedCryptoOrchestrator',  color: 0xf9d65c, hex: '#f9d65c', orbit: 14, speed: 0.002, angle: 5.1 },
+  { id: 'vipz',        label: 'VIPZ ENGINE',          fn: 'opportunityIngestionV2', color: 0xff2ec4, hex: '#ff2ec4', orbit: 18, speed: 0.0015, angle: 4.2 },
+  { id: 'webhooks',    label: 'WEBHOOK ENGINE',       fn: 'webhookEventEngine',     color: 0xec4899, hex: '#ec4899', orbit: 6,  speed: 0.004, angle: 2.0 },
 ];
 
 // ── 3D Scene ─────────────────────────────────────────────────────────────────

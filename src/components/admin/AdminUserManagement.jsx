@@ -275,6 +275,14 @@ export default function AdminUserManagement() {
     onSuccess: (result) => {
       setAuditResult(result);
       toast.success(`Audit complete: ${result.repairs_made} issues repaired`);
+      // Refresh all data after audit
+      setTimeout(() => {
+        refetch();
+        refetchIdentities();
+        refetchGoals();
+        refetchConnections();
+        refetchKycs();
+      }, 500);
     },
     onError: (err) => toast.error(err.message)
   });

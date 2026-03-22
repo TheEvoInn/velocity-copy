@@ -7,9 +7,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useCurrentUser, useUserProfile, useUserWallet, useUserTasks, useUserOpportunities } from '@/hooks/useUserData';
 import {
-  Zap, Bot, Target, Wallet, Search, Play, Activity, Shield, Workflow,
-  TrendingUp, Radio, ChevronRight, Globe, Cpu, BarChart3, Settings,
-  Power, Rocket, Eye, Lock, Star
+  Bot, Target, Wallet, Search, Play, Shield, Workflow,
+  TrendingUp, Radio, ChevronRight, Cpu, Settings,
+  Power, Rocket, Lock
 } from 'lucide-react';
 
 function StatusPulse({ active, size = 3 }) {

@@ -275,7 +275,7 @@ export default function Discovery() {
           </div>
           <div>
             <h1 className="font-orbitron text-xl font-bold text-white tracking-widest">DISCOVERY ENGINE</h1>
-            <p className="text-xs text-slate-500 font-mono">25+ categories · Keyword expansion · Online-only filter · AI-ready</p>
+            <p className="text-xs text-slate-500 font-mono">30+ categories · LLM internet scan · Keyword expansion · Online-only · AI-ready</p>
           </div>
         </div>
         <div className="flex gap-2">

@@ -60,6 +60,43 @@ export default function NotificationsCenter() {
 
   return (
     <div className="space-y-4">
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b border-slate-800 pb-3">
+        {['inbox', 'communications', 'settings'].map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 text-xs font-orbitron uppercase transition-all ${
+              tab === t
+                ? 'text-cyan-400 border-b-2 border-cyan-400'
+                : 'text-slate-500 hover:text-slate-400'
+            }`}
+          >
+            {t === 'inbox' && '📬 Notifications'}
+            {t === 'communications' && '✉ Mailbox'}
+            {t === 'settings' && '⚙ Settings'}
+          </button>
+        ))}
+      </div>
+
+      {tab !== 'inbox' && (
+        <div className="mb-4">
+          {tab === 'communications' && <UnifiedMailbox />}
+          {tab === 'settings' && (
+            <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-800">
+              <h3 className="text-sm font-bold text-cyan-400 mb-3">Notification Preferences</h3>
+              <div className="space-y-2 text-xs text-slate-400">
+                <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> Email alerts on critical events</label>
+                <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> Autopilot execution summaries</label>
+                <label className="flex items-center gap-2"><input type="checkbox" /> Daily digest emails</label>
+                <label className="flex items-center gap-2"><input type="checkbox" /> Marketing campaign updates</label>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'inbox' && (
       <div className="grid grid-cols-4 gap-3">
         {/* Stats Cards */}
         <Card className="bg-slate-900/50 border-slate-700">

@@ -52,9 +52,12 @@ import Dashboard from './pages/Dashboard';
 import StarshipBridge from './pages/StarshipBridge';
 import Control from './pages/Control';
 import AutoPilot from './pages/AutoPilot';
+import AutoPilotEngine from './pages/AutoPilotEngine';
 import Discovery from './pages/Discovery';
+import WorkDiscovery from './pages/WorkDiscovery';
 import Execution from './pages/Execution';
 import Finance from './pages/Finance';
+import WalletDashboard from './pages/WalletDashboard';
 import CryptoAutomation from './pages/CryptoAutomation';
 import DigitalResellers from './pages/DigitalResellers';
 import NED from './pages/NED';
@@ -68,9 +71,12 @@ export const PAGES = {
 	"StarshipBridge": StarshipBridge,
 	"Control": Control,
 	"AutoPilot": AutoPilot,
+	"AutoPilotEngine": AutoPilotEngine,
 	"Discovery": Discovery,
+	"WorkDiscovery": WorkDiscovery,
 	"Execution": Execution,
 	"Finance": Finance,
+	"WalletDashboard": WalletDashboard,
 	"CryptoAutomation": CryptoAutomation,
 	"DigitalResellers": DigitalResellers,
 	"NED": NED,

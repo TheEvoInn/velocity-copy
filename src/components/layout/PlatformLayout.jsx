@@ -76,8 +76,9 @@ export default function PlatformLayout() {
           })}
         </div>
 
-        {/* Right side: user + mobile toggle */}
+        {/* Right side: notifications + user + mobile toggle */}
         <div className="flex items-center gap-3">
+          <NotificationBell />
           {user && (
             <div className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-xl"
               style={{ background: 'rgba(10,15,42,0.6)', border: '1px solid rgba(0,232,255,0.1)' }}>

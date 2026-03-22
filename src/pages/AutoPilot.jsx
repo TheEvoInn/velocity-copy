@@ -19,6 +19,7 @@ import AutoExecuteRuleBuilder from '../components/autopilot/AutoExecuteRuleBuild
 import RealtimeCommandHub from '../components/autopilot/RealtimeCommandHub';
 
 const TABS = [
+  { key: 'command', label: 'Command Hub', icon: '⚡' },
   { key: 'hud', label: 'Mission HUD', icon: '🛰️' },
   { key: 'identities', label: 'Identity Routines', icon: '🤖' },
   { key: 'targets', label: 'Profit Targets', icon: '🎯' },

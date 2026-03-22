@@ -7,23 +7,49 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const authenticatedUser = await base44.auth.me();
     
-    let user_email = '';
+    if (!authenticatedUser || authenticatedUser.role !== 'admin') {
+      return Response.json({ error: 'Admin access required' }, { status: 403 });
+    }
+    
+    let body = {};
     try {
-      const body = await req.json();
-      user_email = body.user_email;
+      body = await req.json();
     } catch (e) {
-      // If no body, try to get from auth
-      user_email = null;
+      // Empty body is ok
     }
 
+    const { action, user_email } = body;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // BULK FETCH ACTIONS FOR ADMIN DASHBOARD
+    // ─────────────────────────────────────────────────────────────────────────
+    if (action === 'get_all_identities') {
+      const identities = await base44.asServiceRole.entities.AIIdentity.list('-created_date', 500);
+      return Response.json({ success: true, identities: identities || [] });
+    }
+
+    if (action === 'get_all_goals') {
+      const goals = await base44.asServiceRole.entities.UserGoals.list('-created_date', 500);
+      return Response.json({ success: true, goals: goals || [] });
+    }
+
+    if (action === 'get_all_connections') {
+      const connections = await base44.asServiceRole.entities.PlatformConnection.list('-created_date', 500);
+      return Response.json({ success: true, connections: connections || [] });
+    }
+
+    if (action === 'get_all_kycs') {
+      const kycs = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
+      return Response.json({ success: true, kycs: kycs || [] });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SINGLE USER AUDIT & REPAIR
+    // ─────────────────────────────────────────────────────────────────────────
     if (!user_email) {
-      const authenticatedUser = await base44.auth.me();
-      if (authenticatedUser?.email) {
-        user_email = authenticatedUser.email;
-      } else {
-        return Response.json({ error: 'user_email required in payload or user must be authenticated' }, { status: 400 });
-      }
+      return Response.json({ error: 'user_email required in payload' }, { status: 400 });
     }
 
     const audit = {

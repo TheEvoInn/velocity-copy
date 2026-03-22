@@ -9,8 +9,9 @@ import { useCurrentUser, useUserOpportunities } from '@/hooks/useUserData';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Search, RefreshCw, Sparkles, Filter, TrendingUp, Zap, Globe,
-  CheckCircle, Bot, Clock, DollarSign, Target, ChevronDown, ChevronUp, X
+  CheckCircle, Bot, Clock, DollarSign, Target, ChevronDown, ChevronUp, X, Radio
 } from 'lucide-react';
+import DiscoveryScanStatus from '@/components/discovery/DiscoveryScanStatus';
 
 // ─── CATEGORY META ─────────────────────────────────────────────────────────────
 const CATEGORIES = {

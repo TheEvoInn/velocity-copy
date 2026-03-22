@@ -285,36 +285,40 @@ export default function AdminUserManagement() {
     refetchInterval: 30000,
   });
 
-  const { data: identities = [] } = useQuery({
+  const { data: identities = [], refetch: refetchIdentities } = useQuery({
     queryKey: ['admin_all_identities'],
     queryFn: async () => {
       const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_identities' });
       return res?.data?.identities || [];
     },
+    refetchInterval: 10000,
   });
 
-  const { data: goals = [] } = useQuery({
+  const { data: goals = [], refetch: refetchGoals } = useQuery({
     queryKey: ['admin_all_goals'],
     queryFn: async () => {
       const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_goals' });
       return res?.data?.goals || [];
     },
+    refetchInterval: 10000,
   });
 
-  const { data: connections = [] } = useQuery({
+  const { data: connections = [], refetch: refetchConnections } = useQuery({
     queryKey: ['admin_all_connections'],
     queryFn: async () => {
       const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_connections' });
       return res?.data?.connections || [];
     },
+    refetchInterval: 10000,
   });
 
-  const { data: kycs = [] } = useQuery({
+  const { data: kycs = [], refetch: refetchKycs } = useQuery({
     queryKey: ['admin_all_kycs'],
     queryFn: async () => {
       const res = await base44.functions.invoke('userDataConnectionAudit', { action: 'get_all_kycs' });
       return res?.data?.kycs || [];
     },
+    refetchInterval: 10000,
   });
 
   const filtered = users.filter(u =>
@@ -332,7 +336,13 @@ export default function AdminUserManagement() {
         <h2 className="font-orbitron text-base font-bold text-violet-400 tracking-wide flex items-center gap-2">
           <Users className="w-4 h-4" /> User Management
         </h2>
-        <Button size="sm" variant="outline" onClick={refetch}
+        <Button size="sm" variant="outline" onClick={() => {
+          refetch();
+          refetchIdentities();
+          refetchGoals();
+          refetchConnections();
+          refetchKycs();
+        }}
           className="border-slate-700 text-slate-400 text-xs h-7 gap-1.5">
           <RefreshCw className="w-3 h-3" /> Refresh
         </Button>

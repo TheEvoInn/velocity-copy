@@ -7,6 +7,7 @@ import {
   Radio, Power, Trash2, ChevronDown, ChevronUp, Check, X, Pencil,
   Shield, Globe, TrendingUp, Zap, Clock, Star, AlertTriangle, Link2
 } from 'lucide-react';
+import IdentityHealthBadge from '@/components/identity/IdentityHealthBadge';
 
 const PLATFORM_COLORS = {
   upwork: '#14a800', fiverr: '#1dbf73', freelancer: '#0e4c96',

@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserGoals, useCryptoWallets, useAITasks, useActivityLogs, useOpportunities } from '@/hooks/useQueryHooks';
 import { base44 } from '@/api/base44Client';
+import WorkflowOrbitView from './WorkflowOrbitView';
 import {
   Zap, Radio, Target, TrendingUp, Activity, Bell, Map, AlertTriangle,
   ChevronRight, Power, Navigation, Cpu, Database, Shield, Settings,
-  User, Wallet, BarChart2, Layers, GitBranch, Radar, Navigation2
+  User, Wallet, BarChart2, Layers, GitBranch, Radar, Navigation2, Orbit
 } from 'lucide-react';
 
 // ── Panel primitives ──────────────────────────────────────────────────────────

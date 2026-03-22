@@ -191,20 +191,38 @@ export default function IdentityPersonaCard({ identity, linkedAccounts = [], onS
           </div>
         )}
 
+        {/* ── HEALTH / ONBOARDING STATUS ── */}
+        <div className="mb-3">
+          <IdentityHealthBadge
+            identity={identity}
+            showIssues={!identity.onboarding_complete}
+            onResumeOnboarding={onResumeOnboarding}
+          />
+        </div>
+
         {/* ── ACTIONS ── */}
         <div className="flex gap-2">
-          <button onClick={() => onSwitch(identity.id)} disabled={isSwitching || isActive}
-            className="flex-1 py-2 rounded-xl text-xs font-orbitron tracking-wide transition-all"
-            style={{
-              background: isActive ? `${color}10` : `${color}15`,
-              border: `1px solid ${isActive ? `${color}40` : `${color}35`}`,
-              color: isActive ? color : color,
-              opacity: isActive ? 0.7 : 1,
-              cursor: isActive ? 'default' : 'pointer',
-            }}>
-            <Power className="w-3 h-3 inline mr-1" />
-            {isSwitching ? 'Switching…' : isActive ? 'Active' : 'Activate'}
-          </button>
+          {!identity.onboarding_complete ? (
+            <button onClick={onResumeOnboarding}
+              className="flex-1 py-2 rounded-xl text-xs font-orbitron tracking-wide transition-all"
+              style={{ background: 'rgba(249,214,92,0.1)', border: '1px solid rgba(249,214,92,0.35)', color: '#f9d65c' }}>
+              <AlertTriangle className="w-3 h-3 inline mr-1" />
+              Complete Onboarding
+            </button>
+          ) : (
+            <button onClick={() => onSwitch && onSwitch(identity.id)} disabled={isSwitching || isActive || !onSwitch}
+              className="flex-1 py-2 rounded-xl text-xs font-orbitron tracking-wide transition-all"
+              style={{
+                background: isActive ? `${color}10` : `${color}15`,
+                border: `1px solid ${isActive ? `${color}40` : `${color}35`}`,
+                color,
+                opacity: (isActive || !onSwitch) ? 0.7 : 1,
+                cursor: (isActive || !onSwitch) ? 'default' : 'pointer',
+              }}>
+              <Power className="w-3 h-3 inline mr-1" />
+              {isSwitching ? 'Switching…' : isActive ? 'Active' : identity.onboarding_complete ? 'Activate' : 'Locked'}
+            </button>
+          )}
           <button onClick={() => onDelete(identity.id)} disabled={isActive}
             className="p-2 rounded-xl transition-all"
             style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', opacity: isActive ? 0.3 : 1 }}>

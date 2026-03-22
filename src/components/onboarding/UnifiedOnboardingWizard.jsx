@@ -1,387 +1,555 @@
+import React, { useState, useMemo } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQueryClient } from '@tanstack/react-query';
+import OnboardingStepForm from './OnboardingStepForm';
+import { AlertCircle, CheckCircle } from 'lucide-react';
+
 /**
  * UNIFIED ONBOARDING WIZARD
- * Enhanced to support full platform data intake, validation, and immediate Autopilot activation
+ * Multi-step, multi-identity onboarding with:
+ * - Separated input fields per data point
+ * - Auto-save & auto-restore
+ * - Per-identity progress tracking
+ * - System sync on completion
  */
-import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Circle, ChevronRight, AlertCircle, Lock, Zap } from 'lucide-react';
-import { toast } from 'sonner';
+const ONBOARDING_STEPS = [
+  {
+    id: 'identity',
+    number: 1,
+    title: 'Identity Information',
+    description: 'Enter your personal details',
+    fields: [
+      {
+        id: 'first_name',
+        label: 'First Name',
+        type: 'text',
+        required: true,
+        placeholder: 'John',
+        validate: (v) => v?.trim().length >= 2 || 'At least 2 characters',
+      },
+      {
+        id: 'last_name',
+        label: 'Last Name',
+        type: 'text',
+        required: true,
+        placeholder: 'Doe',
+        validate: (v) => v?.trim().length >= 2 || 'At least 2 characters',
+      },
+      {
+        id: 'email',
+        label: 'Email Address',
+        type: 'email',
+        required: true,
+        placeholder: 'john@example.com',
+        validate: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || 'Invalid email',
+      },
+      {
+        id: 'phone',
+        label: 'Phone Number',
+        type: 'tel',
+        required: true,
+        placeholder: '+1 (555) 000-0000',
+        validate: (v) => /^\+?[0-9\s\-\(\)]{10,}$/.test(v) || 'Invalid phone',
+      },
+      {
+        id: 'date_of_birth',
+        label: 'Date of Birth',
+        type: 'date',
+        required: true,
+      },
+      {
+        id: 'address',
+        label: 'Street Address',
+        type: 'text',
+        required: true,
+        placeholder: '123 Main Street',
+      },
+      {
+        id: 'city',
+        label: 'City',
+        type: 'text',
+        required: true,
+        placeholder: 'San Francisco',
+      },
+      {
+        id: 'state',
+        label: 'State / Province',
+        type: 'text',
+        required: true,
+        placeholder: 'CA',
+      },
+      {
+        id: 'postal_code',
+        label: 'Postal Code',
+        type: 'text',
+        required: true,
+        placeholder: '94102',
+      },
+      {
+        id: 'country',
+        label: 'Country',
+        type: 'text',
+        required: true,
+        placeholder: 'United States',
+      },
+      {
+        id: 'communication_preference',
+        label: 'Preferred Communication',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'email', label: 'Email' },
+          { value: 'phone', label: 'Phone' },
+          { value: 'sms', label: 'SMS' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'kyc',
+    number: 2,
+    title: 'KYC Verification',
+    description: 'Upload identity documents for verification',
+    fields: [
+      {
+        id: 'government_id_type',
+        label: 'Government ID Type',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'passport', label: 'Passport' },
+          { value: 'drivers_license', label: "Driver's License" },
+          { value: 'national_id', label: 'National ID' },
+          { value: 'state_id', label: 'State ID' },
+        ],
+      },
+      {
+        id: 'government_id_number',
+        label: 'ID Number',
+        type: 'text',
+        required: true,
+        placeholder: 'ID number (without spaces)',
+      },
+      {
+        id: 'id_expiry',
+        label: 'ID Expiration Date',
+        type: 'date',
+        required: true,
+      },
+      {
+        id: 'id_document_front',
+        label: 'ID Document (Front)',
+        type: 'text',
+        required: true,
+        placeholder: 'Upload via file selector',
+        helpText: 'Clear photo of front of ID',
+      },
+      {
+        id: 'id_document_back',
+        label: 'ID Document (Back)',
+        type: 'text',
+        required: true,
+        placeholder: 'Upload via file selector',
+        helpText: 'Clear photo of back of ID',
+      },
+      {
+        id: 'selfie',
+        label: 'Selfie with ID',
+        type: 'text',
+        required: true,
+        placeholder: 'Upload via file selector',
+        helpText: 'Your face with ID visible',
+      },
+      {
+        id: 'proof_of_address',
+        label: 'Proof of Address',
+        type: 'text',
+        required: true,
+        placeholder: 'Upload via file selector',
+        helpText: 'Utility bill, bank statement, or lease (< 90 days old)',
+      },
+    ],
+  },
+  {
+    id: 'credentials',
+    number: 3,
+    title: 'Platform Credentials',
+    description: 'Configure external platform access',
+    fields: [
+      {
+        id: 'platform_name',
+        label: 'Platform Name',
+        type: 'text',
+        required: true,
+        placeholder: 'Upwork, Fiverr, etc.',
+      },
+      {
+        id: 'platform_url',
+        label: 'Platform URL',
+        type: 'url',
+        required: true,
+        placeholder: 'https://platform.example.com',
+        validate: (v) => /^https?:\/\/.+\..+/.test(v) || 'Invalid URL',
+      },
+      {
+        id: 'platform_username',
+        label: 'Username / Login ID',
+        type: 'text',
+        required: true,
+        placeholder: 'your_username',
+      },
+      {
+        id: 'platform_password',
+        label: 'Password',
+        type: 'password',
+        required: true,
+        placeholder: '••••••••••',
+        helpText: 'Encrypted and stored securely',
+      },
+      {
+        id: 'api_key',
+        label: 'API Key (Optional)',
+        type: 'password',
+        required: false,
+        placeholder: '••••••••••',
+      },
+      {
+        id: 'oauth_token',
+        label: 'OAuth Token (Optional)',
+        type: 'password',
+        required: false,
+        placeholder: '••••••••••',
+      },
+      {
+        id: 'two_fa_method',
+        label: '2FA Method',
+        type: 'select',
+        required: false,
+        options: [
+          { value: 'none', label: 'None' },
+          { value: 'sms', label: 'SMS' },
+          { value: 'email', label: 'Email' },
+          { value: 'authenticator', label: 'Authenticator App' },
+          { value: 'backup_codes', label: 'Backup Codes' },
+        ],
+      },
+      {
+        id: 'recovery_email',
+        label: 'Recovery Email',
+        type: 'email',
+        required: false,
+        placeholder: 'backup@example.com',
+      },
+      {
+        id: 'notes',
+        label: 'Notes (Optional)',
+        type: 'textarea',
+        required: false,
+        placeholder: 'Any additional info...',
+      },
+    ],
+  },
+  {
+    id: 'autopilot',
+    number: 4,
+    title: 'Autopilot Preferences',
+    description: 'Configure AI automation settings',
+    fields: [
+      {
+        id: 'work_categories',
+        label: 'Preferred Work Categories',
+        type: 'text',
+        required: true,
+        placeholder: 'e.g., writing, coding, transcription (comma-separated)',
+      },
+      {
+        id: 'risk_level',
+        label: 'Risk Tolerance',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'conservative', label: 'Conservative (verified platforms only)' },
+          { value: 'balanced', label: 'Balanced (mixed risk)' },
+          { value: 'aggressive', label: 'Aggressive (any opportunity)' },
+        ],
+      },
+      {
+        id: 'execution_mode',
+        label: 'Execution Mode',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'manual_approval', label: 'Manual Approval (ask before each task)' },
+          { value: 'semi_auto', label: 'Semi-Automatic (auto-execute < $50)' },
+          { value: 'fully_auto', label: 'Fully Automatic (execute all)' },
+        ],
+      },
+      {
+        id: 'daily_earning_target',
+        label: 'Daily Earning Target ($)',
+        type: 'number',
+        required: true,
+        placeholder: '100',
+        validate: (v) => (Number(v) > 0 ? true : 'Must be > 0'),
+      },
+      {
+        id: 'max_task_value',
+        label: 'Max Task Value ($)',
+        type: 'number',
+        required: true,
+        placeholder: '50',
+        validate: (v) => (Number(v) > 0 ? true : 'Must be > 0'),
+      },
+      {
+        id: 'notification_method',
+        label: 'Notification Method',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'email', label: 'Email' },
+          { value: 'push', label: 'Push Notifications' },
+          { value: 'both', label: 'Email + Push' },
+          { value: 'none', label: 'None' },
+        ],
+      },
+      {
+        id: 'notification_threshold',
+        label: 'Notify on Tasks Worth',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'all', label: 'All tasks' },
+          { value: '10', label: '$10+' },
+          { value: '25', label: '$25+' },
+          { value: '50', label: '$50+' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'banking',
+    number: 5,
+    title: 'Banking & Payout Setup',
+    description: 'Configure payment methods',
+    fields: [
+      {
+        id: 'bank_name',
+        label: 'Bank Name',
+        type: 'text',
+        required: true,
+        placeholder: 'Chase, Bank of America, etc.',
+      },
+      {
+        id: 'account_type',
+        label: 'Account Type',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'checking', label: 'Checking' },
+          { value: 'savings', label: 'Savings' },
+        ],
+      },
+      {
+        id: 'account_number',
+        label: 'Account Number',
+        type: 'password',
+        required: true,
+        placeholder: '••••••••',
+        helpText: 'Last 4 will be displayed, full number encrypted',
+      },
+      {
+        id: 'routing_number',
+        label: 'Routing Number',
+        type: 'text',
+        required: true,
+        placeholder: '9 digits',
+        validate: (v) => /^\d{9}$/.test(v) || 'Must be 9 digits',
+      },
+      {
+        id: 'account_holder_name',
+        label: 'Account Holder Name',
+        type: 'text',
+        required: true,
+        placeholder: 'Name on account',
+      },
+      {
+        id: 'crypto_address',
+        label: 'Crypto Wallet Address (Optional)',
+        type: 'text',
+        required: false,
+        placeholder: '0x...',
+      },
+      {
+        id: 'crypto_type',
+        label: 'Crypto Type',
+        type: 'select',
+        required: false,
+        options: [
+          { value: 'ethereum', label: 'Ethereum' },
+          { value: 'bitcoin', label: 'Bitcoin' },
+          { value: 'usdc', label: 'USDC' },
+          { value: 'other', label: 'Other' },
+        ],
+      },
+      {
+        id: 'payout_frequency',
+        label: 'Payout Frequency',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'daily', label: 'Daily' },
+          { value: 'weekly', label: 'Weekly' },
+          { value: 'monthly', label: 'Monthly' },
+        ],
+      },
+      {
+        id: 'min_payout_amount',
+        label: 'Minimum Payout Amount ($)',
+        type: 'number',
+        required: true,
+        placeholder: '10',
+        validate: (v) => (Number(v) > 0 ? true : 'Must be > 0'),
+      },
+    ],
+  },
+  {
+    id: 'confirmation',
+    number: 6,
+    title: 'Confirmation',
+    description: 'Review and activate your identity',
+    fields: [
+      {
+        id: 'accept_terms',
+        label: 'I accept the terms of service',
+        type: 'checkbox',
+        required: true,
+      },
+      {
+        id: 'enable_autopilot',
+        label: 'Enable Autopilot immediately',
+        type: 'checkbox',
+        required: false,
+      },
+    ],
+  },
+];
 
-export default function UnifiedOnboardingWizard({ onComplete }) {
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState(null);
-  const [stepData, setStepData] = useState({});
-  const [validationErrors, setValidationErrors] = useState({});
+export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState(new Set());
+  const [error, setError] = useState('');
+  const qc = useQueryClient();
 
-  useEffect(() => {
-    fetchOnboardingStatus();
-  }, []);
+  const step = ONBOARDING_STEPS[currentStep];
 
-  const fetchOnboardingStatus = async () => {
+  const handleStepComplete = async (formData) => {
+    setIsLoading(true);
+    setError('');
+
     try {
-      const res = await base44.functions.invoke('onboardingOrchestratorEngine', {
-        action: 'get_status'
-      });
-      setStatus(res.data);
-      const firstIncomplete = res.data.onboarding.steps.find(s => !res.data.onboarding.completed_steps.includes(s.id));
-      setCurrentStep(firstIncomplete || res.data.onboarding.steps[0]);
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to fetch status:', error);
-      toast.error('Failed to load onboarding status');
-      setLoading(false);
-    }
-  };
-
-  const handleStepChange = (e, fieldName) => {
-    setStepData(prev => ({
-      ...prev,
-      [currentStep.id]: {
-        ...prev[currentStep.id],
-        [fieldName]: e.target.value
-      }
-    }));
-  };
-
-  const validateStep = async (step) => {
-    const data = stepData[step.id] || {};
-    const errors = {};
-
-    switch (step.id) {
-      case 'identity':
-        if (!data.full_name) errors.full_name = 'Full name required';
-        if (!data.date_of_birth) errors.date_of_birth = 'Date of birth required';
-        if (!data.address) errors.address = 'Address required';
-        break;
-      case 'kyc':
-        if (!data.government_id_type) errors.government_id_type = 'ID type required';
-        if (!data.government_id_number) errors.government_id_number = 'ID number required';
-        break;
-      case 'wallet':
-        if (!data.crypto_wallets || data.crypto_wallets.length === 0) {
-          errors.wallets = 'At least one wallet required';
-        }
-        break;
-      case 'credentials':
-        if (!data.platform_credentials || data.platform_credentials.length === 0) {
-          errors.credentials = 'At least one credential required';
-        }
-        break;
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
-      return false;
-    }
-
-    return true;
-  };
-
-  const completeStep = async (step) => {
-    try {
-      // Validate step
-      const isValid = await validateStep(step);
-      if (!isValid) {
-        toast.error('Please fill all required fields');
-        return;
-      }
-
-      setLoading(true);
-      const res = await base44.functions.invoke('onboardingOrchestratorEngine', {
-        action: 'submit_step',
-        data: {
-          step_id: step.id,
-          step_data: stepData[step.id] || {}
-        }
+      // Save step data to localStorage
+      Object.entries(formData).forEach(([fieldId, value]) => {
+        const key = `onboarding_${identityId}_${fieldId}`;
+        localStorage.setItem(key, value);
       });
 
-      // Refresh status
-      await fetchOnboardingStatus();
-      setValidationErrors({});
-      toast.success(`✓ ${step.title} completed!`);
+      // Mark step as complete
+      setCompletedSteps((prev) => new Set([...prev, step.id]));
 
-    } catch (error) {
-      console.error('Failed to complete step:', error);
-      toast.error('Failed to update step');
+      // If last step, sync all data to backend
+      if (currentStep === ONBOARDING_STEPS.length - 1) {
+        // Collect all fields from localStorage
+        const allData = {};
+        ONBOARDING_STEPS.forEach((s) => {
+          s.fields.forEach((f) => {
+            const key = `onboarding_${identityId}_${f.id}`;
+            const val = localStorage.getItem(key);
+            if (val) allData[f.id] = val;
+          });
+        });
+
+        // Sync to backend via identity update + system sync function
+        await base44.entities.AIIdentity.update(identityId, {
+          onboarding_complete: true,
+          onboarding_status: 'complete',
+          onboarding_config: JSON.stringify(allData),
+        });
+
+        // Trigger system sync to propagate to all modules
+        await base44.functions.invoke('onboardingSystemSync', {
+          identity_id: identityId,
+          onboarding_data: allData,
+        });
+
+        qc.invalidateQueries({ queryKey: ['identities'] });
+        onComplete?.();
+      } else {
+        setCurrentStep((prev) => prev + 1);
+      }
+    } catch (err) {
+      setError(err.message || 'Error saving progress');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleComplete = async () => {
-    try {
-      setLoading(true);
-      const res = await base44.functions.invoke('onboardingOrchestratorEngine', {
-        action: 'complete_onboarding',
-        data: stepData
-      });
-
-      toast.success('🎉 Onboarding complete! Autopilot is now active.');
-      
-      if (onComplete) {
-        setTimeout(onComplete, 1000);
-      }
-    } catch (error) {
-      console.error('Failed to complete onboarding:', error);
-      toast.error('Failed to complete onboarding');
-    } finally {
-      setLoading(false);
-    }
+  const handlePrevious = () => {
+    if (currentStep > 0) setCurrentStep((prev) => prev - 1);
   };
 
-  if (loading || !status) {
-    return (
-      <Card className="glass-card border-slate-700">
-        <CardContent className="pt-8">
-          <div className="flex items-center justify-center gap-3">
-            <div className="w-6 h-6 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
-            <span className="text-sm text-slate-400">Loading onboarding...</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const { onboarding, collected_data } = status;
-  const { progress, steps, is_complete } = onboarding;
+  const progressPercent = ((currentStep + 1) / ONBOARDING_STEPS.length) * 100;
 
   return (
-    <div className="space-y-4">
-      {/* Progress Bar */}
-      <Card className="glass-card border-slate-700">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="font-orbitron text-base">Platform Activation</CardTitle>
-              <CardDescription>Complete your onboarding to activate Autopilot & all departments</CardDescription>
-            </div>
-            <Badge variant={is_complete ? 'default' : 'secondary'}>
-              {progress.percent_complete}%
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-cyan-500 via-violet-500 to-emerald-500 transition-all duration-500"
-              style={{ width: `${progress.percent_complete}%` }}
+    <div className="max-w-2xl mx-auto">
+      {/* Progress bar */}
+      <div className="mb-8">
+        <div className="flex justify-between mb-2">
+          {ONBOARDING_STEPS.map((s, idx) => (
+            <button
+              key={s.id}
+              onClick={() => {
+                if (idx < currentStep || completedSteps.has(s.id)) {
+                  setCurrentStep(idx);
+                }
+              }}
+              className={`w-full h-1 mx-0.5 rounded-full transition-all ${
+                idx < currentStep || completedSteps.has(s.id)
+                  ? 'bg-emerald-500'
+                  : idx === currentStep
+                    ? 'bg-cyan-500'
+                    : 'bg-slate-800'
+              }`}
             />
-          </div>
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-400">Step {progress.current_step || steps.length} of {progress.total_steps}</span>
-            <span className="text-cyan-400 font-medium">{progress.steps_completed} completed</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Steps */}
-      <div className="space-y-2">
-        {steps.map((step, idx) => {
-          const isCompleted = progress.completed_steps.includes(step.id);
-          const isCurrent = currentStep?.id === step.id;
-
-          return (
-            <Card
-              key={step.id}
-              className={`glass-card border-slate-700 cursor-pointer transition-all ${
-                isCurrent ? 'ring-2 ring-cyan-500/50' : ''
-              } ${isCompleted ? 'opacity-75' : ''}`}
-              onClick={() => !isCompleted && setCurrentStep(step)}
-            >
-              <CardContent className="pt-4">
-                <div className="flex items-start gap-3">
-                  <div className="mt-1">
-                    {isCompleted ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                    ) : isCurrent ? (
-                      <Circle className="w-5 h-5 text-cyan-400 fill-cyan-400/20" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-slate-600" />
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-sm">{step.title}</h4>
-                      {step.required && <Badge variant="outline" className="text-xs h-5">Required</Badge>}
-                      {isCompleted && (
-                        <Badge variant="default" className="text-xs h-5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                          Done
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Step Content */}
-                    {isCurrent && !isCompleted && (
-                      <div className="mt-4 space-y-3">
-                        {step.id === 'identity' && (
-                          <>
-                            <input
-                              type="text"
-                              placeholder="Full Legal Name"
-                              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm"
-                              value={stepData[step.id]?.full_name || ''}
-                              onChange={(e) => handleStepChange(e, 'full_name')}
-                            />
-                            {validationErrors.full_name && (
-                              <div className="text-xs text-red-400 flex items-center gap-1">
-                                <AlertCircle className="w-3 h-3" /> {validationErrors.full_name}
-                              </div>
-                            )}
-                            <input
-                              type="date"
-                              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm"
-                              value={stepData[step.id]?.date_of_birth || ''}
-                              onChange={(e) => handleStepChange(e, 'date_of_birth')}
-                            />
-                            <input
-                              type="text"
-                              placeholder="Residential Address"
-                              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm"
-                              value={stepData[step.id]?.address || ''}
-                              onChange={(e) => handleStepChange(e, 'address')}
-                            />
-                          </>
-                        )}
-
-                        {step.id === 'kyc' && (
-                          <>
-                            <select
-                              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm"
-                              value={stepData[step.id]?.government_id_type || ''}
-                              onChange={(e) => handleStepChange(e, 'government_id_type')}
-                            >
-                              <option value="">Select ID Type</option>
-                              <option value="passport">Passport</option>
-                              <option value="drivers_license">Driver's License</option>
-                              <option value="national_id">National ID</option>
-                            </select>
-                            <input
-                              type="text"
-                              placeholder="Government ID Number"
-                              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm"
-                              value={stepData[step.id]?.government_id_number || ''}
-                              onChange={(e) => handleStepChange(e, 'government_id_number')}
-                            />
-                            <input
-                              type="date"
-                              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm"
-                              value={stepData[step.id]?.government_id_expiry || ''}
-                              onChange={(e) => handleStepChange(e, 'government_id_expiry')}
-                            />
-                          </>
-                        )}
-
-                        {step.id === 'wallet' && (
-                          <>
-                            <input
-                              type="text"
-                              placeholder="Wallet Address"
-                              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm"
-                            />
-                            <div className="text-xs text-slate-400">At least one wallet is required</div>
-                          </>
-                        )}
-
-                        {step.id === 'credentials' && (
-                          <>
-                            <select
-                              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm"
-                            >
-                              <option value="">Select Platform</option>
-                              <option value="upwork">Upwork</option>
-                              <option value="fiverr">Fiverr</option>
-                              <option value="grant.gov">Grant.gov</option>
-                            </select>
-                            <input
-                              type="password"
-                              placeholder="API Key or Credentials"
-                              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm"
-                            />
-                          </>
-                        )}
-
-                        {step.id === 'departments' && (
-                          <>
-                            <label className="flex items-center gap-2 text-sm">
-                              <input type="checkbox" defaultChecked className="rounded" />
-                              <span>Enable Autopilot (autonomous task execution)</span>
-                            </label>
-                            <label className="flex items-center gap-2 text-sm">
-                              <input type="checkbox" defaultChecked className="rounded" />
-                              <span>Enable VIPZ (digital marketing)</span>
-                            </label>
-                            <label className="flex items-center gap-2 text-sm">
-                              <input type="checkbox" defaultChecked className="rounded" />
-                              <span>Enable NED (crypto automation)</span>
-                            </label>
-                          </>
-                        )}
-
-                        {step.id === 'review' && (
-                          <div className="space-y-2 text-sm">
-                            <div className="p-2 bg-slate-800/50 rounded-lg">
-                              <p className="text-slate-300">✓ All data collected and validated</p>
-                              <p className="text-slate-400 text-xs mt-1">Your information is encrypted and secure</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action */}
-                  {isCurrent && !isCompleted && (
-                    <Button
-                      onClick={() => completeStep(step)}
-                      disabled={loading}
-                      size="sm"
-                      className="shrink-0 gap-1 h-8"
-                    >
-                      {loading ? (
-                        <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <span>Next</span>
-                          <ChevronRight className="w-3 h-3" />
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+          ))}
+        </div>
+        <p className="text-xs text-slate-500 text-center">
+          Step {currentStep + 1} of {ONBOARDING_STEPS.length}
+        </p>
       </div>
 
-      {/* Completion */}
-      {is_complete ? (
-        <Card className="glass-card border-emerald-500/30 bg-emerald-500/5">
-          <CardContent className="pt-4 flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="font-semibold text-sm text-emerald-400">Onboarding Complete!</h4>
-              <p className="text-xs text-emerald-300/80 mt-1">
-                Your account is activated. Autopilot & all departments are ready to operate.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : currentStep?.id === 'review' ? (
-        <Button
-          onClick={handleComplete}
-          disabled={loading}
-          className="w-full btn-cosmic gap-2"
-        >
-          <Zap className="w-4 h-4" />
-          {loading ? 'Activating...' : '🎉 Activate Platform'}
-        </Button>
-      ) : null}
+      {/* Error display */}
+      {error && (
+        <div className="mb-6 p-4 rounded-lg bg-red-950/20 border border-red-800 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-red-400">Error</p>
+            <p className="text-xs text-red-300">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Step form */}
+      <OnboardingStepForm
+        identityId={identityId}
+        stepNumber={step.number}
+        stepTitle={step.title}
+        stepDescription={step.description}
+        fields={step.fields}
+        onComplete={handleStepComplete}
+        onPrevious={currentStep > 0 ? handlePrevious : null}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

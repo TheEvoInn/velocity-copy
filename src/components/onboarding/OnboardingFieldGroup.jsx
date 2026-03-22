@@ -24,6 +24,7 @@ export default function OnboardingFieldGroup({
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Validate on change
   const handleChange = (e) => {

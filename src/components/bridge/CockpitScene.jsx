@@ -271,60 +271,27 @@ function buildCockpitInterior(scene) {
   const group = new THREE.Group();
   scene.add(group);
 
-  // ── Window frame ─────────────────────────────────────────────────────────
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x0a1030, metalness: 0.95, roughness: 0.1, emissive: 0x00e8ff, emissiveIntensity: 0.05 });
-
-  // All cockpit geometry lives at Z=14 (in front of camera at Z=18, looking toward Z=-10)
-  // This creates a proper foreground frame with the space scene visible through it
-  const Z = 14;
-
-  // Top frame bar
-  const topBar = new THREE.Mesh(new THREE.BoxGeometry(26, 0.6, 0.4), frameMat);
-  topBar.position.set(0, 6.5, Z); group.add(topBar);
-  // Bottom frame bar
-  const botBar = new THREE.Mesh(new THREE.BoxGeometry(26, 0.5, 0.4), frameMat);
-  botBar.position.set(0, -3.2, Z); group.add(botBar);
-  // Left pillar
-  const leftPillar = new THREE.Mesh(new THREE.BoxGeometry(0.7, 11, 0.4), frameMat);
-  leftPillar.position.set(-12, 1.5, Z); group.add(leftPillar);
-  // Right pillar
-  const rightPillar = new THREE.Mesh(new THREE.BoxGeometry(0.7, 11, 0.4), frameMat);
-  rightPillar.position.set(12, 1.5, Z); group.add(rightPillar);
-
-  // ── Neon trim on frame ───────────────────────────────────────────────────
-  const neonMat = new THREE.MeshStandardMaterial({ color: 0x00e8ff, emissive: 0x00e8ff, emissiveIntensity: 2, metalness: 0 });
-  const neonTop = new THREE.Mesh(new THREE.BoxGeometry(26, 0.1, 0.1), neonMat);
-  neonTop.position.set(0, 6.2, Z + 0.1); group.add(neonTop);
-  const neonBot = new THREE.Mesh(new THREE.BoxGeometry(26, 0.1, 0.1), new THREE.MeshStandardMaterial({ color: 0xff2ec4, emissive: 0xff2ec4, emissiveIntensity: 2 }));
-  neonBot.position.set(0, -2.9, Z + 0.1); group.add(neonBot);
-  // Left/right neon edge accents
-  const neonLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, 11, 0.1), new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0xa855f7, emissiveIntensity: 1.5 }));
-  neonLeft.position.set(-11.65, 1.5, Z + 0.1); group.add(neonLeft);
-  const neonRight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 11, 0.1), new THREE.MeshStandardMaterial({ color: 0x00e8ff, emissive: 0x00e8ff, emissiveIntensity: 1.5 }));
-  neonRight.position.set(11.65, 1.5, Z + 0.1); group.add(neonRight);
-
-  // ── Dashboard / instrument panel ─────────────────────────────────────────
+  // All cockpit elements sit just in front of camera (camera at z=10, looking at z=-20)
+  // Dashboard and consoles at z=8 fill the lower portion of the view
   const dashMat = new THREE.MeshStandardMaterial({ color: 0x050a1a, metalness: 0.85, roughness: 0.2 });
-  const dash = new THREE.Mesh(new THREE.BoxGeometry(22, 3, 2), dashMat);
-  dash.position.set(0, -5.2, Z - 0.5); dash.rotation.x = -0.25; group.add(dash);
+  const dash = new THREE.Mesh(new THREE.BoxGeometry(18, 2.5, 1.5), dashMat);
+  dash.position.set(0, -3.5, 7); dash.rotation.x = -0.3; group.add(dash);
 
-  // Left console block
-  const leftConsole = new THREE.Mesh(new THREE.BoxGeometry(4.5, 7, 1.5), new THREE.MeshStandardMaterial({ color: 0x0a0a1e, metalness: 0.9, roughness: 0.15, emissive: 0xa855f7, emissiveIntensity: 0.06 }));
-  leftConsole.position.set(-10, -1, Z - 0.5); leftConsole.rotation.y = 0.3; group.add(leftConsole);
+  const leftConsole = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 1.2), new THREE.MeshStandardMaterial({ color: 0x0a0a1e, metalness: 0.9, roughness: 0.15, emissive: 0xa855f7, emissiveIntensity: 0.06 }));
+  leftConsole.position.set(-8, -1.5, 7.5); leftConsole.rotation.y = 0.4; group.add(leftConsole);
 
-  // Right console block
-  const rightConsole = new THREE.Mesh(new THREE.BoxGeometry(4.5, 7, 1.5), new THREE.MeshStandardMaterial({ color: 0x0a0a1e, metalness: 0.9, roughness: 0.15, emissive: 0x00e8ff, emissiveIntensity: 0.06 }));
-  rightConsole.position.set(10, -1, Z - 0.5); rightConsole.rotation.y = -0.3; group.add(rightConsole);
+  const rightConsole = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 1.2), new THREE.MeshStandardMaterial({ color: 0x0a0a1e, metalness: 0.9, roughness: 0.15, emissive: 0x00e8ff, emissiveIntensity: 0.06 }));
+  rightConsole.position.set(8, -1.5, 7.5); rightConsole.rotation.y = -0.4; group.add(rightConsole);
 
-  // ── Holographic screens on consoles ───────────────────────────────────────
+  // Holographic screens
   const screens = [];
   const screenData = [
-    { x: -8, y: 1.8, z: Z - 0.2, rx: -0.15, ry: 0.25, color: 0xa855f7, w: 3.5, h: 2.2 },
-    { x:  0, y: 2.5, z: Z - 1.0, rx: -0.1,  ry: 0,    color: 0x00e8ff, w: 5,   h: 3 },
-    { x:  8, y: 1.8, z: Z - 0.2, rx: -0.15, ry:-0.25, color: 0x10b981, w: 3.5, h: 2.2 },
+    { x: -6, y: 0.5, z: 7.8, rx: -0.2, ry: 0.3, color: 0xa855f7, w: 3, h: 2 },
+    { x:  0, y: 0.8, z: 7.0, rx: -0.1, ry: 0,   color: 0x00e8ff, w: 4, h: 2.5 },
+    { x:  6, y: 0.5, z: 7.8, rx: -0.2, ry:-0.3, color: 0x10b981, w: 3, h: 2 },
   ];
-  screenData.forEach((sd, i) => {
-    const mat = new THREE.MeshStandardMaterial({ color: sd.color, emissive: sd.color, emissiveIntensity: 0.3, transparent: true, opacity: 0.75 });
+  screenData.forEach((sd) => {
+    const mat = new THREE.MeshStandardMaterial({ color: sd.color, emissive: sd.color, emissiveIntensity: 0.35, transparent: true, opacity: 0.85 });
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(sd.w, sd.h), mat);
     mesh.position.set(sd.x, sd.y, sd.z);
     mesh.rotation.set(sd.rx, sd.ry, 0);
@@ -332,58 +299,46 @@ function buildCockpitInterior(scene) {
     screens.push(mesh);
 
     const edges = new THREE.EdgesGeometry(new THREE.PlaneGeometry(sd.w, sd.h));
-    const edgeMat = new THREE.LineBasicMaterial({ color: sd.color, transparent: true, opacity: 0.6 });
-    const border = new THREE.LineSegments(edges, edgeMat);
+    const border = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: sd.color, transparent: true, opacity: 0.5 }));
     border.position.copy(mesh.position);
     border.rotation.copy(mesh.rotation);
     group.add(border);
   });
 
-  // ── Scan line on center screen ────────────────────────────────────────────
-  const scanLine = new THREE.Mesh(
-    new THREE.PlaneGeometry(4.9, 0.06),
-    new THREE.MeshStandardMaterial({ color: 0x00e8ff, emissive: 0x00e8ff, emissiveIntensity: 3, transparent: true, opacity: 0.6 })
-  );
-  scanLine.position.set(0, 1.5, Z - 0.95);
-  group.add(scanLine);
-
-  // ── Control buttons ──────────────────────────────────────────────────────
+  // Control buttons
   const buttons = [];
   const buttonColors = [0x00e8ff, 0xff2ec4, 0xf9d65c, 0x10b981, 0xa855f7, 0x3b82f6];
   for (let i = 0; i < 12; i++) {
     const col = buttonColors[i % buttonColors.length];
-    const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.6, metalness: 0.5 });
-    const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 12), mat);
-    btn.position.set(-3.5 + (i % 6) * 1.4, -4.2, Z - 0.3 - Math.floor(i/6)*0.4);
+    const btn = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.12, 0.1, 12),
+      new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.6, metalness: 0.5 })
+    );
+    btn.position.set(-3.5 + (i % 6) * 1.4, -2.5, 8.2 - Math.floor(i/6)*0.4);
     group.add(btn);
     buttons.push(btn);
   }
 
-  // ── Gauge rings ──────────────────────────────────────────────────────────
-  [-6, 6].forEach((x, i) => {
-    const ringGeo = new THREE.TorusGeometry(0.55, 0.05, 8, 48);
-    const ringMat = new THREE.MeshStandardMaterial({ color: i === 0 ? 0xa855f7 : 0x00e8ff, emissive: i === 0 ? 0xa855f7 : 0x00e8ff, emissiveIntensity: 1 });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.position.set(x, -4, Z - 0.2);
+  // Gauge rings
+  [-4.5, 4.5].forEach((x, i) => {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.5, 0.04, 8, 48),
+      new THREE.MeshStandardMaterial({ color: i === 0 ? 0xa855f7 : 0x00e8ff, emissive: i === 0 ? 0xa855f7 : 0x00e8ff, emissiveIntensity: 1 })
+    );
+    ring.position.set(x, -2.2, 8.2);
     group.add(ring);
   });
 
-  // ── Overhead strip lights ─────────────────────────────────────────────────
-  [-4, 0, 4].forEach((x) => {
-    const stripMat = new THREE.MeshStandardMaterial({ color: 0x00e8ff, emissive: 0x00e8ff, emissiveIntensity: 1.5, transparent: true, opacity: 0.7 });
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.06, 0.14), stripMat);
-    strip.position.set(x, 6.0, Z + 0.1);
-    group.add(strip);
-  });
-
-  // ── Floor grating ─────────────────────────────────────────────────────────
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x08091e, metalness: 0.8, roughness: 0.4, emissive: 0x00e8ff, emissiveIntensity: 0.02 });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 14), floorMat);
+  // Floor grating
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(20, 10),
+    new THREE.MeshStandardMaterial({ color: 0x08091e, metalness: 0.8, roughness: 0.4, emissive: 0x00e8ff, emissiveIntensity: 0.02 })
+  );
   floor.rotation.x = -Math.PI / 2;
-  floor.position.set(0, -6, Z - 4);
+  floor.position.set(0, -5, 5);
   group.add(floor);
 
-  return { screens, buttons, scanLine };
+  return { screens, buttons, scanLine: null };
 }
 
 function buildPlanet(scene, dept, activity = 0) {

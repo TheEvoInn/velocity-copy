@@ -63,11 +63,30 @@ export default function IdentityManager() {
   async function handleSave(formData) {
     if (editingIdentity?.id) {
       update({ id: editingIdentity.id, data: formData });
+      setShowForm(false);
+      setEditingIdentity(null);
     } else {
-      create(formData);
+      // Create the identity — hook enforces onboarding_complete: false
+      create(formData, {
+        onSuccess: () => {
+          setShowForm(false);
+          setEditingIdentity(null);
+          // The useEffect will detect the new pending identity and launch wizard
+          toast.info('Identity created — completing required onboarding cycle...');
+        }
+      });
     }
-    setShowForm(false);
-    setEditingIdentity(null);
+  }
+
+  async function handleOnboardingComplete(onboardingData) {
+    if (!onboardingIdentity) return;
+    update({ id: onboardingIdentity.id, data: onboardingData });
+    setOnboardingIdentity(null);
+    refetch();
+  }
+
+  function handleResumeOnboarding(identity) {
+    setOnboardingIdentity(identity);
   }
 
   function handleEdit(identity) {

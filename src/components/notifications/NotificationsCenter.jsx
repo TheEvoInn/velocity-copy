@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import UnifiedMailbox from '@/components/communications/UnifiedMailbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

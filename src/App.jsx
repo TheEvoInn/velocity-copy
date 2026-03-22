@@ -1,14 +1,12 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import PlatformLayout from '@/components/layout/PlatformLayout.jsx';
-const { Pages, Layout, mainPage } = pagesConfig;
-const MainPage = Pages[mainPage] ?? null;
+import AdminControlPanel from './pages/AdminControlPanel';
+// Add page imports here
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -36,30 +34,7 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Dashboard/Landing Page - No layout wrapper */}
-      <Route path="/" element={MainPage ? <MainPage /> : <PageNotFound />} />
-      <Route path="/Dashboard" element={MainPage ? <MainPage /> : <PageNotFound />} />
-      
-      {/* Starship Bridge - Full immersive (no nav) */}
-      <Route path="/StarshipBridge" element={Pages.StarshipBridge ? <Pages.StarshipBridge /> : <PageNotFound />} />
-      
-      {/* All other pages - With platform layout and navigation */}
-      <Route element={<PlatformLayout />}>
-        {Object.entries(Pages)
-          .filter(([path]) => !['Dashboard', 'StarshipBridge'].includes(path))
-          .map(([path, Page]) => (
-            <Route key={path} path={`/${path}`} element={Page ? <Page /> : <PageNotFound />} />
-          ))}
-        <Route path="/WalletDashboard" element={Pages.WalletDashboard ? <Pages.WalletDashboard /> : <PageNotFound />} />
-        <Route path="/AutoPilotEngine" element={Pages.AutoPilotEngine ? <Pages.AutoPilotEngine /> : <PageNotFound />} />
-        <Route path="/WorkDiscovery" element={Pages.WorkDiscovery ? <Pages.WorkDiscovery /> : <PageNotFound />} />
-        <Route path="/IdentityManager" element={Pages.IdentityManager ? <Pages.IdentityManager /> : <PageNotFound />} />
-        <Route path="/SystemAuditDashboard" element={Pages.SystemAuditDashboard ? <Pages.SystemAuditDashboard /> : <PageNotFound />} />
-        {/* Nested 404 for module paths */}
-        <Route path="*" element={<PageNotFound />} />
-      </Route>
-      
-      {/* Root catch-all 404 */}
+      {/* Add your page Route elements here */}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

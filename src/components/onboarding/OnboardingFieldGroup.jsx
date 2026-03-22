@@ -62,6 +62,40 @@ export default function OnboardingFieldGroup({
     }
   }, [identityId, fieldId, value, onChange]);
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      onChange?.(file_url);
+      
+      // Save file URL to localStorage
+      if (identityId) {
+        const key = `onboarding_${identityId}_${fieldId}`;
+        localStorage.setItem(key, file_url);
+      }
+      
+      setIsValid(true);
+      setError('');
+    } catch (err) {
+      setError(`Upload failed: ${err.message}`);
+      setIsValid(false);
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveFile = () => {
+    onChange?.('');
+    if (identityId) {
+      const key = `onboarding_${identityId}_${fieldId}`;
+      localStorage.removeItem(key);
+    }
+  };
+
   const baseInputClasses = `w-full px-3 py-2 rounded-lg text-sm font-mono transition-all
     ${isValid
       ? 'bg-slate-950 border border-slate-800 text-white placeholder-slate-600'

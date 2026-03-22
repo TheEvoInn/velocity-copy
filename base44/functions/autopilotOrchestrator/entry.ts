@@ -292,33 +292,54 @@ Deno.serve(async (req) => {
            }
          }
 
-         // 5. Process queue items (simulate execution by completing some)
+         // 5. Process queue items via agentWorker (real execution)
          try {
            const queued = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
-             { status: 'queued', created_by: user.email },
-             'priority',
-             50
+             { status: 'queued' },
+             '-priority',
+             10
            ).catch(() => []);
 
-           // Mark 60% as completed for demo
-           for (const task of queued.slice(0, Math.ceil(queued.length * 0.6))) {
+           for (const task of queued.slice(0, 5)) {
+             if (!task || !task.id) continue;
              try {
+               // Mark as processing
                await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
-                 status: 'completed',
-                 completion_timestamp: new Date().toISOString(),
-                 execution_time_seconds: Math.random() * 30 + 5,
-                 submission_success: true
+                 status: 'processing',
+                 start_timestamp: new Date().toISOString()
                }).catch(() => null);
+
+               // Delegate to agentWorker for real execution
+               const execRes = await base44.asServiceRole.functions.invoke('agentWorker', {
+                 action: 'execute_task',
+                 payload: {
+                   task_id: task.id,
+                   opportunity_id: task.opportunity_id || '',
+                   url: task.url || '',
+                   identity_id: task.identity_id || '',
+                   platform: task.platform || 'unknown'
+                 }
+               }).catch(e => ({ data: { success: false, error: e.message } }));
+
+               if (execRes?.data?.success) {
+                 cycleResults.tasks_executed++;
+               } else {
+                 await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
+                   status: 'failed',
+                   error_message: execRes?.data?.error || 'Execution failed',
+                   needs_manual_review: true
+                 }).catch(() => null);
+               }
              } catch (e) {
-               console.error(`Error completing task ${task.id}:`, e.message);
+               console.error(`Error executing task ${task.id}:`, e.message);
              }
            }
          } catch (e) {
            console.error('Queue processing error:', e.message);
          }
 
-        // 5. Log success
-        cycleResults.earnings_generated = 0; // Will be populated by monitoring
+        // Log earnings from completed tasks
+        cycleResults.earnings_generated = 0; // Populated by walletManager on task completion
 
       } catch (error) {
         cycleResults.errors.push(error.message);

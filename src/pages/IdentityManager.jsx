@@ -267,10 +267,11 @@ export default function IdentityManager() {
               key={identity.id}
               identity={identity}
               linkedAccounts={allLinkedAccounts.filter(a => (identity.linked_account_ids || []).includes(a.id))}
-              onSwitch={handleSwitch}
+              onSwitch={identity.onboarding_complete && identity.is_active ? handleSwitch : undefined}
               onDelete={handleDelete}
               onUpdate={update}
               isSwitching={isSwitching}
+              onResumeOnboarding={() => handleResumeOnboarding(identity)}
             />
           ))}
         </div>

@@ -65,6 +65,7 @@ import VIPZ from './pages/VIPZ';
 import IdentityManager from './pages/IdentityManager';
 import AdminControlPanel from './pages/AdminControlPanel';
 import Chat from './pages/Chat';
+import SystemAuditDashboard from './pages/SystemAuditDashboard';
 
 export const PAGES = {
 	"Dashboard": Dashboard,
@@ -84,6 +85,7 @@ export const PAGES = {
 	"IdentityManager": IdentityManager,
 	"AdminControlPanel": AdminControlPanel,
 	"Chat": Chat,
+	"SystemAuditDashboard": SystemAuditDashboard,
 }
 
 export const pagesConfig = {

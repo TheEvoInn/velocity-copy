@@ -120,6 +120,25 @@ function UserRow({ user, identities, goals, connections, kycs, onAudit }) {
             {userGoal?.daily_target && (
               <p className="text-slate-400 mt-1">Target: ${userGoal.daily_target}/day</p>
             )}
+            {onboardStatus === 'complete' && (
+              <TriggerButton
+                label="✓ Approve Setup"
+                icon={CheckCircle2}
+                color="#10b981"
+                loading={approving === 'onboarding'}
+                onClick={async () => {
+                  setApproving('onboarding');
+                  try {
+                    await base44.entities.UserGoals.update(userGoal.id, { onboarded: true });
+                    toast.success('Onboarding approved');
+                    await onAudit?.(user.email);
+                  } catch (e) {
+                    toast.error(e.message);
+                  }
+                  setApproving(null);
+                }}
+              />
+            )}
             {onboardStatus === 'not_started' && (
               <TriggerButton
                 label="Nudge to Onboard"

@@ -31,7 +31,7 @@ export default function StarshipBridge() {
       />
 
       {/* HUD overlay */}
-      <CockpitHUD hoveredModule={hoveredModule} />
+      <CockpitHUD hoveredModule={hoveredModule} onNavigate={handleModuleSelect} />
 
       {/* Warp speed transition overlay */}
       {warpActive && (

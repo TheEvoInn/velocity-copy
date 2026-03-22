@@ -18,8 +18,10 @@ export default function OnboardingFieldGroup({
   validation = null, // func: (val) => { valid: bool, error?: string }
   helpText = '',
   options = [], // For select/radio
+  accept = '*', // For file inputs
   identityId, // For auto-save to entity
 }) {
+  const fieldConfig = { helpText, accept };
   const [isValid, setIsValid] = useState(true);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);

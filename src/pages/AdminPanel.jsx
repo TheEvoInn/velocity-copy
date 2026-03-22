@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Users, Shield, Search, Trash2, CheckCircle2, XCircle,
-  Mail, Eye, Lock, RefreshCw, Download
+  Mail, Eye, Lock, RefreshCw, Download, Clock, AlertCircle, Activity
 } from 'lucide-react';
 import { toast } from 'sonner';
 

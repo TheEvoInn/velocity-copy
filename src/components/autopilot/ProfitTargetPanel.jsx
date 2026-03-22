@@ -21,12 +21,22 @@ export default function ProfitTargetPanel({ goals, onUpdate }) {
   }, [goals?.id]);
 
   const saveMutation = useMutation({
-    mutationFn: () => base44.entities.UserGoals.update(goals.id, {
-      ai_daily_target: parseFloat(aiTarget) || 500,
-      user_daily_target: parseFloat(userTarget) || 500,
-      ai_instructions: aiInstructions,
-      daily_target: (parseFloat(aiTarget) || 500) + (parseFloat(userTarget) || 500),
-    }),
+    mutationFn: async () => {
+      const ai = parseFloat(aiTarget) || 500;
+      const user = parseFloat(userTarget) || 500;
+      const data = {
+        ai_daily_target: ai,
+        user_daily_target: user,
+        ai_instructions: aiInstructions,
+        daily_target: ai + user,
+      };
+
+      if (goals?.id) {
+        return base44.entities.UserGoals.update(goals.id, data);
+      } else {
+        return base44.entities.UserGoals.create(data);
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['userGoals'] });
       if (onUpdate) onUpdate();

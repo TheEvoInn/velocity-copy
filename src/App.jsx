@@ -35,8 +35,9 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      <Route path="/" element={<AdminControlPanel />} />
-      <Route path="/AdminControlPanel" element={<AdminControlPanel />} />
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/Dashboard" element={<Dashboard />} />
+      <Route path="/AdminSettings" element={<AdminControlPanel />} />
       {/* Add your page Route elements here */}
       <Route path="*" element={<PageNotFound />} />
     </Routes>

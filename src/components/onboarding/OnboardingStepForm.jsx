@@ -20,15 +20,22 @@ export default function OnboardingStepForm({
   const [isValid, setIsValid] = useState(false);
   const [validFields, setValidFields] = useState({});
 
-  // Load saved progress from localStorage
+  // Load saved progress from localStorage and re-validate
   useEffect(() => {
     const saved = {};
+    const validated = {};
     fields.forEach((field) => {
       const key = `onboarding_${identityId}_${field.id}`;
       const val = localStorage.getItem(key);
-      if (val) saved[field.id] = val;
+      if (val) {
+        saved[field.id] = val;
+        // Re-validate loaded value
+        const valid = field.validate?.(val) ?? true;
+        validated[field.id] = valid === true;
+      }
     });
     setFormData(saved);
+    setValidFields(validated);
   }, [identityId, fields]);
 
   // Update validation state

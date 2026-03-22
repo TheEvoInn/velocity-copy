@@ -214,13 +214,19 @@ export default function AdminPanel() {
           </Button>
         </div>
 
+        {/* Live Updates Indicator */}
+        <div className="mb-6 px-4 py-3 rounded-lg bg-cyan-400/10 border border-cyan-400/30 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-cyan-400 animate-pulse" />
+          <span className="text-xs text-cyan-400">Live updates active · {liveUpdates} changes</span>
+        </div>
+
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <Card className="glass-card">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-xs uppercase">Total Users</p>
+                  <p className="text-slate-400 text-xs uppercase">Total</p>
                   <p className="text-3xl font-bold text-white mt-1">{totalUsers}</p>
                 </div>
                 <Users className="w-8 h-8 text-cyan-400 opacity-50" />
@@ -244,10 +250,10 @@ export default function AdminPanel() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-xs uppercase">Pending KYC</p>
-                  <p className="text-3xl font-bold text-amber-400 mt-1">{pendingKYC}</p>
+                  <p className="text-slate-400 text-xs uppercase">Rejected</p>
+                  <p className="text-3xl font-bold text-red-400 mt-1">{rejectedUsers}</p>
                 </div>
-                <Mail className="w-8 h-8 text-amber-400 opacity-50" />
+                <AlertCircle className="w-8 h-8 text-red-400 opacity-50" />
               </div>
             </CardContent>
           </Card>
@@ -256,8 +262,20 @@ export default function AdminPanel() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-xs uppercase">Identities</p>
-                  <p className="text-3xl font-bold text-violet-400 mt-1">{usersWithIdentities}</p>
+                  <p className="text-slate-400 text-xs uppercase">Pending</p>
+                  <p className="text-3xl font-bold text-amber-400 mt-1">{pendingKYC}</p>
+                </div>
+                <Clock className="w-8 h-8 text-amber-400 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-slate-400 text-xs uppercase">Connected</p>
+                  <p className="text-3xl font-bold text-violet-400 mt-1">{activeConnections}</p>
                 </div>
                 <Shield className="w-8 h-8 text-violet-400 opacity-50" />
               </div>

@@ -61,9 +61,18 @@ Deno.serve(async (req) => {
       status: 'audit_complete'
     };
 
-    // ━━━━ CHECK: User entity exists ━━━━
-    const users = await base44.asServiceRole.entities.User.filter({ email: user_email }, null, 1);
-    const user = users[0];
+    // ━━━━ PARALLEL FETCH: User + KYC (non-blocking) ━━━━
+    const [userResults, kycResults] = await Promise.all([
+      base44.asServiceRole.entities.User.filter({ email: user_email }, null, 1).catch(() => []),
+      base44.asServiceRole.entities.KYCVerification.filter(
+        { $or: [{ created_by: user_email }, { user_email }] },
+        '-created_date',
+        1
+      ).catch(() => [])
+    ]);
+
+    const user = userResults[0];
+    const kyc = kycResults[0];
 
     audit.connections.user = {
       exists: !!user,
@@ -76,14 +85,6 @@ Deno.serve(async (req) => {
       audit.issues_found++;
       audit.connections.user.issue = 'User record not found';
     }
-
-    // ━━━━ CHECK: KYC Verification ━━━━
-    const kycs = await base44.asServiceRole.entities.KYCVerification.filter(
-      { $or: [{ created_by: user_email }, { user_email }] },
-      '-created_date',
-      1
-    );
-    const kyc = kycs[0];
 
     audit.connections.kyc = {
       exists: !!kyc,
@@ -100,13 +101,28 @@ Deno.serve(async (req) => {
       audit.connections.kyc.issue = `KYC status: ${kyc.status} (not verified)`;
     }
 
-    // ━━━━ CHECK: User Goals ━━━━
-    const goals = await base44.asServiceRole.entities.UserGoals.filter(
-      { $or: [{ created_by: user_email }, { user_email }] },
-      null,
-      1
-    );
-    const userGoal = goals[0];
+    // ━━━━ PARALLEL FETCH: Goals + Identities + DataStore ━━━━
+    const [goalResults, identityResults, dataStoreResults] = await Promise.all([
+      base44.asServiceRole.entities.UserGoals.filter(
+        { $or: [{ created_by: user_email }, { user_email }] },
+        null,
+        1
+      ).catch(() => []),
+      base44.asServiceRole.entities.AIIdentity.filter(
+        { $or: [{ created_by: user_email }, { user_email }] },
+        null,
+        5  // Reduced limit for performance
+      ).catch(() => []),
+      base44.asServiceRole.entities.UserDataStore.filter(
+        { user_email },
+        null,
+        1
+      ).catch(() => [])
+    ]);
+
+    const userGoal = goalResults[0];
+    const identities = identityResults;
+    const dataStore = dataStoreResults[0];
 
     audit.connections.user_goals = {
       exists: !!userGoal,
@@ -118,40 +134,8 @@ Deno.serve(async (req) => {
     if (!userGoal) {
       audit.issues_found++;
       audit.connections.user_goals.issue = 'No UserGoals record found';
-
-      // Repair: Create default UserGoals
-       try {
-         const newGoal = await base44.asServiceRole.entities.UserGoals.create({
-           user_email: user_email,
-           daily_target: 1000,
-           available_capital: 0,
-           risk_tolerance: 'moderate',
-           hours_per_day: 8,
-           wallet_balance: 0,
-           total_earned: 0,
-           onboarded: false,
-           autopilot_enabled: false
-         });
-
-        audit.connections.user_goals = {
-          exists: true,
-          goal_id: newGoal.id,
-          autopilot_enabled: false,
-          onboarded: false,
-          repair: 'created'
-        };
-        audit.repairs_made++;
-      } catch (e) {
-        audit.connections.user_goals.repair_error = e.message;
-      }
+      // Repair deferred - create after main checks to save time
     }
-
-    // ━━━━ CHECK: AI Identities ━━━━
-    const identities = await base44.asServiceRole.entities.AIIdentity.filter(
-      { $or: [{ created_by: user_email }, { user_email }] },
-      null,
-      10
-    );
 
     audit.connections.identities = {
       count: identities.length,
@@ -171,28 +155,9 @@ Deno.serve(async (req) => {
       if (!activeIdentity) {
         audit.issues_found++;
         audit.connections.identities.issue = 'No identity marked as active';
-
-        // Repair: Activate first identity
-        try {
-          await base44.asServiceRole.entities.AIIdentity.update(identities[0].id, {
-            is_active: true
-          });
-
-          audit.connections.identities.repair = `activated: ${identities[0].name}`;
-          audit.repairs_made++;
-        } catch (e) {
-          audit.connections.identities.repair_error = e.message;
-        }
+        // Repair deferred
       }
     }
-
-    // ━━━━ CHECK: User Data Store (preferences) ━━━━
-    const dataStores = await base44.asServiceRole.entities.UserDataStore.filter(
-      { user_email },
-      null,
-      1
-    );
-    const dataStore = dataStores[0];
 
     audit.connections.user_data_store = {
       exists: !!dataStore,
@@ -202,74 +167,105 @@ Deno.serve(async (req) => {
     if (!dataStore) {
       audit.issues_found++;
       audit.connections.user_data_store.issue = 'No UserDataStore record found';
+      // Repair deferred
+    }
 
-      // Repair: Create default data store
-       try {
-         const newStore = await base44.asServiceRole.entities.UserDataStore.create({
-           user_email: user_email,
-           ui_preferences: {
-             theme: 'dark',
-             sidebar_collapsed: false,
-             default_view: 'dashboard'
-           },
-           autopilot_preferences: {
-             enabled: false,
-             mode: 'continuous',
-             execution_mode: 'review_required'
-           }
-         });
+    // ━━━━ PARALLEL FETCH: Queue + Opportunities + Transactions ━━━━
+    const [queueResults, oppResults, txResults] = await Promise.all([
+      base44.asServiceRole.entities.TaskExecutionQueue.filter(
+        { $or: [{ created_by: user_email }, { user_email }] },
+        null,
+        1
+      ).catch(() => []),
+      base44.asServiceRole.entities.Opportunity.filter(
+        { $or: [{ created_by: user_email }, { user_email }] },
+        null,
+        1
+      ).catch(() => []),
+      base44.asServiceRole.entities.Transaction.filter(
+        { $or: [{ created_by: user_email }, { user_email }] },
+        '-created_date',
+        1
+      ).catch(() => [])
+    ]);
 
-        audit.connections.user_data_store = {
-          exists: true,
-          data_store_id: newStore.id,
-          repair: 'created'
-        };
-        audit.repairs_made++;
-      } catch (e) {
-        audit.connections.user_data_store.repair_error = e.message;
+    audit.connections.task_queue = {
+      records_count: queueResults.length,
+      queued: queueResults.filter(t => t.status === 'queued').length,
+      executing: queueResults.filter(t => t.status === 'processing' || t.status === 'executing').length,
+      completed: queueResults.filter(t => t.status === 'completed').length
+    };
+
+    audit.connections.opportunities = {
+      total_count: oppResults.length,
+      new: oppResults.filter(o => o.status === 'new').length,
+      queued: oppResults.filter(o => o.status === 'queued').length,
+      executing: oppResults.filter(o => o.status === 'executing').length,
+      completed: oppResults.filter(o => o.status === 'completed').length
+    };
+
+    audit.connections.transactions = {
+      total_count: txResults.length,
+      last_transaction: txResults[0]?.created_date || null
+    };
+
+    // ━━━━ DEFERRED REPAIRS (run in parallel if needed) ━━━━
+    const repairs = [];
+
+    if (!userGoal) {
+      repairs.push(
+        base44.asServiceRole.entities.UserGoals.create({
+          user_email: user_email,
+          daily_target: 1000,
+          available_capital: 0,
+          risk_tolerance: 'moderate',
+          hours_per_day: 8,
+          wallet_balance: 0,
+          total_earned: 0,
+          onboarded: false,
+          autopilot_enabled: false
+        }).then(() => {
+          audit.connections.user_goals.repair = 'created';
+          audit.repairs_made++;
+        }).catch(e => {
+          audit.connections.user_goals.repair_error = e.message;
+        })
+      );
+    }
+
+    if (identities.length > 0) {
+      const activeIdentity = identities.find(i => i.is_active);
+      if (!activeIdentity) {
+        repairs.push(
+          base44.asServiceRole.entities.AIIdentity.update(identities[0].id, { is_active: true })
+            .then(() => {
+              audit.connections.identities.repair = `activated: ${identities[0].name}`;
+              audit.repairs_made++;
+            })
+            .catch(e => {
+              audit.connections.identities.repair_error = e.message;
+            })
+        );
       }
     }
 
-    // ━━━━ CHECK: Task Execution Queue ━━━━
-    const taskQueues = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
-      { $or: [{ created_by: user_email }, { user_email }] },
-      null,
-      1
-    );
+    if (!dataStore) {
+      repairs.push(
+        base44.asServiceRole.entities.UserDataStore.create({
+          user_email: user_email,
+          ui_preferences: { theme: 'dark', sidebar_collapsed: false, default_view: 'dashboard' },
+          autopilot_preferences: { enabled: false, mode: 'continuous', execution_mode: 'review_required' }
+        }).then(() => {
+          audit.connections.user_data_store.repair = 'created';
+          audit.repairs_made++;
+        }).catch(e => {
+          audit.connections.user_data_store.repair_error = e.message;
+        })
+      );
+    }
 
-    audit.connections.task_queue = {
-      records_count: taskQueues.length,
-      queued: taskQueues.filter(t => t.status === 'queued').length,
-      executing: taskQueues.filter(t => t.status === 'processing' || t.status === 'executing').length,
-      completed: taskQueues.filter(t => t.status === 'completed').length
-    };
-
-    // ━━━━ CHECK: Opportunities ━━━━
-    const opps = await base44.asServiceRole.entities.Opportunity.filter(
-      { $or: [{ created_by: user_email }, { user_email }] },
-      null,
-      1
-    );
-
-    audit.connections.opportunities = {
-      total_count: opps.length,
-      new: opps.filter(o => o.status === 'new').length,
-      queued: opps.filter(o => o.status === 'queued').length,
-      executing: opps.filter(o => o.status === 'executing').length,
-      completed: opps.filter(o => o.status === 'completed').length
-    };
-
-    // ━━━━ CHECK: Transactions ━━━━
-    const transactions = await base44.asServiceRole.entities.Transaction.filter(
-      { $or: [{ created_by: user_email }, { user_email }] },
-      '-created_date',
-      1
-    );
-
-    audit.connections.transactions = {
-      total_count: transactions.length,
-      last_transaction: transactions[0]?.created_date || null
-    };
+    // Execute all repairs in parallel
+    await Promise.allSettled(repairs);
 
     // ━━━━ FINAL STATUS ━━━━
     if (audit.issues_found > 0) {

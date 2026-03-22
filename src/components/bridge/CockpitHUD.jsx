@@ -6,7 +6,7 @@ import WorkflowOrbitView from './WorkflowOrbitView';
 import {
   Zap, Radio, Target, TrendingUp, Activity, Bell, Map, AlertTriangle,
   ChevronRight, Power, Navigation, Cpu, Database, Shield, Settings,
-  User, Wallet, BarChart2, Layers, GitBranch, Radar, Navigation2, Orbit
+  User, Wallet, BarChart2, Layers, GitBranch, Radar, Navigation2, Workflow
 } from 'lucide-react';
 
 // ── Panel primitives ──────────────────────────────────────────────────────────

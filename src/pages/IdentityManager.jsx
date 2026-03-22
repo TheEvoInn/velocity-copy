@@ -319,6 +319,20 @@ export default function IdentityManager() {
           onCancel={() => { setShowForm(false); setEditingIdentity(null); }}
         />
       )}
+
+      {/* ── ONBOARDING WIZARD ── */}
+      {onboardingIdentity && (
+        <IdentityOnboardingWizard
+          identity={onboardingIdentity}
+          onComplete={handleOnboardingComplete}
+          onSkip={() => {
+            // Mark as in_progress so it doesn't auto-launch again immediately
+            update({ id: onboardingIdentity.id, data: { onboarding_status: 'in_progress' } });
+            setOnboardingIdentity(null);
+            toast.warning('Onboarding skipped — identity will remain inactive until completed.');
+          }}
+        />
+      )}
     </div>
   );
 }

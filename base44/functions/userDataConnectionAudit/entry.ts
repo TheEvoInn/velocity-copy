@@ -120,17 +120,18 @@ Deno.serve(async (req) => {
       audit.connections.user_goals.issue = 'No UserGoals record found';
 
       // Repair: Create default UserGoals
-      try {
-        const newGoal = await base44.asServiceRole.entities.UserGoals.create({
-          daily_target: 1000,
-          available_capital: 0,
-          risk_tolerance: 'moderate',
-          hours_per_day: 8,
-          wallet_balance: 0,
-          total_earned: 0,
-          onboarded: false,
-          autopilot_enabled: false
-        });
+       try {
+         const newGoal = await base44.asServiceRole.entities.UserGoals.create({
+           user_email: user_email,
+           daily_target: 1000,
+           available_capital: 0,
+           risk_tolerance: 'moderate',
+           hours_per_day: 8,
+           wallet_balance: 0,
+           total_earned: 0,
+           onboarded: false,
+           autopilot_enabled: false
+         });
 
         audit.connections.user_goals = {
           exists: true,
@@ -203,20 +204,20 @@ Deno.serve(async (req) => {
       audit.connections.user_data_store.issue = 'No UserDataStore record found';
 
       // Repair: Create default data store
-      try {
-        const newStore = await base44.asServiceRole.entities.UserDataStore.create({
-          user_email,
-          ui_preferences: {
-            theme: 'dark',
-            sidebar_collapsed: false,
-            default_view: 'dashboard'
-          },
-          autopilot_preferences: {
-            enabled: false,
-            mode: 'continuous',
-            execution_mode: 'review_required'
-          }
-        });
+       try {
+         const newStore = await base44.asServiceRole.entities.UserDataStore.create({
+           user_email: user_email,
+           ui_preferences: {
+             theme: 'dark',
+             sidebar_collapsed: false,
+             default_view: 'dashboard'
+           },
+           autopilot_preferences: {
+             enabled: false,
+             mode: 'continuous',
+             execution_mode: 'review_required'
+           }
+         });
 
         audit.connections.user_data_store = {
           exists: true,

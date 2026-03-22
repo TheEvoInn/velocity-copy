@@ -82,7 +82,7 @@ function UserRow({ user, identities, goals, connections, kycs, onAudit }) {
   const kycStatus      = userKyc?.status;
 
   return (
-    <div className="border border-slate-800 rounded-xl overflow-hidden">
+    <div className="border border-slate-800 rounded-xl overflow-hidden" data-user-id={user.id}>
       <div className="flex items-center gap-3 p-3 bg-slate-800/30 hover:bg-slate-800/50 transition-colors cursor-pointer"
         onClick={() => setExpanded(p => !p)}>
         <div className="w-8 h-8 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0">

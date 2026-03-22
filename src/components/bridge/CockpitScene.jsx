@@ -19,6 +19,97 @@ const STATIONS = [
   { name: 'Settings',   route: '/AccountManager',       x:  -2, y: -14, z:-40, color: 0xf9d65c },
 ];
 
+// ── Trajectory trail helper ────────────────────────────────────────────────────
+function spawnTrajectoryTrail(scene, targetPos, color) {
+  const origin = new THREE.Vector3(0, -2, 8);
+  const dest   = new THREE.Vector3(targetPos.x, targetPos.y, targetPos.z);
+
+  // Build a curved path (arc upward slightly through space)
+  const mid = origin.clone().lerp(dest, 0.5).add(new THREE.Vector3(0, 6, 0));
+  const curve = new THREE.QuadraticBezierCurve3(origin, mid, dest);
+  const points = curve.getPoints(80);
+
+  // Static trail line (full path, faint)
+  const trailGeo = new THREE.BufferGeometry().setFromPoints(points);
+  const trailMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.25 });
+  const trailLine = new THREE.Line(trailGeo, trailMat);
+  scene.add(trailLine);
+
+  // Moving bolt: a bright short segment that travels along the curve
+  const BOLT_LEN = 12; // number of points in the bolt head
+  const boltPoints = Array(BOLT_LEN).fill(points[0]);
+  const boltGeo = new THREE.BufferGeometry().setFromPoints(boltPoints);
+  const boltMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1 });
+  const bolt = new THREE.Line(boltGeo, boltMat);
+  scene.add(bolt);
+
+  // Bright point light that rides the bolt
+  const light = new THREE.PointLight(color, 8, 20);
+  light.position.copy(origin);
+  scene.add(light);
+
+  // Particle spray along the trail
+  const sparkCount = 60;
+  const sparkPos = new Float32Array(sparkCount * 3);
+  for (let i = 0; i < sparkCount; i++) {
+    const p = points[Math.floor(Math.random() * points.length)];
+    sparkPos[i*3]   = p.x + (Math.random()-0.5)*1.5;
+    sparkPos[i*3+1] = p.y + (Math.random()-0.5)*1.5;
+    sparkPos[i*3+2] = p.z + (Math.random()-0.5)*1.5;
+  }
+  const sparkGeo = new THREE.BufferGeometry();
+  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+  const sparkMat = new THREE.PointsMaterial({ color, size: 0.3, transparent: true, opacity: 0 });
+  const sparks = new THREE.Points(sparkGeo, sparkMat);
+  scene.add(sparks);
+
+  const DURATION = 1.4; // seconds
+  const startTime = performance.now() / 1000;
+
+  const cleanup = () => {
+    scene.remove(trailLine); trailGeo.dispose(); trailMat.dispose();
+    scene.remove(bolt);      boltGeo.dispose();  boltMat.dispose();
+    scene.remove(light);
+    scene.remove(sparks);    sparkGeo.dispose();  sparkMat.dispose();
+  };
+
+  const tick = () => {
+    const elapsed = performance.now() / 1000 - startTime;
+    const progress = Math.min(elapsed / DURATION, 1);
+
+    // Move bolt head along curve
+    const headIdx = Math.floor(progress * (points.length - 1));
+    const boltArr = boltGeo.attributes.position.array;
+    for (let i = 0; i < BOLT_LEN; i++) {
+      const idx = Math.max(0, headIdx - i);
+      const pt  = points[idx];
+      boltArr[i*3]   = pt.x;
+      boltArr[i*3+1] = pt.y;
+      boltArr[i*3+2] = pt.z;
+    }
+    boltGeo.attributes.position.needsUpdate = true;
+    boltMat.opacity = 1 - progress * 0.5;
+
+    // Ride the light
+    const lightPt = points[headIdx];
+    light.position.set(lightPt.x, lightPt.y, lightPt.z);
+    light.intensity = 8 * (1 - progress);
+
+    // Fade in sparks then fade out
+    sparkMat.opacity = progress < 0.3 ? progress / 0.3 * 0.7 : 0.7 * (1 - (progress - 0.3) / 0.7);
+
+    // Fade the static trail in then out
+    trailMat.opacity = 0.25 * (1 - progress);
+
+    if (progress < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      cleanup();
+    }
+  };
+  requestAnimationFrame(tick);
+}
+
 export default function CockpitScene({ onModuleSelect, onHover, activityLevels = {} }) {
   const mountRef = useRef(null);
   const stateRef = useRef({

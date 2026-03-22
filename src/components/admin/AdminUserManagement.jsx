@@ -416,13 +416,14 @@ export default function AdminUserManagement() {
   );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // COMPUTE DASHBOARD METRICS (from all fetched data)
+  // COMPUTE DASHBOARD METRICS (from enriched user profiles)
   // ─────────────────────────────────────────────────────────────────────────
-  const onboarded   = goals.filter(g => g.onboarded === true).length;
-  const autopilotOn = goals.filter(g => g.autopilot_enabled === true).length;
-  const pendingKyc  = kycs.filter(k => !['approved', 'verified'].includes(k?.status)).length;
-  const withIdentities = identities.filter(id => id.user_email).length;
-  const withConnections = connections.filter(c => c.user_email).length;
+  const onboarded   = metadata.users_onboarded || 0;
+  const autopilotOn = users.filter(u => u.stats.autopilot_enabled).length;
+  const pendingKyc  = metadata.pending_kyc || 0;
+  const withIdentities = metadata.users_with_identities || 0;
+  const withConnections = metadata.users_with_connections || 0;
+  const totalEarned = metadata.total_earned_across_users || 0;
 
   return (
     <div className="space-y-4">

@@ -242,6 +242,10 @@ export default function AutoPilot() {
       {/* ── Tab Content ── */}
       <div className="space-y-4">
 
+        {activeTab === 'command' && (
+          <RealtimeCommandHub />
+        )}
+
         {activeTab === 'hud' && (
           <>
             <MissionControlHUD

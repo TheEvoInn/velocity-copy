@@ -293,7 +293,7 @@ function IdentityBadge({ navigate }) {
 }
 
 // ── Lower Control Strip ───────────────────────────────────────────────────────
-function LowerControlStrip({ navigate, wallets, logs, goals, onAutopilotChange, autopilotMode }) {
+function LowerControlStrip({ navigate, wallets, logs, goals, onAutopilotChange, autopilotMode, onOrbitView }) {
   const totalBalance = wallets?.reduce((s, w) => s + (w?.balance?.total_balance_usd || 0), 0) || 0;
 
   return (

@@ -139,7 +139,7 @@ export default function ProfitTargetPanel({ goals, onUpdate }) {
 
       <Button
         onClick={() => saveMutation.mutate()}
-        disabled={saveMutation.isPending || !goals?.id}
+        disabled={saveMutation.isPending}
         className="w-full text-xs h-9 font-orbitron tracking-wide"
         style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', boxShadow: '0 0 16px rgba(245,158,11,0.3)' }}
       >

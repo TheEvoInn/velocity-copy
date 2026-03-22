@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
     // ─── 5B. CREATE USER GOALS ────────────────────────────────────────────────
     try {
       await base44.entities.UserGoals.create({
-        user_email: user.email,
+        user_email: user.email,  // ← REQUIRED: Admin visibility
         daily_target: parseFloat(onboarding_data.daily_earning_target) || 1000,
         available_capital: 0,
         risk_tolerance: onboarding_data.risk_level || 'moderate',
@@ -219,12 +219,12 @@ Deno.serve(async (req) => {
         hours_per_day: 8,
         wallet_balance: 0,
         total_earned: 0,
-        onboarded: false,
+        onboarded: true,  // ← CRITICAL: Mark as onboarded so admin can see status
         autopilot_enabled: false,
         ai_daily_target: (parseFloat(onboarding_data.daily_earning_target) || 1000) * 0.5,
         user_daily_target: (parseFloat(onboarding_data.daily_earning_target) || 1000) * 0.5,
       });
-      addLog('UserGoalsEngine', 'success', 'User goals record created');
+      addLog('UserGoalsEngine', 'success', 'User goals marked as onboarded');
     } catch (e) {
       addLog('UserGoalsEngine', 'error', e.message);
     }

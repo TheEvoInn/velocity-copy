@@ -169,10 +169,10 @@ function KYCStep({ data, onChange }) {
       <div className="space-y-2">
         <label className="text-[10px] font-orbitron text-slate-500 tracking-widest block">DOCUMENT UPLOADS</label>
         {[
-          { key: 'id_front_uploaded', label: 'Government ID (Front)' },
-          { key: 'id_back_uploaded', label: 'Government ID (Back)' },
-          { key: 'selfie_uploaded', label: 'Selfie / Biometric Check' },
-          { key: 'address_proof_uploaded', label: 'Proof of Address (utility bill / bank statement)' },
+          { key: 'id_front_uploaded', urlKey: 'id_front_url', label: 'Government ID (Front)' },
+          { key: 'id_back_uploaded', urlKey: 'id_back_url', label: 'Government ID (Back)' },
+          { key: 'selfie_uploaded', urlKey: 'selfie_url', label: 'Selfie / Biometric Check' },
+          { key: 'address_proof_uploaded', urlKey: 'address_proof_url', label: 'Proof of Address (utility bill / bank statement)' },
         ].map(doc => (
           <div key={doc.key} className="flex items-center justify-between px-3 py-2.5 rounded-xl"
             style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${data[doc.key] ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'}` }}>
@@ -182,17 +182,39 @@ function KYCStep({ data, onChange }) {
                 : <Upload className="w-3.5 h-3.5 text-slate-500" />
               }
               <span style={{ color: data[doc.key] ? '#10b981' : '#94a3b8' }}>{doc.label}</span>
+              {uploadingKey === doc.key && (
+                <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin text-slate-400" />
+              )}
             </div>
-            <button type="button"
-              onClick={() => onChange(doc.key, !data[doc.key])}
-              className="text-[10px] px-2.5 py-1 rounded-lg transition-all font-orbitron"
-              style={{
-                background: data[doc.key] ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-                border: `1px solid ${data[doc.key] ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.25)'}`,
-                color: data[doc.key] ? '#10b981' : '#ef4444',
-              }}>
-              {data[doc.key] ? '✓ Uploaded' : 'Mark Uploaded'}
-            </button>
+            <label className="cursor-pointer">
+              <input type="file" accept="image/*,.pdf" className="hidden"
+                disabled={uploadingKey === doc.key}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploadingKey(doc.key);
+                  try {
+                    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                    onChange(doc.urlKey, file_url);
+                    onChange(doc.key, true);
+                  } catch (err) {
+                    toast.error(`Upload failed: ${err.message}`);
+                  } finally {
+                    setUploadingKey(null);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <span className="text-[10px] px-2.5 py-1 rounded-lg transition-all font-orbitron"
+                style={{
+                  background: data[doc.key] ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)',
+                  border: `1px solid ${data[doc.key] ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.25)'}`,
+                  color: data[doc.key] ? '#10b981' : '#3b82f6',
+                  display: 'inline-block',
+                }}>
+                {uploadingKey === doc.key ? 'Uploading…' : data[doc.key] ? '✓ Uploaded' : 'Upload File'}
+              </span>
+            </label>
           </div>
         ))}
       </div>

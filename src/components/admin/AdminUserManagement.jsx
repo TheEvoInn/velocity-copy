@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users, CheckCircle2, Clock, XCircle, Bot, Shield,
   Search, ChevronDown, ChevronUp, RefreshCw, Wrench,
-  ArrowRight, Bell, AlertTriangle, Zap, Link2
+  ArrowRight, Bell, AlertTriangle, Zap, Link2, CheckCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

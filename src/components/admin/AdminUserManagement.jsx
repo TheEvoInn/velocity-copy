@@ -3,7 +3,7 @@
  * Shows onboarding, identity setup, autopilot status.
  * NO access to KYC docs, API keys, bank details, or private messages.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {

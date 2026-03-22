@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Check, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Check, Eye, EyeOff, Upload, CheckCircle2, Trash2 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 /**
  * OnboardingFieldGroup — Reusable field component with validation & auto-save

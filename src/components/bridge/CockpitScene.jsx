@@ -41,8 +41,8 @@ export default function CockpitScene({ onModuleSelect, onHover, activityLevels =
 
     // ── Camera ────────────────────────────────────────────────────────────
     const camera = new THREE.PerspectiveCamera(70, W / H, 0.1, 2000);
-    camera.position.set(0, 1.8, 10);
-    camera.lookAt(0, 0, -20);
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, -1, -30);
     S.camera = camera;
 
     // ── Renderer ──────────────────────────────────────────────────────────

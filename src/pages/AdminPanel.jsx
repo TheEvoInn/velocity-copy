@@ -189,8 +189,10 @@ export default function AdminPanel() {
   // Get user stats
   const totalUsers = users.length;
   const verifiedUsers = kycs.filter(k => k.status === 'approved').length;
+  const rejectedUsers = kycs.filter(k => k.status === 'rejected').length;
   const pendingKYC = kycs.filter(k => k.status === 'pending' || k.status === 'submitted').length;
   const usersWithIdentities = identities.length;
+  const activeConnections = connections.filter(c => c.status === 'connected').length;
 
   return (
     <div className="min-h-screen galaxy-bg p-6">

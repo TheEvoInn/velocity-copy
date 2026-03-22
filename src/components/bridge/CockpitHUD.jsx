@@ -72,12 +72,12 @@ function AutopilotThrottle({ mode, onChange, loading }) {
 // ── Engine Status (Left Console) ─────────────────────────────────────────────
 function EngineStatusPanel({ navigate }) {
   const engines = [
-    { name: 'AUTOPILOT',   icon: Radio,     color: 'text-cyan-400',    route: '/AutoPilot',    bar: 'from-cyan-400 to-cyan-600',    active: true },
-    { name: 'VIPZ',        icon: Zap,       color: 'text-pink-400',    route: '/VIPZ',         bar: 'from-pink-500 to-pink-700',    active: true },
-    { name: 'NED CRYPTO',  icon: Cpu,       color: 'text-amber-400',   route: '/NED',          bar: 'from-amber-400 to-amber-600',  active: true },
-    { name: 'WORKFLOWS',   icon: GitBranch, color: 'text-violet-400',  route: '/WorkflowArchitect', bar: 'from-violet-400 to-violet-600', active: true },
-    { name: 'DISCOVERY',   icon: Radar,     color: 'text-emerald-400', route: '/Discovery',    bar: 'from-emerald-400 to-emerald-600', active: true },
-    { name: 'IDENTITY',    icon: User,      color: 'text-blue-400',    route: '/IdentityManager', bar: 'from-blue-400 to-blue-600',  active: true },
+    { name: 'AUTOPILOT',   EngineIcon: Radio,     color: 'text-cyan-400',    route: '/AutoPilot',    bar: 'from-cyan-400 to-cyan-600' },
+    { name: 'VIPZ',        EngineIcon: Zap,       color: 'text-pink-400',    route: '/VIPZ',         bar: 'from-pink-500 to-pink-700' },
+    { name: 'NED CRYPTO',  EngineIcon: Cpu,       color: 'text-amber-400',   route: '/NED',          bar: 'from-amber-400 to-amber-600' },
+    { name: 'WORKFLOWS',   EngineIcon: GitBranch, color: 'text-violet-400',  route: '/WorkflowArchitect', bar: 'from-violet-400 to-violet-600' },
+    { name: 'DISCOVERY',   EngineIcon: Radar,     color: 'text-emerald-400', route: '/Discovery',    bar: 'from-emerald-400 to-emerald-600' },
+    { name: 'IDENTITY',    EngineIcon: User,      color: 'text-blue-400',    route: '/IdentityManager', bar: 'from-blue-400 to-blue-600' },
   ];
   const [vals] = useState(() => engines.map(() => 40 + Math.random() * 55));
 
@@ -89,11 +89,11 @@ function EngineStatusPanel({ navigate }) {
           <GlassPanel className="p-2.5 hover:border-cyan-400/50 transition-all">
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5">
-                <e.icon className={`w-3 h-3 ${e.color}`} />
+                <e.EngineIcon className={`w-3 h-3 ${e.color}`} />
                 <span className={`font-orbitron text-[9px] tracking-wider ${e.color}`}>{e.name}</span>
               </div>
               <div className="flex items-center gap-1">
-                <PulsingDot color={`bg-${e.color.split('-')[1]}-400`} />
+                <PulsingDot />
                 <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors" />
               </div>
             </div>

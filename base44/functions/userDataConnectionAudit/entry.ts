@@ -170,6 +170,23 @@ Deno.serve(async (req) => {
       // Repair deferred
     }
 
+    // ━━━━ CHECK: Platform Connections ━━━━
+    const platformConns = await base44.asServiceRole.entities.PlatformConnection.filter(
+      { $or: [{ created_by: user_email }, { user_email }] },
+      null,
+      5
+    ).catch(() => []);
+
+    audit.connections.platform_connections = {
+      count: platformConns.length,
+      platforms: platformConns.map(c => ({ platform: c.platform, status: c.status }))
+    };
+
+    if (platformConns.length === 0) {
+      audit.issues_found++;
+      audit.connections.platform_connections.issue = 'No platform connections recorded';
+    }
+
     // ━━━━ PARALLEL FETCH: Queue + Opportunities + Transactions ━━━━
     const [queueResults, oppResults, txResults] = await Promise.all([
       base44.asServiceRole.entities.TaskExecutionQueue.filter(

@@ -78,12 +78,18 @@ export default function IdentityManagementDashboard() {
       return;
     }
 
-    createMutation.mutate({
-      name: formData.name,
-      role_label: formData.role_label,
-      communication_tone: formData.tone,
-      email: `${formData.name.toLowerCase().replace(/\s+/g, '_')}@profit-matrix.ai`
-    });
+    try {
+      const user = await base44.auth.me();
+      createMutation.mutate({
+        user_email: user?.email,
+        name: formData.name,
+        role_label: formData.role_label,
+        communication_tone: formData.tone,
+        email: `${formData.name.toLowerCase().replace(/\s+/g, '_')}@profit-matrix.ai`
+      });
+    } catch (e) {
+      toast.error('Failed to get user email');
+    }
   };
 
   const activeCount = identitiesData.active || 0;

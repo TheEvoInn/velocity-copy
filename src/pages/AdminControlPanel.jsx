@@ -1,116 +1,275 @@
-/**
- * ADMIN CONTROL PANEL — Exclusive admin-only command center
- * Role-gated: only users with role === 'admin' can access this page.
- */
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/AuthContext';
-import { Link } from 'react-router-dom';
-import {
-  Shield, AlertTriangle, Users, FileCheck, Activity,
-  Zap, Settings, ChevronRight, Lock
-} from 'lucide-react';
-import AdminHealthDashboard from '@/components/admin/AdminHealthDashboard';
-import AdminUserManagement from '@/components/admin/AdminUserManagement';
-import AdminKYCReview from '@/components/admin/AdminKYCReview';
-import AdminActivityMonitor from '@/components/admin/AdminActivityMonitor';
-import AdminErrorCenter from '@/components/admin/AdminErrorCenter';
-import AdminNotifications from '@/components/admin/AdminNotifications';
-import { Activity as ActivityIcon } from 'lucide-react';
-
-const TABS = [
-  { id: 'health',    label: 'Platform Health',  icon: Zap,         color: '#06b6d4' },
-  { id: 'webhooks',  label: 'Webhooks',         icon: ActivityIcon, color: '#06b6d4' },
-  { id: 'users',     label: 'User Management',  icon: Users,       color: '#8b5cf6' },
-  { id: 'kyc',       label: 'KYC Review',       icon: FileCheck,   color: '#f59e0b' },
-  { id: 'activity',  label: 'Activity Logs',    icon: Activity,    color: '#10b981' },
-  { id: 'errors',    label: 'Error Center',     icon: AlertTriangle, color: '#ef4444' },
-  { id: 'alerts',    label: 'Notifications',    icon: Settings,    color: '#a855f7' },
-];
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Users, CheckCircle2, Bot, Link2, Clock, Zap, Search, RefreshCw } from 'lucide-react';
 
 export default function AdminControlPanel() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('health');
+  const [search, setSearch] = useState('');
+  const [expandedUser, setExpandedUser] = useState(null);
 
-  // Strict role gate
-  if (user?.role !== 'admin') {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="text-center space-y-4 max-w-sm">
-          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto">
-            <Lock className="w-8 h-8 text-red-400" />
-          </div>
-          <h2 className="font-orbitron text-xl font-bold text-white">Access Denied</h2>
-          <p className="text-sm text-slate-400">
-            This area is restricted to administrator accounts only.
-            Your current role does not permit access.
-          </p>
-          <Link to="/Dashboard"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white hover:bg-slate-700 transition-colors">
-            <ChevronRight className="w-4 h-4 rotate-180" /> Return to Dashboard
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  // Fetch admin data
+  const { data: adminData = { users: [], metadata: {} }, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ['admin_panel_data', search],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('adminPanelSecureQuery', {
+        filter_email: search.length > 2 ? search : null
+      });
+      return res.data || { users: [], metadata: {} };
+    },
+    refetchInterval: 15000, // Auto-refresh every 15 seconds
+  });
+
+  const users = adminData.users || [];
+  const metadata = adminData.metadata || {};
+
+  // Status color mapping
+  const getStatusColor = (status) => {
+    const colors = {
+      'verified': '#10b981',
+      'approved': '#10b981',
+      'pending': '#f59e0b',
+      'submitted': '#3b82f6',
+      'under_review': '#8b5cf6',
+      'rejected': '#ef4444',
+      'expired': '#ef4444',
+      'healthy': '#10b981',
+      'connected': '#10b981',
+      'error': '#ef4444',
+      'invalid_credentials': '#ef4444'
+    };
+    return colors[status] || '#6b7280';
+  };
+
+  const getStatusBg = (status) => {
+    const color = getStatusColor(status);
+    return `${color}15`;
+  };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-            style={{
-              background: 'linear-gradient(135deg, rgba(239,68,68,0.25), rgba(168,85,247,0.25))',
-              border: '1px solid rgba(239,68,68,0.4)',
-              boxShadow: '0 0 20px rgba(239,68,68,0.3)',
-            }}>
-            <Shield className="w-6 h-6 text-red-400" />
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center">
           <div>
-            <h1 className="font-orbitron text-xl font-bold tracking-widest text-white">ADMIN CONTROL PANEL</h1>
-            <p className="text-xs text-slate-500 tracking-wide">
-              Logged in as <span className="text-red-400 font-medium">{user?.email}</span> · Administrator
-            </p>
+            <h1 className="text-3xl font-bold text-slate-900">Admin Control Panel</h1>
+            <p className="text-slate-600 mt-1">Manage all users, identities, and platform connections</p>
           </div>
+          <Button 
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/25">
-          <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-          <span className="text-xs text-red-300 font-medium">ADMIN MODE</span>
+
+        {/* Summary Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[
+            { label: 'Total Users', value: metadata.total_users || 0, color: '#a855f7', icon: Users },
+            { label: 'Onboarded', value: metadata.users_onboarded || 0, color: '#10b981', icon: CheckCircle2 },
+            { label: 'With Identities', value: metadata.users_with_identities || 0, color: '#06b6d4', icon: Bot },
+            { label: 'Connected Platforms', value: metadata.users_with_connections || 0, color: '#f59e0b', icon: Link2 },
+            { label: 'Total Earned', value: `$${(metadata.total_earned_across_users || 0).toFixed(0)}`, color: '#10b981', icon: Zap },
+          ].map(({ label, value, color, icon: Icon }) => (
+            <Card key={label} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon className="w-4 h-4" style={{ color }} />
+                  <p className="text-xs font-medium text-slate-600 uppercase">{label}</p>
+                </div>
+                <p className="text-2xl font-bold text-slate-900">{value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            type="text"
+            placeholder="Search by email (min 3 characters)..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Users List */}
+        <Card className="border-0 shadow-md">
+          <CardHeader>
+            <CardTitle>Users ({users.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+              </div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">No users found</div>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                {users.map((user) => (
+                  <UserCard 
+                    key={user.email} 
+                    user={user}
+                    isExpanded={expandedUser === user.email}
+                    onToggle={() => setExpandedUser(expandedUser === user.email ? null : user.email)}
+                    getStatusColor={getStatusColor}
+                    getStatusBg={getStatusBg}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function UserCard({ user, isExpanded, onToggle, getStatusColor, getStatusBg }) {
+  return (
+    <div 
+      className="border rounded-lg p-4 hover:bg-slate-50 cursor-pointer transition"
+      onClick={onToggle}
+    >
+      {/* User Header */}
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold text-slate-900">{user.full_name}</h3>
+            {user.role === 'admin' && (
+              <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded">Admin</span>
+            )}
+          </div>
+          <p className="text-sm text-slate-600">{user.email}</p>
+        </div>
+        <div className="text-right">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`inline-block w-2 h-2 rounded-full`} style={{
+              backgroundColor: user.stats.onboarded ? '#10b981' : '#d1d5db'
+            }}></span>
+            <span className="text-xs font-medium text-slate-600">
+              {user.stats.onboarded ? 'Onboarded' : 'Pending'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500">Earned: ${user.stats.earned_total.toFixed(2)}</p>
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex gap-1.5 flex-wrap mb-6 p-1 rounded-2xl bg-slate-900/60 border border-slate-800">
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                isActive ? 'text-white' : 'text-slate-500 hover:text-slate-300'
-              }`}
-              style={isActive ? {
-                background: `${tab.color}18`,
-                border: `1px solid ${tab.color}40`,
-                boxShadow: `0 0 12px ${tab.color}25`,
-              } : {}}>
-              <Icon className="w-3.5 h-3.5" style={isActive ? { color: tab.color } : {}} />
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          );
-        })}
+      {/* Quick Stats */}
+      <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-200">
+        <div className="text-center">
+          <p className="text-xs text-slate-600">Identities</p>
+          <p className="text-lg font-bold text-slate-900">{user.identities.length}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-slate-600">Platforms</p>
+          <p className="text-lg font-bold text-slate-900">{user.connections.length}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-slate-600">KYC</p>
+          <p className="text-lg font-bold" style={{ color: getStatusColor(user.stats.kyc_status || 'pending') }}>
+            {(user.stats.kyc_status || 'pending').charAt(0).toUpperCase()}
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-slate-600">Autopilot</p>
+          <p className="text-lg font-bold text-slate-900">{user.stats.autopilot_enabled ? '✓' : '—'}</p>
+        </div>
       </div>
 
-      {/* Tab Content */}
-      <div>
-        {activeTab === 'health'   && <AdminHealthDashboard />}
-        {activeTab === 'webhooks' && <div className="text-slate-300"><Link to="/WebhookListener" className="text-cyan-400 hover:underline flex items-center gap-2"><ChevronRight className="w-4 h-4" />Go to Webhook Listener</Link></div>}
-        {activeTab === 'users'    && <AdminUserManagement />}
-        {activeTab === 'kyc'      && <AdminKYCReview />}
-        {activeTab === 'activity' && <AdminActivityMonitor />}
-        {activeTab === 'errors'   && <AdminErrorCenter />}
-        {activeTab === 'alerts'   && <AdminNotifications />}
-      </div>
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div className="mt-4 pt-4 border-t border-slate-200 space-y-4">
+          {/* Identities */}
+          {user.identities.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900 mb-2">AI Identities ({user.identities.length})</h4>
+              <div className="space-y-2">
+                {user.identities.map(id => (
+                  <div key={id.id} className="p-2 bg-slate-50 rounded border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{id.name}</p>
+                        <p className="text-xs text-slate-600">{id.role_label}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        id.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {id.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Platform Connections */}
+          {user.connections.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900 mb-2">Platform Connections ({user.connections.length})</h4>
+              <div className="space-y-2">
+                {user.connections.map(conn => (
+                  <div key={conn.id} className="p-2 bg-slate-50 rounded border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900 capitalize">{conn.platform}</p>
+                        <p className="text-xs text-slate-600">{conn.account_username}</p>
+                      </div>
+                      <span style={{
+                        backgroundColor: getStatusBg(conn.status),
+                        color: getStatusColor(conn.status)
+                      }} className="px-2 py-1 rounded text-xs font-medium">
+                        {conn.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* KYC Status */}
+          {user.kycs.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900 mb-2">KYC Verification</h4>
+              {user.kycs.map(kyc => (
+                <div key={kyc.id} className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-slate-900">Status</p>
+                    <span style={{
+                      backgroundColor: getStatusBg(kyc.status),
+                      color: getStatusColor(kyc.status)
+                    }} className="px-2 py-1 rounded text-xs font-medium">
+                      {kyc.status}
+                    </span>
+                  </div>
+                  {kyc.admin_status && (
+                    <p className="text-xs text-slate-600">Admin: <span className="font-medium">{kyc.admin_status}</span></p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Opportunities */}
+          {user.opportunities.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900 mb-2">Opportunities ({user.opportunities.length})</h4>
+              <p className="text-xs text-slate-600">{user.stats.total_opportunities} total opportunities found</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

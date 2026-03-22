@@ -9,21 +9,50 @@ import { Users, CheckCircle2, Bot, Link2, Clock, Zap, Search, RefreshCw } from '
 export default function AdminControlPanel() {
   const [search, setSearch] = useState('');
   const [expandedUser, setExpandedUser] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [metadata, setMetadata] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefetching, setIsRefetching] = useState(false);
 
   // Fetch admin data
-  const { data: adminData = { users: [], metadata: {} }, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['admin_panel_data', search],
-    queryFn: async () => {
+  const fetchAdminData = async () => {
+    try {
+      setIsLoading(true);
       const res = await base44.functions.invoke('adminPanelSecureQuery', {
         filter_email: search.length > 2 ? search : null
       });
-      return res.data || { users: [], metadata: {} };
-    },
-    refetchInterval: 15000, // Auto-refresh every 15 seconds
-  });
+      
+      if (res.data) {
+        setUsers(res.data.users || []);
+        setMetadata(res.data.metadata || {});
+      }
+    } catch (error) {
+      console.error('Failed to fetch admin data:', error);
+      setUsers([]);
+      setMetadata({});
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const users = adminData.users || [];
-  const metadata = adminData.metadata || {};
+  const refetch = async () => {
+    setIsRefetching(true);
+    await fetchAdminData();
+    setIsRefetching(false);
+  };
+
+  // Load data on mount
+  useEffect(() => {
+    fetchAdminData();
+  }, [search]);
+
+  // Auto-refetch every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAdminData();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [search]);
 
   // Status color mapping
   const getStatusColor = (status) => {

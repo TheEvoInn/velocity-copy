@@ -21,9 +21,12 @@ export default function AdminControlPanel() {
         filter_email: search.length > 2 ? search : null
       });
       
-      if (res.data) {
-        setUsers(res.data.users || []);
-        setMetadata(res.data.metadata || {});
+      // Response structure: res = { data: { success, admin, timestamp, data: { users, metadata } } }
+      const responseData = res.data?.data || res.data;
+      
+      if (responseData) {
+        setUsers(responseData.users || []);
+        setMetadata(responseData.metadata || {});
       }
     } catch (error) {
       console.error('Failed to fetch admin data:', error);

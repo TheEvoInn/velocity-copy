@@ -288,6 +288,17 @@ export default function Discovery() {
             }}>
             <Filter className="w-3.5 h-3.5" /> Filters
           </button>
+          {rawOpps.filter(o => o.can_ai_complete && !o.autopilot_queued).length > 0 && (
+            <button
+              onClick={async () => {
+                await base44.functions.invoke('discoveryEngine', { action: 'queue_all_for_autopilot' });
+                qc.invalidateQueries({ queryKey: ['opportunities'] });
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-orbitron tracking-wide transition-all"
+              style={{ background: 'rgba(0,232,255,0.08)', border: '1px solid rgba(0,232,255,0.25)', color: '#00e8ff' }}>
+              <Radio className="w-3.5 h-3.5" /> Queue All
+            </button>
+          )}
           <button onClick={() => runFullScan()} disabled={isScanning}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-orbitron tracking-wide transition-all"
             style={{ background: 'rgba(249,214,92,0.1)', border: '1px solid rgba(249,214,92,0.4)', color: '#f9d65c' }}>

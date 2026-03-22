@@ -340,6 +340,14 @@ function LowerControlStrip({ navigate, wallets, logs, goals, onAutopilotChange, 
           MISSION AI
         </button>
 
+        <div className="w-px h-8 bg-cyan-400/15" />
+
+        {/* Workflow Orbit View */}
+        <button onClick={() => setShowOrbitView(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-cyan-500/50 text-cyan-400 hover:border-cyan-400 hover:text-cyan-300 transition-all font-orbitron text-[9px] tracking-widest">
+          <Workflow className="w-3.5 h-3.5" />
+          ORBIT VIEW
+        </button>
+
         <div className="flex-1" />
 
         {/* Notifications */}

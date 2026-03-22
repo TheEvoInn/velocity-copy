@@ -9,6 +9,7 @@ import {
   Bot, Search, Play, Wallet, Shield, Settings, Rocket,
   LayoutDashboard, ChevronRight, Menu, X, Radio
 } from 'lucide-react';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 const NAV_ITEMS = [
   { to: '/', label: 'COMMAND', icon: LayoutDashboard, color: '#00e8ff' },

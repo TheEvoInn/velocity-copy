@@ -56,9 +56,13 @@ export default function IdentityManager() {
     initialData: [],
   });
 
-  const filteredIdentities = identities.filter(i =>
-    filter === 'all' ? true : filter === 'active' ? i.is_active : !i.is_active
-  );
+  const filteredIdentities = identities.filter(i => {
+    if (filter === 'all') return true;
+    if (filter === 'active') return i.is_active && i.onboarding_complete;
+    if (filter === 'onboarding') return !i.onboarding_complete;
+    if (filter === 'inactive') return !i.is_active && i.onboarding_complete;
+    return true;
+  });
 
   async function handleSave(formData) {
     if (editingIdentity?.id) {

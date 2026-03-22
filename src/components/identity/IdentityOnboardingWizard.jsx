@@ -120,7 +120,7 @@ function ProfileStep({ data, onChange }) {
 }
 
 function KYCStep({ data, onChange }) {
-  const [showDocNote, setShowDocNote] = useState(false);
+  const [uploadingKey, setUploadingKey] = useState(null);
   return (
     <div className="space-y-4">
       <div className="p-3 rounded-xl flex items-start gap-2.5" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>

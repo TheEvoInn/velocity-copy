@@ -343,14 +343,21 @@ export default function AdminPanel() {
                       {/* Expanded details */}
                       {isExpanded && (
                         <div className="mt-4 pt-4 border-t border-slate-700 space-y-4">
+                          {/* User metadata */}
+                          <div className="bg-slate-800/30 rounded p-3 text-xs text-slate-400 space-y-1">
+                            <p>Created: <span className="text-cyan-400">{new Date(user.created_date).toLocaleString()}</span></p>
+                            <p>ID: <span className="font-mono text-slate-500">{user.id.substring(0, 12)}...</span></p>
+                          </div>
+
                           {/* KYC Section */}
                           {userKYC && (
                             <div className="bg-slate-800/50 rounded p-3">
                               <p className="text-xs font-semibold text-cyan-400 mb-2">KYC Verification</p>
                               <div className="space-y-1 text-xs text-slate-300">
-                                <p>Status: <span className="text-white">{userKYC.status}</span></p>
+                                <p>Status: <span className="text-white capitalize">{userKYC.status}</span></p>
                                 <p>Name: <span className="text-white">{userKYC.full_legal_name || '—'}</span></p>
-                                <p>Verified: <span className="text-white">{userKYC.verified_at ? 'Yes' : 'No'}</span></p>
+                                <p>Verified: <span className="text-white">{userKYC.verified_at ? new Date(userKYC.verified_at).toLocaleString() : '—'}</span></p>
+                                {userKYC.admin_notes && <p>Notes: <span className="text-slate-400">{userKYC.admin_notes}</span></p>}
                                 <div className="flex gap-2 mt-3">
                                   {userKYC.status !== 'approved' && (
                                     <Button

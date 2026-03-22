@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 export default function NotificationsCenter() {
   const { unreadNotifications, allNotifications, isLoading, markAsRead, dismiss, dismissAll } = useNotifications();
   const [filterSeverity, setFilterSeverity] = useState(null);
+  const [tab, setTab] = useState('inbox'); // inbox, communications, settings
 
   const getIcon = (type) => {
     switch (type) {

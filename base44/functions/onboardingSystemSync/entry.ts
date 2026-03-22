@@ -32,9 +32,13 @@ Deno.serve(async (req) => {
     // ─── 1. SYNC IDENTITY PROFILE ─────────────────────────────────────────────
     try {
       await base44.entities.AIIdentity.update(identity_id, {
+        user_email: user.email,  // ← CRITICAL: Enables admin queries + visibility
         email: onboarding_data.email,
         phone: onboarding_data.phone,
         name: `${onboarding_data.first_name} ${onboarding_data.last_name}`,
+        onboarding_status: 'complete',
+        is_active: true,
+        last_used_at: new Date().toISOString(),
         kyc_verified_data: {
           full_legal_name: `${onboarding_data.first_name} ${onboarding_data.last_name}`,
           date_of_birth: onboarding_data.date_of_birth,
@@ -52,7 +56,7 @@ Deno.serve(async (req) => {
           synced_at: new Date().toISOString(),
         },
       });
-      addLog('IdentityEngine', 'success', 'Profile synced');
+      addLog('IdentityEngine', 'success', 'Profile synced with user_email');
     } catch (e) {
       addLog('IdentityEngine', 'error', e.message);
     }

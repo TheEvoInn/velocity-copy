@@ -6,7 +6,7 @@ import WorkflowOrbitView from './WorkflowOrbitView';
 import {
   Zap, Radio, Target, TrendingUp, Activity, Bell, Map, AlertTriangle,
   ChevronRight, Power, Navigation, Cpu, Database, Shield, Settings,
-  User, Wallet, BarChart2, Layers, GitBranch, Radar, Navigation2, Workflow
+  User, Wallet, BarChart2, Layers, GitBranch, Radar, Navigation2, CircleDot
 } from 'lucide-react';
 
 // ── Panel primitives ──────────────────────────────────────────────────────────
@@ -344,7 +344,7 @@ function LowerControlStrip({ navigate, wallets, logs, goals, onAutopilotChange, 
 
         {/* Workflow Orbit View */}
         <button onClick={() => setShowOrbitView(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-cyan-500/50 text-cyan-400 hover:border-cyan-400 hover:text-cyan-300 transition-all font-orbitron text-[9px] tracking-widest">
-          <Workflow className="w-3.5 h-3.5" />
+          <CircleDot className="w-3.5 h-3.5" />
           ORBIT VIEW
         </button>
 

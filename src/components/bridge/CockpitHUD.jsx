@@ -363,8 +363,9 @@ function LowerControlStrip({ navigate, wallets, logs, goals, onAutopilotChange, 
 }
 
 // ── Main HUD export ───────────────────────────────────────────────────────────
-export default function CockpitHUD({ hoveredModule }) {
+export default function CockpitHUD({ hoveredModule, onNavigate }) {
   const navigate = useNavigate();
+  const handleNav = onNavigate || navigate;
   const { data: goals = [] }         = useUserGoals();
   const { data: wallets = [] }       = useCryptoWallets();
   const { data: tasks = [] }         = useAITasks();
@@ -388,7 +389,7 @@ export default function CockpitHUD({ hoveredModule }) {
 
           {/* ── LEFT CONSOLE ──────────────────────────────────────────────────── */}
           <div className="h-full flex flex-col justify-start pt-4 pl-4 pr-2 pointer-events-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 100px)' }}>
-            <EngineStatusPanel navigate={navigate} />
+            <EngineStatusPanel navigate={handleNav} />
           </div>
 
           {/* ── CENTER DISPLAY (top only, 3D shows through bottom) ──────────── */}
@@ -398,19 +399,19 @@ export default function CockpitHUD({ hoveredModule }) {
 
           {/* ── RIGHT CONSOLE ─────────────────────────────────────────────────── */}
           <div className="h-full flex flex-col justify-start pt-4 pl-2 pr-4 pointer-events-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 100px)' }}>
-            <NavigationPanel navigate={navigate} hoveredModule={hoveredModule} />
+            <NavigationPanel navigate={handleNav} hoveredModule={hoveredModule} />
           </div>
         </div>
       </div>
 
       {/* ── Autopilot throttle floating (below main display) ─────────────────── */}
       <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-auto" style={{ top: 'calc(60vh + 8px)', width: '200px' }}>
-        <AutopilotThrottle mode={autopilotMode} onChange={handleAutopilotChange} />
+        <AutopilotThrottle mode={autopilotMode} onChange={handleAutopilotChange} loading={false} />
       </div>
 
       {/* ── Lower control strip ──────────────────────────────────────────────── */}
       <LowerControlStrip
-        navigate={navigate}
+        navigate={handleNav}
         wallets={wallets}
         logs={logs}
         goals={goals}

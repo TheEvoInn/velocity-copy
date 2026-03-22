@@ -152,6 +152,58 @@ class NotificationService {
       }
     });
 
+    // Listen for Autopilot WorkOpportunity completions (high-value)
+    this.subscribeToEntity('WorkOpportunity', (event) => {
+      if (event.type === 'update') {
+        const data = event.data || {};
+        // High-value task completed
+        if (data.status === 'active' && data.estimated_pay >= 10) {
+          const notification = {
+            id: event.id,
+            type: 'task_completed',
+            title: '🤖 Autopilot Task Complete',
+            message: `"${data.title}" completed — estimated $${(data.estimated_pay * 0.85).toFixed(2)} earned`,
+            data,
+            timestamp: new Date()
+          };
+          this.showNotification('success', notification.message, { duration: 7000 });
+          onNotification?.(notification);
+        }
+        // Task rejected / errored
+        if (data.status === 'rejected') {
+          const notification = {
+            id: event.id,
+            type: 'execution_failed',
+            title: '⚠️ Task Requires Attention',
+            message: `"${data.title}" on ${data.platform || 'unknown platform'} could not be completed`,
+            data,
+            timestamp: new Date()
+          };
+          this.showNotification('error', notification.message, { duration: 9000 });
+          onNotification?.(notification);
+        }
+      }
+    });
+
+    // Listen for Autopilot earnings (WalletTransaction creates)
+    this.subscribeToEntity('WalletTransaction', (event) => {
+      if (event.type === 'create' && event.data?.type === 'earning') {
+        const amount = event.data?.amount || 0;
+        if (amount >= 5) {
+          const notification = {
+            id: event.id,
+            type: 'wallet_updated',
+            title: '💰 Earnings Deposited',
+            message: `+$${amount.toFixed(2)} from ${event.data?.source || 'Autopilot'} added to wallet`,
+            data: event.data,
+            timestamp: new Date()
+          };
+          this.showNotification('success', notification.message, { duration: 6000 });
+          onNotification?.(notification);
+        }
+      }
+    });
+
     // Listen for wallet updates
     this.subscribeToEntity('IdentityWallet', (event) => {
       if (event.type === 'update') {

@@ -267,6 +267,47 @@ export default function AdminUserManagement() {
   const [auditResult, setAuditResult] = useState(null);
   const qc = useQueryClient();
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // REAL-TIME SUBSCRIPTIONS — Auto-update when user data changes
+  // ─────────────────────────────────────────────────────────────────────────
+  React.useEffect(() => {
+    const unsubscribes = [];
+
+    // Subscribe to UserGoals changes (onboarding completion)
+    const unsubUserGoals = base44.entities.UserGoals.subscribe((event) => {
+      if (['create', 'update'].includes(event.type)) {
+        qc.invalidateQueries({ queryKey: ['admin_all_goals'] });
+      }
+    });
+
+    // Subscribe to AIIdentity changes (identity creation/updates)
+    const unsubIdentities = base44.entities.AIIdentity.subscribe((event) => {
+      if (['create', 'update'].includes(event.type)) {
+        qc.invalidateQueries({ queryKey: ['admin_all_identities'] });
+      }
+    });
+
+    // Subscribe to PlatformConnection changes (platform linking)
+    const unsubConnections = base44.entities.PlatformConnection.subscribe((event) => {
+      if (['create', 'update'].includes(event.type)) {
+        qc.invalidateQueries({ queryKey: ['admin_all_connections'] });
+      }
+    });
+
+    // Subscribe to KYCVerification changes (KYC submissions)
+    const unsubKyc = base44.entities.KYCVerification.subscribe((event) => {
+      if (['create', 'update'].includes(event.type)) {
+        qc.invalidateQueries({ queryKey: ['admin_all_kycs'] });
+      }
+    });
+
+    unsubscribes.push(unsubUserGoals, unsubIdentities, unsubConnections, unsubKyc);
+
+    return () => {
+      unsubscribes.forEach(unsub => unsub?.());
+    };
+  }, [qc]);
+
   const auditMutation = useMutation({
     mutationFn: async (user_email) => {
       const res = await base44.functions.invoke('userDataConnectionAudit', { user_email });

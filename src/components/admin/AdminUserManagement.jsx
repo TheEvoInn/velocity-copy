@@ -623,8 +623,6 @@ export default function AdminUserManagement() {
         ) : (
           filtered.map(u => (
             <UserRow key={u.id} user={u}
-              identities={identities} goals={goals}
-              connections={connections} kycs={kycs}
               onAudit={(email) => {
                 setAuditUser(email);
                 auditMutation.mutate(email);

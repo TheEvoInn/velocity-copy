@@ -333,6 +333,7 @@ export default function AppLayout() {
   );
 
   return (
+    <>
     <CyberpunkCommandCenter>
       <div className="min-h-screen text-white relative pointer-events-none" style={{ background: 'transparent' }}>
         <StarfieldCanvas />

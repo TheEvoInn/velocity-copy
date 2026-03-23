@@ -120,56 +120,60 @@ export default function WorkflowBuilder() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 gap-4">
+      <div className="flex flex-col gap-3 mb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-orbitron text-2xl font-bold tracking-widest text-white flex items-center gap-2">
-            <Zap className="w-6 h-6 text-cyan-400" />
+          <h1 className="font-orbitron text-lg md:text-2xl font-bold tracking-widest text-white flex items-center gap-2">
+            <Zap className="w-5 h-5 md:w-6 md:h-6 text-cyan-400" />
             WORKFLOW BUILDER
           </h1>
           <p className="text-xs text-slate-500 tracking-wide mt-1">Create custom autopilot strategies</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             onClick={() => setMode(mode === 'wizard' ? 'builder' : 'wizard')}
-            className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 gap-1.5"
+            size="sm"
+            className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 gap-1.5 text-xs"
           >
-            <Wand2 className="w-4 h-4" />
-            {mode === 'wizard' ? 'Advanced Mode' : 'Wizard Mode'}
+            <Wand2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{mode === 'wizard' ? 'Advanced Mode' : 'Wizard Mode'}</span>
+            <span className="sm:hidden">{mode === 'wizard' ? 'Advanced' : 'Wizard'}</span>
           </Button>
           {strategy.id && (
             <Button
               onClick={() => setStrategy(DEFAULT_STRATEGY)}
               variant="outline"
+              size="sm"
               className="border-slate-600 text-slate-400 hover:text-white text-xs"
             >
-              + New Strategy
+              + New
             </Button>
           )}
           <Button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5"
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 text-xs"
           >
-            <Save className="w-4 h-4" />
-            {saveMutation.isPending ? 'Saving...' : strategy.id ? 'Update Strategy' : 'Save Strategy'}
+            <Save className="w-3.5 h-3.5" />
+            {saveMutation.isPending ? 'Saving...' : strategy.id ? 'Update' : 'Save'}
           </Button>
         </div>
       </div>
 
       {/* Mode Toggle */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1">
         {['builder', 'wizard', 'preview'].map(m => (
           <button
             key={m}
             onClick={() => setMode(m)}
-            className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
               mode === m
                 ? 'bg-cyan-600 text-white'
                 : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 border border-slate-700'
             }`}
           >
-            {m === 'builder' && '🎨 Visual Builder'}
-            {m === 'wizard' && '✨ Smart Wizard'}
+            {m === 'builder' && '🎨 Builder'}
+            {m === 'wizard' && '✨ Wizard'}
             {m === 'preview' && '👁️ Preview'}
           </button>
         ))}

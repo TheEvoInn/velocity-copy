@@ -96,8 +96,12 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(true);
       
-      // Platform initialization is optional - skip to prevent blocking page load
-      // (can be re-enabled once entity schemas are validated)
+      // Trigger KYC consolidation in background (non-blocking)
+      try {
+        await base44.functions.invoke('kycConsolidationTrigger', {});
+      } catch (e) {
+        console.warn('KYC consolidation trigger skipped:', e.message);
+      }
       
       setIsLoadingAuth(false);
     } catch (error) {

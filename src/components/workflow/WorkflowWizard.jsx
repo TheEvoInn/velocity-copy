@@ -118,7 +118,14 @@ export default function WorkflowWizard({ onComplete }) {
 
   const goNext = () => {
     if (currentStep.multi) {
-      handleMultiSubmit();
+      // For multi-select steps, save and advance
+      const selected = selectedOptions[currentStep.id] || [];
+      setResponses({ ...responses, [currentStep.id]: selected });
+      if (step < WIZARD_STEPS.length - 1) {
+        setStep(step + 1);
+      } else {
+        generateStrategy();
+      }
     } else if (step < WIZARD_STEPS.length - 1) {
       setStep(step + 1);
     } else {

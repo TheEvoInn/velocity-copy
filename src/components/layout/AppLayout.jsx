@@ -419,7 +419,7 @@ export default function AppLayout() {
 
       {/* ── Page Content ── */}
       {/* pb-20 on mobile to clear the bottom tab bar */}
-      <main className="relative z-10 pt-14 min-h-screen pb-20 md:pb-0 pointer-events-auto">
+      <main className="relative z-10 pt-14 min-h-screen pb-24 md:pb-0 pointer-events-auto">
         {currentDept && (
           <div className="h-0.5 w-full"
             style={{ background: `linear-gradient(90deg, transparent 0%, ${currentDept.color}50 20%, ${currentDept.color}80 50%, ${currentDept.color}50 80%, transparent 100%)` }} />

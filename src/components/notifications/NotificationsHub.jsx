@@ -35,7 +35,18 @@ export default function NotificationsHub() {
     <div className="space-y-4">
       {/* Filter Bar */}
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {['all', 'critical', 'compliance_alert', 'autopilot_execution', 'user_action_required'].map((f) => (
+        {[
+          'all',
+          'critical',
+          'compliance_alert',
+          'autopilot_execution',
+          'user_action_required',
+          'opportunity_alert',
+          'system_alert',
+          'vipz_alert',
+          'ned_alert',
+          'workflow_alert'
+        ].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}

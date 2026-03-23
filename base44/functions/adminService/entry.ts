@@ -48,11 +48,11 @@ Deno.serve(async (req) => {
         if (!hasKYCData) continue;
 
         // Synthesize a virtual KYC record so admin can see it
-        kycByEmail[identity.user_email] = {
+        kycByEmail[ownerEmail] = {
           id: `identity_${identity.id}`, // virtual ID — signals it came from AIIdentity
           source: 'identity_onboarding',
           identity_id: identity.id,
-          user_email: identity.user_email,
+          user_email: ownerEmail,
           full_legal_name: kvd?.full_legal_name || `${config.first_name || ''} ${config.last_name || ''}`.trim(),
           date_of_birth: kvd?.date_of_birth || config.date_of_birth,
           residential_address: kvd?.residential_address || config.address,

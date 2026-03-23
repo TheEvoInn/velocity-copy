@@ -2,8 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 /**
  * USER INTERVENTION MANAGER
- * Phase 3: Handles cases where autopilot needs human input
- * Escalates issues, collects missing data, resumes execution
+ * Phase 11: Complete handler for user intervention lifecycle
+ * Collects missing data, syncs back to Autopilot, persists credentials
  */
 
 Deno.serve(async (req) => {
@@ -53,7 +53,7 @@ async function getPendingInterventions(base44, user) {
   try {
     const interventions = await base44.entities.UserIntervention?.filter?.({
       created_by: user.email,
-      status: { $in: ['pending_approval', 'pending_data', 'pending_user_input'] }
+      status: { $in: ['pending', 'in_progress'] }
     }, '-created_date', 50).catch(() => []);
 
     const pending = {
@@ -64,19 +64,24 @@ async function getPendingInterventions(base44, user) {
     };
 
     for (const intervention of interventions) {
-      if (!pending.by_type[intervention.entity_type]) {
-        pending.by_type[intervention.entity_type] = 0;
+      if (!pending.by_type[intervention.requirement_type]) {
+        pending.by_type[intervention.requirement_type] = 0;
       }
-      pending.by_type[intervention.entity_type]++;
+      pending.by_type[intervention.requirement_type]++;
 
       pending.interventions.push({
         id: intervention.id,
-        entity_type: intervention.entity_type,
-        entity_id: intervention.entity_id,
+        task_id: intervention.task_id,
+        requirement_type: intervention.requirement_type,
         status: intervention.status,
-        action_required: intervention.action_type || 'respond',
+        priority: intervention.priority,
         created_at: intervention.created_date,
-        description: intervention.description || 'Action required from user'
+        expires_at: intervention.expires_at,
+        required_data: intervention.required_data,
+        data_schema: intervention.data_schema,
+        template_responses: intervention.template_responses,
+        direct_link: intervention.direct_link,
+        description: intervention.required_data || 'Action required from user'
       });
     }
 
@@ -108,9 +113,9 @@ async function provideMissingData(base44, user, interventionId, data) {
 
     // Update intervention with provided data
     await base44.asServiceRole.entities.UserIntervention?.update?.(interventionId, {
-      status: 'data_provided',
-      user_provided_data: data,
-      data_provided_at: new Date().toISOString()
+      status: 'resolved',
+      user_response: data,
+      resolved_at: new Date().toISOString()
     }).catch(() => {});
 
     // Log data submission
@@ -121,18 +126,23 @@ async function provideMissingData(base44, user, interventionId, data) {
       user_email: user.email,
       details: {
         intervention_id: interventionId,
+        task_id: intervention.task_id,
         data_fields: Object.keys(data)
       },
       severity: 'info',
       timestamp: new Date().toISOString()
     }).catch(() => {});
 
+    // Trigger task resumption
+    await base44.functions.invoke('resumeTaskAfterIntervention', {
+      intervention_id: interventionId
+    }).catch(() => {});
+
     return jsonResponse({
       intervention_id: interventionId,
       data_received: true,
-      status: 'data_provided',
-      next_step: 'resume_execution',
-      message: 'Data received. Ready to resume task execution.'
+      status: 'resolved',
+      message: 'Data received. Task execution resuming...'
     });
 
   } catch (error) {
@@ -266,20 +276,28 @@ async function resumeAfterIntervention(base44, user, interventionId) {
       resolved_at: new Date().toISOString()
     }).catch(() => {});
 
-    // Find related task and requeue it
-    const relatedTasks = await base44.asServiceRole.entities.AITask?.filter?.({
-      webhook_id: intervention.entity_id
-    }, '-created_date', 5).catch(() => []);
+    // Find related task by task_id (direct reference)
+    const relatedTask = await base44.asServiceRole.entities.TaskExecutionQueue?.get?.(intervention.task_id).catch(() => null);
 
     let taskResumed = false;
-    if (relatedTasks && relatedTasks.length > 0) {
-      const task = relatedTasks[0];
-      await base44.asServiceRole.entities.AITask?.update?.(task.id, {
+    if (relatedTask) {
+      // Inject user-provided data into task context
+      await base44.asServiceRole.entities.TaskExecutionQueue?.update?.(intervention.task_id, {
         status: 'queued',
+        intervention_data: intervention.user_response,
         resumed_after_intervention: true,
         resumed_at: new Date().toISOString()
       }).catch(() => {});
       taskResumed = true;
+    }
+
+    // Persist credentials if provided
+    if (intervention.user_response && intervention.requirement_type === 'credential') {
+      await base44.functions.invoke('persistInterventionCredentials', {
+        intervention_id: interventionId,
+        data: intervention.user_response,
+        user_email: user.email
+      }).catch(() => {});
     }
 
     // Log resumption
@@ -290,6 +308,7 @@ async function resumeAfterIntervention(base44, user, interventionId) {
       user_email: user.email,
       details: {
         intervention_id: interventionId,
+        task_id: intervention.task_id,
         task_resumed: taskResumed
       },
       severity: 'info',
@@ -298,9 +317,10 @@ async function resumeAfterIntervention(base44, user, interventionId) {
 
     return jsonResponse({
       intervention_id: interventionId,
-      execution_resumed: true,
+      execution_resumed: taskResumed,
+      task_id: intervention.task_id,
       status: 'resolved',
-      message: 'Intervention resolved. Task execution resumed.'
+      message: taskResumed ? 'Intervention resolved. Task execution resumed.' : 'Intervention resolved but task not found for resumption.'
     });
 
   } catch (error) {

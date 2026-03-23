@@ -2,23 +2,43 @@
  * VIPZ DEPARTMENT
  * AI-driven marketing, funnel optimization, landing page automation
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { getDeptStyle } from '@/lib/galaxyTheme';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Zap, TrendingUp, BookOpen, Target } from 'lucide-react';
+import { Zap, TrendingUp, BookOpen, Target, RefreshCw } from 'lucide-react';
 
 const style = getDeptStyle('vipz');
 
 const DUMMY_COLOR = '#ec4899';
 
 export default function VIPZ() {
+  const [selectedStorefront, setSelectedStorefront] = useState(null);
+
+  const { data: dashboardData = {}, refetch: refetchDashboard, isLoading: dashboardLoading } = useQuery({
+    queryKey: ['vipz_dashboard'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('vipzRealtimeEngine', {
+        action: 'get_dashboard_summary'
+      });
+      return res.data?.dashboard || {};
+    },
+    refetchInterval: 30000,
+    staleTime: 5000,
+  });
+
   const { data: storefronts = [] } = useQuery({
-    queryKey: ['digitalStorefronts'],
-    queryFn: () => base44.entities.DigitalStorefront.filter({ created_by: true }, '-updated_date', 50).catch(() => []),
+    queryKey: ['vipz_storefronts'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('vipzRealtimeEngine', {
+        action: 'get_active_storefronts'
+      });
+      return res.data?.storefronts || [];
+    },
+    refetchInterval: 60000,
     staleTime: 5000,
   });
 
@@ -29,14 +49,16 @@ export default function VIPZ() {
   });
 
   const stats = {
-    pages: storefronts.filter(s => s.status === 'published').length,
-    traffic: storefronts.reduce((s, p) => s + (p.visitor_count || 0), 0),
-    conversions: storefronts.reduce((s, p) => s + (p.customer_count || 0), 0),
-    revenue: storefronts.reduce((s, p) => s + (p.total_revenue || 0), 0),
-    sequences: sequences.filter(seq => seq.status === 'active').length,
+    pages: dashboardData.published_storefronts || 0,
+    traffic: Math.round(dashboardData.total_emails_sent || 0),
+    conversions: dashboardData.total_conversions || 0,
+    revenue: parseFloat(dashboardData.total_revenue || 0),
+    sequences: dashboardData.active_campaigns || 0,
+    openRate: dashboardData.open_rate || 0,
+    health: dashboardData.health_status || 'SETUP_REQUIRED'
   };
 
-  const conversionRate = stats.traffic > 0 ? ((stats.conversions / stats.traffic) * 100).toFixed(1) : '0';
+  const conversionRate = stats.traffic > 0 ? ((stats.conversions / stats.traffic) * 100).toFixed(2) : '0';
 
   return (
     <div className="min-h-screen galaxy-bg p-4 md:p-6">
@@ -52,12 +74,22 @@ export default function VIPZ() {
               <p className="text-xs text-slate-400">Marketing Automation · Funnel Optimization · Landing Pages</p>
             </div>
           </div>
-          <Link to="/PageCustomizer">
-            <Button className="btn-cosmic gap-2">
-              <BookOpen className="w-4 h-4" />
-              Create Page
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+           <Button 
+             variant="outline" 
+             size="icon"
+             onClick={() => refetchDashboard()}
+             disabled={dashboardLoading}
+           >
+             <RefreshCw className={`w-4 h-4 ${dashboardLoading ? 'animate-spin' : ''}`} />
+           </Button>
+           <Link to="/PageCustomizer">
+             <Button className="btn-cosmic gap-2">
+               <BookOpen className="w-4 h-4" />
+               Create Page
+             </Button>
+           </Link>
+          </div>
         </div>
 
         {/* KPIs */}
@@ -75,12 +107,16 @@ export default function VIPZ() {
             <div className="text-2xl font-bold text-emerald-400">{stats.conversions}</div>
           </Card>
           <Card className="glass-card p-4">
-            <div className="text-xs text-slate-400 mb-1">Conv. Rate</div>
-            <div className="text-2xl font-bold text-amber-400">{conversionRate}%</div>
+            <div className="text-xs text-slate-400 mb-1">Open Rate</div>
+            <div className="text-2xl font-bold text-amber-400">{stats.openRate}%</div>
           </Card>
           <Card className="glass-card p-4">
             <div className="text-xs text-slate-400 mb-1">Revenue</div>
-            <div className="text-2xl font-bold text-violet-400">${(stats.revenue / 1000).toFixed(1)}k</div>
+            <div className="text-2xl font-bold text-violet-400">${stats.revenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+          </Card>
+          <Card className="glass-card p-4">
+            <div className="text-xs text-slate-400 mb-1">System Health</div>
+            <div className="text-2xl font-bold text-cyan-400">{stats.health}</div>
           </Card>
         </div>
 

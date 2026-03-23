@@ -213,7 +213,7 @@ export default function TemplatesLibrary() {
       if (store) {
         await base44.entities.UserDataStore.update(store.id, updates);
       } else {
-        const storeData = await base44.entities.UserDataStore.create({ user_email: me.email, ...updates });
+        await base44.entities.UserDataStore.create({ user_email: me.email, ...updates });
       }
 
       // Apply goals config if provided
@@ -221,13 +221,42 @@ export default function TemplatesLibrary() {
         await base44.entities.UserGoals.update(userGoals.id, template.goals_config);
       }
 
+      // Create or update a Strategy record so it appears in WorkflowBuilder
+      const existingStrategies = await base44.entities.Strategy.filter({ title: template.name });
+      const strategyPayload = {
+        title: template.name,
+        description: template.description,
+        variant: template.autopilot_config?.execution_mode === 'full_auto'
+          ? 'fastest'
+          : template.goals_config?.risk_tolerance === 'conservative'
+            ? 'safest'
+            : 'highest_yield',
+        status: 'active',
+        starting_capital: template.goals_config?.available_capital || 0,
+        categories: template.autopilot_config?.preferred_categories || [template.category],
+        steps: (template.setup_steps || []).map((action, i) => ({
+          day: `Step ${i + 1}`,
+          action,
+          expected_outcome: '',
+          completed: false,
+        })),
+        performance_notes: `Applied from Templates Library. Platform: ${template.platform}. Tags: ${(template.tags || []).join(', ')}.`,
+      };
+
+      if (existingStrategies.length > 0) {
+        await base44.entities.Strategy.update(existingStrategies[0].id, strategyPayload);
+      } else {
+        await base44.entities.Strategy.create(strategyPayload);
+      }
+
       return template;
     },
     onSuccess: (template) => {
-      toast.success(`✓ "${template.name}" applied! Autopilot configured.`);
+      toast.success(`✓ "${template.name}" applied to your workflow!`);
       qc.invalidateQueries({ queryKey: ['userDataStore_templates'] });
       qc.invalidateQueries({ queryKey: ['userGoals'] });
       qc.invalidateQueries({ queryKey: ['platformState'] });
+      qc.invalidateQueries({ queryKey: ['strategies'] });
     },
     onError: (error) => {
       console.error('Apply template error:', error);

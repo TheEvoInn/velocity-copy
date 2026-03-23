@@ -1,293 +1,225 @@
+/**
+ * INTELLIGENT IDENTITY ROUTER
+ * Selects optimal AI identity for each task based on:
+ * - Task category + required skills
+ * - Identity performance history (completion rate, quality score)
+ * - Account health (not suspended, not rate-limited)
+ * - KYC tier for identity-dependent opportunities
+ */
+
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 /**
- * Intelligent Identity Router
- * 
- * Analyzes opportunities and automatically selects the most appropriate identity
- * based on:
- * - Opportunity category & platform
- * - KYC/legal identity requirements
- * - Identity performance history & ratings
- * - Skill matching
- * - Account health & availability
- * - Custom routing policies
+ * Score an identity for suitability to a specific task
  */
+async function scoreIdentityForTask(base44, identity, opportunity) {
+  let score = 50; // Base score
+  const reasons = [];
+
+  try {
+    // Factor 1: Skill match (categories match preferred_categories)
+    if (identity.preferred_categories?.includes(opportunity.category)) {
+      score += 20;
+      reasons.push('✓ Category matches preferred focus');
+    } else {
+      score -= 5;
+      reasons.push('⚠️ Category outside preferred focus');
+    }
+
+    // Factor 2: Account health
+    if (identity.health_status === 'healthy') {
+      score += 15;
+      reasons.push('✓ Account in healthy status');
+    } else if (identity.health_status === 'warning') {
+      score -= 10;
+      reasons.push('⚠️ Account has warnings');
+    } else if (identity.health_status === 'suspended') {
+      return { score: 0, viable: false, reasons: ['❌ Account suspended'] };
+    }
+
+    // Factor 3: Historical success rate
+    const successRate = identity.tasks_executed > 0
+      ? ((identity.tasks_executed - (identity.failed_tasks || 0)) / identity.tasks_executed) * 100
+      : 50;
+
+    if (successRate > 90) {
+      score += 20;
+      reasons.push(`✓ High success rate (${Math.round(successRate)}%)`);
+    } else if (successRate > 70) {
+      score += 10;
+      reasons.push(`✓ Good success rate (${Math.round(successRate)}%)`);
+    } else if (successRate < 50) {
+      score -= 15;
+      reasons.push(`❌ Low success rate (${Math.round(successRate)}%)`);
+    }
+
+    // Factor 4: Earnings prove effectiveness
+    if (identity.total_earned > 1000) {
+      score += 12;
+      reasons.push('✓ Proven track record with earnings');
+    } else if (identity.total_earned > 100) {
+      score += 5;
+      reasons.push('ℹ️ Moderate earning history');
+    }
+
+    // Factor 5: KYC tier matches requirement
+    if (opportunity.required_identity_type) {
+      const kycTier = identity.kyc_verified_data?.kyc_tier || 'none';
+      const tierRank = { none: 0, basic: 1, standard: 2, enhanced: 3 };
+      const reqRank = tierRank[opportunity.required_identity_type] || 0;
+
+      if (tierRank[kycTier] >= reqRank) {
+        score += 15;
+        reasons.push(`✓ KYC tier sufficient (${kycTier})`);
+      } else {
+        score -= 25;
+        reasons.push(`❌ KYC tier insufficient (need ${opportunity.required_identity_type}, have ${kycTier})`);
+      }
+    }
+
+    // Factor 6: Account cool-down status
+    if (identity.cooldown_until) {
+      const cooldownEnd = new Date(identity.cooldown_until);
+      if (cooldownEnd > new Date()) {
+        score -= 30;
+        reasons.push('❌ Account in cool-down period');
+      }
+    }
+
+    // Factor 7: Linked accounts availability
+    const linkedAccounts = await base44.asServiceRole.entities.LinkedAccount.filter(
+      { 'identity_id': identity.id }, null, 5
+    ).catch(() => []);
+
+    if (linkedAccounts.length > 0) {
+      const healthyAccounts = linkedAccounts.filter(acc => acc.health_status !== 'suspended').length;
+      if (healthyAccounts > 2) {
+        score += 10;
+        reasons.push(`✓ Multiple healthy accounts (${healthyAccounts})`);
+      }
+    } else {
+      score -= 10;
+      reasons.push('⚠️ No linked accounts found');
+    }
+
+    return {
+      score: Math.max(0, Math.min(100, score)),
+      viable: score > 40,
+      reasons,
+      success_rate: Math.round(successRate),
+    };
+  } catch (e) {
+    return {
+      score: 0,
+      viable: false,
+      reasons: [`Error scoring identity: ${e.message}`],
+    };
+  }
+}
+
+/**
+ * Select best identity for task
+ */
+async function selectBestIdentity(base44, userEmail, opportunity) {
+  try {
+    // Get all active identities for user
+    const identities = await base44.asServiceRole.entities.AIIdentity.filter(
+      { user_email: userEmail, is_active: true },
+      '-tasks_executed',
+      10
+    ).catch(() => []);
+
+    if (!identities.length) {
+      return {
+        success: false,
+        error: 'No active identities found',
+      };
+    }
+
+    // Score each identity
+    const scoredIdentities = await Promise.all(
+      identities.map(async (identity) => {
+        const scoring = await scoreIdentityForTask(base44, identity, opportunity);
+        return {
+          identity,
+          ...scoring,
+        };
+      })
+    );
+
+    // Filter viable identities
+    const viable = scoredIdentities.filter(s => s.viable).sort((a, b) => b.score - a.score);
+
+    if (!viable.length) {
+      const reasons = scoredIdentities.map(s => `${s.identity.name}: ${s.reasons.join(', ')}`).join(' | ');
+      return {
+        success: false,
+        error: 'No viable identities found',
+        details: reasons,
+      };
+    }
+
+    const best = viable[0];
+
+    // Log selection
+    await base44.asServiceRole.entities.ActivityLog.create({
+      action_type: 'system',
+      message: `🎯 Identity selected: "${best.identity.name}" (score: ${best.score}/100) for "${opportunity.title}"`,
+      severity: 'info',
+      metadata: {
+        selected_identity: best.identity.id,
+        opportunity_id: opportunity.id,
+        score: best.score,
+        reasons: best.reasons,
+      },
+    }).catch(() => null);
+
+    return {
+      success: true,
+      identity: best.identity,
+      score: best.score,
+      reasons: best.reasons,
+    };
+  } catch (e) {
+    return {
+      success: false,
+      error: e.message,
+    };
+  }
+}
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = await req.json();
+    const { action, identity, opportunity } = body;
+
+    // ── Score identity for task ────────────────────────────────────────
+    if (action === 'score_identity') {
+      if (!identity || !opportunity) {
+        return Response.json({ error: 'Identity and opportunity required' }, { status: 400 });
+      }
+
+      const scoring = await scoreIdentityForTask(base44, identity, opportunity);
+      return Response.json({ success: true, scoring });
     }
 
-    const { action, opportunity, identity_id } = await req.json();
+    // ── Select best identity for task ──────────────────────────────────
+    if (action === 'select_best_identity') {
+      if (!opportunity) {
+        return Response.json({ error: 'Opportunity required' }, { status: 400 });
+      }
 
-    switch (action) {
-      case 'recommend_identity':
-        return await recommendIdentity(base44, user, opportunity);
-
-      case 'get_routing_policies':
-        return await getRoutingPolicies(base44, user);
-
-      case 'create_routing_policy':
-        return await createRoutingPolicy(base44, user, opportunity);
-
-      case 'evaluate_identity_fit':
-        return await evaluateIdentityFit(base44, user, opportunity, identity_id);
-
-      case 'switch_and_queue':
-        return await switchAndQueue(base44, user, opportunity, identity_id);
-
-      default:
-        return Response.json({ error: 'Unknown action' }, { status: 400 });
+      const selection = await selectBestIdentity(base44, user.email, opportunity);
+      return Response.json(selection);
     }
+
+    return Response.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
+    console.error('[IntelligentIdentityRouter] Error:', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
-
-async function recommendIdentity(base44, user, opportunity) {
-  // Get user's identities with performance data
-  const identities = await base44.entities.AIIdentity.filter({});
-  const policies = await base44.entities.IdentityRoutingPolicy.filter({});
-  const routingLogs = await base44.entities.IdentityRoutingLog.filter({});
-
-  if (!identities.length) {
-    return Response.json({ 
-      error: 'No identities configured',
-      recommendation: null
-    });
-  }
-
-  const recommendations = identities.map(identity => {
-    const score = calculateIdentityScore(
-      identity,
-      opportunity,
-      policies,
-      routingLogs
-    );
-    return { identity, score };
-  }).sort((a, b) => b.score - a.score);
-
-  const topIdentity = recommendations[0];
-  const routingReason = getRoutingReason(
-    topIdentity.identity,
-    opportunity,
-    policies
-  );
-
-  return Response.json({
-    recommended_identity_id: topIdentity.identity.id,
-    recommended_identity: topIdentity.identity,
-    fit_score: Math.round(topIdentity.score),
-    routing_reason: routingReason,
-    alternatives: recommendations.slice(1, 3).map(r => ({
-      identity_id: r.identity.id,
-      fit_score: Math.round(r.score)
-    })),
-    requires_kyc: routingReason.requires_kyc,
-    kyc_identity_needed: routingReason.requires_legal_identity
-  });
-}
-
-async function evaluateIdentityFit(base44, user, opportunity, identity_id) {
-  const identity = await base44.entities.AIIdentity.filter({ id: identity_id }).then(r => r[0]);
-  if (!identity) {
-    return Response.json({ error: 'Identity not found' }, { status: 404 });
-  }
-
-  const policies = await base44.entities.IdentityRoutingPolicy.filter({});
-  const routingLogs = await base44.entities.IdentityRoutingLog.filter({
-    identity_used: identity.id
-  });
-
-  const metrics = {
-    skill_match: calculateSkillMatch(identity, opportunity),
-    platform_experience: calculatePlatformExperience(identity, opportunity, routingLogs),
-    performance_score: calculatePerformanceScore(identity, routingLogs),
-    account_health: identity.linked_account_ids?.length > 0 ? 85 : 50,
-    kyc_clearance: identity.kyc_verified_data?.kyc_tier !== 'none' ? 100 : 0
-  };
-
-  const overall_fit = Math.round(
-    (metrics.skill_match * 0.25 +
-     metrics.platform_experience * 0.30 +
-     metrics.performance_score * 0.25 +
-     metrics.account_health * 0.15 +
-     metrics.kyc_clearance * 0.05)
-  );
-
-  return Response.json({
-    identity_id,
-    overall_fit,
-    metrics,
-    recommendation: overall_fit > 70 ? 'RECOMMENDED' : overall_fit > 50 ? 'ACCEPTABLE' : 'NOT_RECOMMENDED'
-  });
-}
-
-async function getRoutingPolicies(base44, user) {
-  const policies = await base44.entities.IdentityRoutingPolicy.filter({
-    created_by: user.email
-  });
-
-  return Response.json({
-    policies,
-    policy_count: policies.length,
-    enabled_count: policies.filter(p => p.enabled).length
-  });
-}
-
-async function createRoutingPolicy(base44, user, policyData) {
-  const policy = await base44.entities.IdentityRoutingPolicy.create({
-    ...policyData,
-    created_by: user.email,
-    enabled: true
-  });
-
-  return Response.json({
-    success: true,
-    policy_id: policy.id,
-    policy
-  });
-}
-
-async function switchAndQueue(base44, user, opportunity, identity_id) {
-  // Get the identity
-  const identity = await base44.entities.AIIdentity.filter({ id: identity_id }).then(r => r[0]);
-  if (!identity) {
-    return Response.json({ error: 'Identity not found' }, { status: 404 });
-  }
-
-  // Log the routing decision
-  const routingLog = await base44.entities.IdentityRoutingLog.create({
-    opportunity_id: opportunity.id,
-    identity_used: identity.is_active ? 'persona' : 'legal',
-    identity_name: identity.name,
-    routing_reason: `Auto-routed by intelligent router based on skill/platform fit`,
-    required_kyc: opportunity.requires_kyc_identity || false,
-    kyc_verified: identity.kyc_verified_data?.kyc_tier !== 'none',
-    auto_detected: true,
-    platform: opportunity.platform,
-    opportunity_category: opportunity.category,
-    status: 'pending'
-  });
-
-  // Create task execution queue entry
-  const task = await base44.entities.TaskExecutionQueue.create({
-    opportunity_id: opportunity.id,
-    url: opportunity.url,
-    opportunity_type: opportunity.opportunity_type || 'application',
-    platform: opportunity.platform,
-    identity_id: identity.id,
-    identity_name: identity.name,
-    status: 'queued',
-    priority: calculatePriority(opportunity),
-    estimated_value: opportunity.profit_estimate_high || opportunity.profit_estimate_low || 0,
-    deadline: opportunity.deadline
-  });
-
-  // Update opportunity status
-  await base44.entities.Opportunity.update(opportunity.id, {
-    status: 'queued',
-    identity_id: identity.id,
-    task_execution_id: task.id
-  });
-
-  return Response.json({
-    success: true,
-    task_id: task.id,
-    identity_id,
-    routing_log_id: routingLog.id,
-    message: `Task queued with identity: ${identity.name}`
-  });
-}
-
-// Helper functions
-
-function calculateIdentityScore(identity, opportunity, policies, logs) {
-  let score = 50; // base score
-
-  // Skill match (0-20 points)
-  const skillMatch = calculateSkillMatch(identity, opportunity);
-  score += (skillMatch / 100) * 20;
-
-  // Platform experience (0-25 points)
-  const platformXp = calculatePlatformExperience(identity, opportunity, logs);
-  score += (platformXp / 100) * 25;
-
-  // Performance history (0-20 points)
-  const perf = calculatePerformanceScore(identity, logs);
-  score += (perf / 100) * 20;
-
-  // Account health (0-15 points)
-  const health = identity.linked_account_ids?.length > 0 ? 100 : 40;
-  score += (health / 100) * 15;
-
-  // KYC requirement check (0-20 points, can lose if needed but not available)
-  if (opportunity.requires_kyc_identity) {
-    const hasKyc = identity.kyc_verified_data?.kyc_tier === 'standard' || identity.kyc_verified_data?.kyc_tier === 'enhanced';
-    score += hasKyc ? 20 : -20;
-  }
-
-  return Math.max(0, Math.min(100, score));
-}
-
-function calculateSkillMatch(identity, opportunity) {
-  if (!identity.skills || !opportunity.category) return 50;
-
-  const opportunityKeywords = [
-    opportunity.category,
-    opportunity.platform,
-    ...(opportunity.required_documents || [])
-  ].map(k => k?.toLowerCase() || '');
-
-  const matchCount = identity.skills.filter(skill =>
-    opportunityKeywords.some(kw => kw.includes(skill.toLowerCase()) || skill.toLowerCase().includes(kw))
-  ).length;
-
-  return identity.skills.length > 0 ? Math.min(100, (matchCount / identity.skills.length) * 100) : 50;
-}
-
-function calculatePlatformExperience(identity, opportunity, logs) {
-  const platformLogs = logs.filter(l => l.platform === opportunity.platform && l.identity_used === identity.id);
-  const successCount = platformLogs.filter(l => l.status === 'executed' || l.status === 'completed').length;
-
-  if (platformLogs.length === 0) return 30; // new to platform
-  return Math.min(100, (successCount / platformLogs.length) * 100);
-}
-
-function calculatePerformanceScore(identity, logs) {
-  if (logs.length === 0) return 50;
-
-  const completedCount = logs.filter(l => l.status === 'completed' || l.status === 'executed').length;
-  return (completedCount / logs.length) * 100;
-}
-
-function getRoutingReason(identity, opportunity, policies) {
-  const matchingPolicy = policies.find(p =>
-    p.enabled &&
-    (p.category === opportunity.category || !p.category) &&
-    (!p.platform || p.platform === opportunity.platform)
-  );
-
-  return {
-    requires_kyc: matchingPolicy?.requires_kyc || false,
-    kyc_reason: matchingPolicy?.kyc_reason || null,
-    requires_legal_identity: matchingPolicy?.identity_type === 'legal',
-    policy_applied: matchingPolicy?.rule_name || 'Auto-detected'
-  };
-}
-
-function calculatePriority(opportunity) {
-  let priority = 50;
-
-  if (opportunity.profit_estimate_high > 500) priority += 20;
-  if (opportunity.profit_estimate_high > 1000) priority += 15;
-
-  if (opportunity.time_sensitivity === 'immediate') priority += 25;
-  if (opportunity.time_sensitivity === 'hours') priority += 15;
-
-  return Math.min(100, priority);
-}

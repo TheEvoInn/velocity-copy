@@ -224,8 +224,8 @@ export default function APIManagement() {
                 <div>
                   <h4 className="font-semibold mb-2">Python</h4>
                   <div className="bg-slate-900/50 p-3 rounded font-mono text-sm overflow-x-auto">
-                    import requests<br/>
-                    r = requests.get('https://api.velocity.local/api/v1/opportunities', headers={'X-API-Key': 'pk_your_key'})
+                    import requests&lt;br/&gt;<br/>
+                    r = requests.get('https://api.velocity.local/api/v1/opportunities', headers={'{'}"X-API-Key": "pk_your_key"{'}'})
                   </div>
                 </div>
                 <div>

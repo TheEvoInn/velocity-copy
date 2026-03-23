@@ -447,9 +447,9 @@ export default function AppLayout() {
       </div>
       </div>
     </CyberpunkCommandCenter>
-
     {/* ── Mobile Bottom Tab Bar & Drawer — rendered outside pointer-events-none wrapper ── */}
     <MobileTabBar currentPath={location.pathname} onMoreClick={() => setDrawerOpen(true)} />
     <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} currentPath={location.pathname} />
+    </>
   );
 }

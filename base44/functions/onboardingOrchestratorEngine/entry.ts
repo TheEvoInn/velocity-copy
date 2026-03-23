@@ -351,6 +351,13 @@ async function completeOnboarding(base44, user, data) {
       return Response.json({ error: 'Validation failed', errors: validation.errors }, { status: 400 });
     }
 
+    // Process each step to create/update entities
+    await handleIdentityStep(base44, user, data.identity);
+    await handleKYCStep(base44, user, data.kyc);
+    await handleWalletStep(base44, user, data.wallet);
+    await handleCredentialsStep(base44, user, data.credentials);
+    await handleDepartmentsStep(base44, user, data.departments);
+
     // Mark onboarding as complete
     const goals = await base44.asServiceRole.entities.UserGoals.filter({ created_by: user.email }, '-created_date', 1);
     if (goals?.[0]) {

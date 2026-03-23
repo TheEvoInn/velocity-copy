@@ -52,6 +52,9 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
   const [suggestedSkills, setSuggestedSkills] = useState([]);
   const [avatarPrompt, setAvatarPrompt] = useState('');
   const [showAvatarPrompt, setShowAvatarPrompt] = useState(false);
+  const [customRole, setCustomRole] = useState('');
+  const [showCustomRoleInput, setShowCustomRoleInput] = useState(form.role_label === 'Custom');
+  const [researchingRole, setResearchingRole] = useState(false);
 
   const saveMutation = useMutation({
     mutationFn: async (formData) => {
@@ -175,6 +178,45 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
     if (!current.includes(skill)) {
       setForm(p => ({ ...p, skills: [...current, skill].join(', ') }));
       setSuggestedSkills(prev => prev.filter(s => s !== skill));
+    }
+  };
+
+  const researchCustomRole = async () => {
+    if (!customRole.trim()) {
+      toast.error('Enter a custom role to research');
+      return;
+    }
+
+    setResearchingRole(true);
+    try {
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Research the role "${customRole}" and provide JSON with: tagline (1 sentence professional summary), bio (2-3 sentence description), skills (array of 5-8 relevant skills), and proposal_style (writing approach). Return valid JSON only.`,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            tagline: { type: 'string' },
+            bio: { type: 'string' },
+            skills: { type: 'array', items: { type: 'string' } },
+            proposal_style: { type: 'string' }
+          }
+        }
+      });
+
+      setForm(p => ({
+        ...p,
+        role_label: customRole,
+        tagline: res.tagline,
+        bio: res.bio,
+        skills: res.skills.join(', '),
+        proposal_style: res.proposal_style
+      }));
+      setShowCustomRoleInput(false);
+      setCustomRole('');
+      toast.success(`Role "${customRole}" researched and added`);
+    } catch (err) {
+      toast.error(`Research failed: ${err.message}`);
+    } finally {
+      setResearchingRole(false);
     }
   };
 

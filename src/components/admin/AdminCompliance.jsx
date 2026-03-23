@@ -85,11 +85,11 @@ export default function AdminCompliance() {
       {/* Tab Navigation */}
       <div className="flex gap-2">
         {[
-          { id: 'overview', label: 'Overview', icon: Shield },
-          { id: 'kyc', label: 'KYC Compliance', icon: FileCheck },
-          { id: 'tax', label: 'Tax Obligations', icon: DollarSign },
-          { id: 'risk', label: 'Opportunity Risk', icon: TrendingUp }
-        ].map(({ id, label, icon: Icon }) => (
+          { id: 'overview', label: 'Overview', Icon: Shield },
+          { id: 'kyc', label: 'KYC Compliance', Icon: FileCheck },
+          { id: 'tax', label: 'Tax Obligations', Icon: DollarSign },
+          { id: 'risk', label: 'Opportunity Risk', Icon: TrendingUp }
+        ].map(({ id, label, Icon }) => (
           <Button
             key={id}
             size="sm"

@@ -65,6 +65,12 @@ export default function UserAccessPage() {
       id: 'notifications',
       label: 'Notifications',
       icon: Bell,
+      component: () => import('@/components/notifications/NotificationPreferences').then(m => m.default)
+    },
+    {
+      id: 'notification_history',
+      label: 'Notification History',
+      icon: Bell,
       component: NotificationsHub
     }
   ];

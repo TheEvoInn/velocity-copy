@@ -99,6 +99,9 @@ const DEPARTMENTS = [
   },
 ];
 
+// Primary tabs shown in mobile bottom bar (most important 5)
+const MOBILE_PRIMARY_TABS = ['/Dashboard', '/Discovery', '/Execution', '/Finance', '/Control'];
+
 // ─── Desktop Nav Item ─────────────────────────────────────────────────────────
 function NavItem({ dept, isActive }) {
   return (

@@ -29,6 +29,7 @@ import AdminPanel from './pages/AdminPanel';
 import AutopilotLogs from './pages/AutopilotLogs';
 import AIIdentityStudio from './pages/AIIdentityStudio';
 import TemplatesLibrary from './pages/TemplatesLibrary';
+import UserAccessPage from './pages/UserAccessPage';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

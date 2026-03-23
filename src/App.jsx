@@ -77,6 +77,7 @@ const AuthenticatedApp = () => {
         <Route path="/AutopilotLogs" element={<AutopilotLogs />} />
         <Route path="/AIIdentityStudio" element={<AIIdentityStudio />} />
         <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
+        <Route path="/UserAccessPage" element={<UserAccessPage />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

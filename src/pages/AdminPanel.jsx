@@ -158,7 +158,7 @@ export default function AdminPanel() {
             ) : (
               <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
                 {filteredUsers.map(u => {
-                  const userKYC = kycs.find(k => k.created_by === u.email);
+                  const userKYC = kycs.find(k => k.user_email === u.email || k.created_by === u.email);
                   const userIdentities = identities.filter(i => i.created_by === u.email);
                   const isExpanded = expandedUser === u.id;
 

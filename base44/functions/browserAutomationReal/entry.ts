@@ -17,6 +17,7 @@ async function executeTaskViaRealBrowser(base44, userEmail, task) {
    *   id: 'task_123',
    *   url: 'https://example.com/apply',
    *   opportunity_id: 'opp_456',
+   *   platform: 'upwork',
    *   form_fields: { email: 'user@example.com', ... },
    *   credentials: { username, password }, // from credentialInjection
    *   authorization_headers: { ... }
@@ -27,23 +28,54 @@ async function executeTaskViaRealBrowser(base44, userEmail, task) {
   const execution = {
     task_id: task.id,
     url: task.url,
+    platform: task.platform,
     status: 'starting',
     steps_completed: 0,
     screenshots: [],
     form_data_submitted: {},
     confirmation: null,
     error: null,
+    proxy_used: null,
     started_at: new Date().toISOString(),
   };
 
   try {
-    // Step 1: Navigate to URL
+    // Step 0: Select and configure proxy
+    executionLog.push({
+      step: 0,
+      action: 'proxy_selection',
+      status: 'in_progress',
+      timestamp: new Date().toISOString(),
+    });
+
+    const proxyResult = await base44.functions.invoke('proxyManagementEngine', {
+      action: 'get_proxy_config',
+      platform: task.platform || 'default'
+    }).catch(e => ({ data: { use_proxy: false, error: e.message } }));
+
+    const proxyConfig = proxyResult.data || { use_proxy: false };
+    execution.proxy_used = proxyConfig.use_proxy ? proxyConfig.proxy_id : null;
+
+    if (proxyConfig.use_proxy) {
+      executionLog[0].status = 'completed';
+      executionLog[0].proxy_id = proxyConfig.proxy_id;
+      executionLog[0].rotation_strategy = proxyConfig.rotation_strategy;
+    } else {
+      executionLog[0].status = 'skipped';
+      executionLog[0].reason = proxyConfig.message || 'No proxy configured';
+    }
+
+    // Step 1: Navigate to URL with optional proxy
     executionLog.push({
       step: 1,
       action: 'navigate',
       url: task.url,
       status: 'in_progress',
       timestamp: new Date().toISOString(),
+      proxy_config: proxyConfig.use_proxy ? {
+        rotation_interval: proxyConfig.rotation_strategy?.rotation_interval,
+        delay_between_requests: proxyConfig.rotation_strategy?.delay_between_requests
+      } : null
     });
 
     // TODO: In production, use Browserbase or Puppeteer to navigate
@@ -53,7 +85,7 @@ async function executeTaskViaRealBrowser(base44, userEmail, task) {
     // await page.goto(task.url, { waitUntil: 'networkidle2' });
 
     execution.steps_completed = 1;
-    executionLog[0].status = 'completed';
+    executionLog[1].status = 'completed';
 
     // Step 2: Analyze page structure (forms, inputs, buttons)
     executionLog.push({
@@ -61,6 +93,7 @@ async function executeTaskViaRealBrowser(base44, userEmail, task) {
       action: 'analyze_page',
       status: 'in_progress',
       timestamp: new Date().toISOString(),
+      delay_before_action: proxyConfig.rotation_strategy?.delay_between_requests || 0
     });
 
     // TODO: Extract form fields from page
@@ -77,7 +110,7 @@ async function executeTaskViaRealBrowser(base44, userEmail, task) {
     // });
 
     execution.steps_completed = 2;
-    executionLog[1].status = 'completed';
+    executionLog[2].status = 'completed';
 
     // Step 3: Fill form fields with data
     executionLog.push({
@@ -95,7 +128,7 @@ async function executeTaskViaRealBrowser(base44, userEmail, task) {
     // }
 
     execution.steps_completed = 3;
-    executionLog[2].status = 'completed';
+    executionLog[3].status = 'completed';
 
     // Step 4: Handle CAPTCHA if present
     executionLog.push({
@@ -119,7 +152,7 @@ async function executeTaskViaRealBrowser(base44, userEmail, task) {
     // }
 
     execution.steps_completed = 4;
-    executionLog[3].status = 'completed';
+    executionLog[4].status = 'completed';
 
     // Step 5: Submit form
     executionLog.push({
@@ -137,7 +170,7 @@ async function executeTaskViaRealBrowser(base44, userEmail, task) {
     // }
 
     execution.steps_completed = 5;
-    executionLog[4].status = 'completed';
+    executionLog[5].status = 'completed';
 
     // Step 6: Capture confirmation
     executionLog.push({
@@ -161,18 +194,20 @@ async function executeTaskViaRealBrowser(base44, userEmail, task) {
 
     execution.status = 'completed';
     execution.steps_completed = 6;
-    executionLog[5].status = 'completed';
+    executionLog[6].status = 'completed';
 
     // Log execution to database
     await base44.asServiceRole.entities.ActivityLog.create({
       action_type: 'system',
-      message: `✅ Real browser automation: Task ${task.id} executed successfully`,
+      message: `✅ Real browser automation: Task ${task.id} executed successfully${proxyConfig.use_proxy ? ` via ${proxyConfig.provider}` : ''}`,
       severity: 'success',
       metadata: {
         task_id: task.id,
         url: task.url,
+        platform: task.platform,
         steps_completed: execution.steps_completed,
         status: execution.status,
+        proxy_used: execution.proxy_used,
       },
     }).catch(() => null);
 

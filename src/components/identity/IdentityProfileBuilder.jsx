@@ -36,6 +36,8 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
   const [uploading, setUploading] = useState(false);
   const [aiGenerating, setAiGenerating] = useState({});
   const [suggestedSkills, setSuggestedSkills] = useState([]);
+  const [avatarPrompt, setAvatarPrompt] = useState('');
+  const [showAvatarPrompt, setShowAvatarPrompt] = useState(false);
 
   const saveMutation = useMutation({
     mutationFn: async (formData) => {
@@ -149,6 +151,29 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
     }
   };
 
+  const generateAvatar = async () => {
+    if (!avatarPrompt.trim()) {
+      toast.error('Enter a description for your avatar');
+      return;
+    }
+
+    setAiGenerating(p => ({ ...p, avatar: true }));
+    try {
+      const prompt = `Create a professional profile photo for a ${form.role_label} named ${form.name}. ${avatarPrompt}. High quality, PNG format, square aspect ratio.`;
+      const res = await base44.integrations.Core.GenerateImage({
+        prompt
+      });
+      setAvatarUrl(res.url);
+      setShowAvatarPrompt(false);
+      setAvatarPrompt('');
+      toast.success('Avatar generated');
+    } catch (err) {
+      toast.error(`Generation failed: ${err.message}`);
+    } finally {
+      setAiGenerating(p => ({ ...p, avatar: false }));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="bg-slate-900 border-slate-800 p-6">
@@ -177,11 +202,48 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
                 id="avatar-upload"
               />
               <label
-                htmlFor="avatar-upload"
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg cursor-pointer text-sm text-slate-300 transition-colors"
+                  htmlFor="avatar-upload"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg cursor-pointer text-sm text-slate-300 transition-colors"
+                >
+                  <Upload className="w-4 h-4" /> {uploading ? 'Uploading...' : 'Upload'}
+                </label>
+              <Button
+                onClick={() => setShowAvatarPrompt(!showAvatarPrompt)}
+                size="sm"
+                variant="ghost"
+                className="w-full px-4 py-2 text-xs gap-2 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
               >
-                <Upload className="w-4 h-4" /> {uploading ? 'Uploading...' : 'Upload'}
-              </label>
+                <Sparkles className="w-4 h-4" />
+                Generate with AI
+              </Button>
+              {showAvatarPrompt && (
+                <div className="mt-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700 space-y-2">
+                  <Input
+                    value={avatarPrompt}
+                    onChange={(e) => setAvatarPrompt(e.target.value)}
+                    placeholder="e.g., professional headshot, casual tech startup vibe, corporate"
+                    className="bg-slate-700 border-slate-600 text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={generateAvatar}
+                      disabled={aiGenerating.avatar}
+                      size="sm"
+                      className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-xs"
+                    >
+                      {aiGenerating.avatar ? 'Generating...' : 'Generate'}
+                    </Button>
+                    <Button
+                      onClick={() => setShowAvatarPrompt(false)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

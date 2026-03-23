@@ -15,12 +15,13 @@ import KYCConsolidationStatus from '../components/account/KYCConsolidationStatus
 export default function UserAccessPage() {
   const [activeTab, setActiveTab] = useState('account');
 
-  const { data: kycList = [] } = useQuery({
+  const { data: kycList = [], refetch: refetchKYC } = useQuery({
     queryKey: ['kycStatus_sidebar'],
     queryFn: async () => {
       const result = await base44.functions.invoke('kycAdminService', { action: 'get_my_kyc' });
       return result.data.record ? [result.data.record] : [];
-    }
+    },
+    refetchInterval: 3000
   });
   const { data: goalsList = [] } = useQuery({
     queryKey: ['userGoals'],

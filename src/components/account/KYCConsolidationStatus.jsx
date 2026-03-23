@@ -31,9 +31,11 @@ export default function KYCConsolidationStatus({ targetEmail, fullName }) {
       });
       return res.data?.activation;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await new Promise(r => setTimeout(r, 500));
       refetch();
       setActivating(false);
+      window.location.reload();
     }
   });
 

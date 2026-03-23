@@ -152,29 +152,50 @@ export default function Control() {
           </div>
         </Card>
 
-        {/* Workflows */}
+        {/* Workflows & Applied Strategies */}
         <Card className="glass-card p-4 mb-6">
-          <h3 className="font-orbitron text-sm font-bold text-white mb-3 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-cyan-400" />
-            Automation Workflows
-          </h3>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {workflows.length === 0 ? (
-              <div className="text-xs text-slate-500 text-center py-4">No workflows created</div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-orbitron text-sm font-bold text-white flex items-center gap-2">
+              <Zap className="w-4 h-4 text-cyan-400" />
+              Workflows & Strategies
+            </h3>
+            <Link to="/TemplatesLibrary" className="text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors">
+              + Add Template
+            </Link>
+          </div>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {workflows.length === 0 && strategies.length === 0 ? (
+              <div className="text-xs text-slate-500 text-center py-6">
+                No workflows yet.{' '}
+                <Link to="/TemplatesLibrary" className="text-cyan-400 hover:underline">Browse templates →</Link>
+              </div>
             ) : (
-              workflows.slice(0, 6).map(wf => (
-                <div key={wf.id} className="p-3 bg-slate-800/40 rounded-lg border border-cyan-500/30">
-                  <div className="flex justify-between items-start">
+              <>
+                {/* Strategies from templates/builder */}
+                {strategies.slice(0, 6).map(s => (
+                  <div key={s.id} className="p-3 bg-slate-800/40 rounded-lg border border-violet-500/20 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-white truncate">{s.title}</div>
+                      <div className="text-xs text-slate-500 capitalize truncate">{s.variant} · {(s.categories || []).slice(0, 2).join(', ') || 'all'}</div>
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-orbitron border shrink-0 ${STATUS_COLOR[s.status] || STATUS_COLOR.draft}`}>
+                      {s.status || 'draft'}
+                    </span>
+                  </div>
+                ))}
+                {/* Native workflows */}
+                {workflows.slice(0, 4).map(wf => (
+                  <div key={wf.id} className="p-3 bg-slate-800/40 rounded-lg border border-cyan-500/20 flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-white truncate">{wf.name}</div>
-                      <div className="text-xs text-slate-400 capitalize">{wf.status}</div>
+                      <div className="text-xs text-slate-500 capitalize">{wf.status} · {wf.execution_stats?.total_runs || 0} runs</div>
                     </div>
-                    <div className="ml-3 text-right text-xs">
-                      <div className="text-slate-400">{wf.execution_stats?.total_runs || 0} runs</div>
-                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-orbitron border shrink-0 ${STATUS_COLOR[wf.status] || STATUS_COLOR.draft}`}>
+                      {wf.status || 'draft'}
+                    </span>
                   </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
           </div>
         </Card>

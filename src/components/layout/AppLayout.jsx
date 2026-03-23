@@ -414,11 +414,7 @@ export default function AppLayout() {
         )}
       </header>
 
-      {/* Mobile Drawer (bottom sheet) */}
-      <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} currentPath={location.pathname} />
-
       {/* ── Page Content ── */}
-      {/* pb-20 on mobile to clear the bottom tab bar */}
       <main className="relative z-10 pt-14 min-h-screen pb-24 md:pb-0 pointer-events-auto">
         {currentDept && (
           <div className="h-0.5 w-full"
@@ -430,7 +426,7 @@ export default function AppLayout() {
       </main>
 
       {/* ── Desktop: floating galaxy dot map ── */}
-      <div className="fixed bottom-6 right-6 z-40 hidden md:flex flex-col gap-1.5 items-end">
+      <div className="fixed bottom-6 right-6 z-40 hidden md:flex flex-col gap-1.5 items-end pointer-events-auto">
         {DEPARTMENTS.map(dept => {
           const isActive = location.pathname === dept.path ||
             (dept.path !== '/Dashboard' && location.pathname.startsWith(dept.path));
@@ -449,10 +445,11 @@ export default function AppLayout() {
           );
         })}
       </div>
-
-        {/* ── Mobile Bottom Tab Bar ── */}
-        <MobileTabBar currentPath={location.pathname} onMoreClick={() => setDrawerOpen(true)} />
       </div>
     </CyberpunkCommandCenter>
+
+    {/* ── Mobile Bottom Tab Bar & Drawer — rendered outside pointer-events-none wrapper ── */}
+    <MobileTabBar currentPath={location.pathname} onMoreClick={() => setDrawerOpen(true)} />
+    <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} currentPath={location.pathname} />
   );
 }

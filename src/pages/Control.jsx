@@ -5,21 +5,49 @@
 import React from 'react';
 import { getDeptStyle } from '@/lib/galaxyTheme';
 import { useAIIdentities, useWorkflows } from '@/hooks/useQueryHooks';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Shield, Settings, Zap, Lock } from 'lucide-react';
+import { Shield, Settings, Zap, Lock, Sparkles } from 'lucide-react';
 import SubPageNav from '@/components/layout/SubPageNav';
 
 const style = getDeptStyle('control');
+
+const STATUS_COLOR = {
+  active: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+  paused: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+  draft: 'text-slate-400 bg-slate-700/30 border-slate-600/30',
+  completed: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+  abandoned: 'text-red-400 bg-red-500/10 border-red-500/30',
+};
 
 export default function Control() {
   const { data: identities = [], isLoading: idLoading, error: idError } = useAIIdentities();
   const { data: workflows = [], isLoading: wfLoading, error: wfError } = useWorkflows();
 
+  // Also pull Strategy records (created when templates/workflows are applied)
+  const { data: strategies = [], isLoading: stratLoading } = useQuery({
+    queryKey: ['customStrategies'],
+    queryFn: () => base44.entities.Strategy.list('-updated_date', 30),
+  });
+
+  // UserDataStore to show which template is currently active
+  const { data: store } = useQuery({
+    queryKey: ['userDataStore_templates'],
+    queryFn: async () => {
+      const me = await base44.auth.me();
+      const res = await base44.entities.UserDataStore.filter({ user_email: me.email });
+      return res[0] || null;
+    },
+  });
+
   const activeIdentities = identities.filter(i => i.is_active).length;
   const activeWorkflows = workflows.filter(w => w.status === 'active').length;
-  const isLoading = idLoading || wfLoading;
+  const activeStrategies = strategies.filter(s => s.status === 'active').length;
+  const appliedTemplateName = store?.autopilot_preferences?.active_template_name;
+  const isLoading = idLoading || wfLoading || stratLoading;
 
   if (isLoading) {
     return (

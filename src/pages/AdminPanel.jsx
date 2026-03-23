@@ -12,7 +12,8 @@ import AdminAnalytics from '@/components/admin/AdminAnalytics.jsx';
 import AdminCommandCenter from '@/components/admin/AdminCommandCenter.jsx';
 import AdminCompliance from '@/components/admin/AdminCompliance.jsx';
 import NotificationCenter from '@/components/notifications/NotificationCenter.jsx';
-import { Shield, LayoutDashboard, Users, TrendingUp, DollarSign, Activity, Zap, AlertTriangle, BarChart3, Joystick, Lock, Bell, LogOut } from 'lucide-react';
+import AuditTrailDashboard from '@/components/admin/AuditTrailDashboard.jsx';
+import { Shield, LayoutDashboard, Users, TrendingUp, DollarSign, Activity, Zap, AlertTriangle, BarChart3, Joystick, Lock, Bell, Database, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function AdminPanel() {
@@ -90,6 +91,9 @@ export default function AdminPanel() {
             <TabsTrigger value="notifications" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white text-slate-400 gap-1.5">
               <Bell className="w-3.5 h-3.5" /> Notifications
             </TabsTrigger>
+            <TabsTrigger value="audit" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white text-slate-400 gap-1.5">
+              <Database className="w-3.5 h-3.5" /> Audit Trail
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><AdminOverview /></TabsContent>
@@ -103,6 +107,7 @@ export default function AdminPanel() {
           <TabsContent value="command"><AdminCommandCenter /></TabsContent>
           <TabsContent value="compliance"><AdminCompliance /></TabsContent>
           <TabsContent value="notifications"><NotificationCenter /></TabsContent>
+          <TabsContent value="audit"><AuditTrailDashboard /></TabsContent>
         </Tabs>
       </div>
     </div>

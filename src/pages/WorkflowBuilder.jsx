@@ -318,12 +318,44 @@ export default function WorkflowBuilder() {
           <h2 className="font-orbitron text-lg font-bold text-white mb-4">Your Strategies</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {strategies.map(s => (
-              <div key={s.id} className="p-4 rounded-lg border border-slate-700 bg-slate-900/50 hover:border-cyan-500/50 transition-colors cursor-pointer"
-                onClick={() => setStrategy(s)}>
-                <p className="font-semibold text-white text-sm">{s.name}</p>
+              <div key={s.id}
+                className={`p-4 rounded-lg border bg-slate-900/50 transition-colors ${
+                  strategy.id === s.id ? 'border-cyan-500/60' : 'border-slate-700 hover:border-cyan-500/30'
+                }`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <p className="font-semibold text-white text-sm cursor-pointer hover:text-cyan-300 transition-colors"
+                    onClick={() => {
+                      const meta = s.performance_notes ? JSON.parse(s.performance_notes) : {};
+                      setStrategy({ id: s.id, name: s.title, description: s.description, variant: s.variant, blocks: meta.blocks || [], conditions: meta.conditions || [], maxConcurrentTasks: meta.maxConcurrentTasks || 3, maxDailySpend: meta.maxDailySpend || 500, targetPlatforms: s.categories || ['all'] });
+                      setMode('builder');
+                    }}>
+                    {s.title}
+                  </p>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-orbitron shrink-0 ${
+                    s.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700/50 text-slate-500 border border-slate-600/30'
+                  }`}>
+                    {s.status || 'draft'}
+                  </span>
+                </div>
                 <p className="text-xs text-slate-400 mt-1 line-clamp-2">{s.description}</p>
-                <div className="text-xs text-slate-500 mt-2">
-                  {s.conditions?.length || 0} conditions · {s.maxConcurrentTasks} concurrent
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/60">
+                  <span className="text-xs text-slate-500">{s.variant} · {s.categories?.join(', ') || 'all'}</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => toggleActiveMutation.mutate({ id: s.id, currentStatus: s.status })}
+                      className={`p-1.5 rounded transition-colors ${s.status === 'active' ? 'text-amber-400 hover:bg-amber-500/10' : 'text-emerald-400 hover:bg-emerald-500/10'}`}
+                      title={s.status === 'active' ? 'Pause strategy' : 'Activate strategy'}
+                    >
+                      {s.status === 'active' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => deleteMutation.mutate(s.id)}
+                      className="p-1.5 rounded text-red-400 hover:bg-red-500/10 transition-colors"
+                      title="Delete strategy"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

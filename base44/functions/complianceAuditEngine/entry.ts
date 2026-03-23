@@ -47,17 +47,22 @@ async function logAutonomousAction(base44, user, data) {
     risk_level = 'low'
   } = data;
 
-  await base44.entities.ComplianceAuditLog.create({
-    user_email: user.email,
-    action_type,
-    entity_type,
-    entity_id,
-    identity_id,
-    details,
-    risk_level,
-    timestamp: new Date().toISOString(),
-    status: 'logged'
-  }).catch(() => {});
+  try {
+    await base44.entities.ComplianceAuditLog.create({
+      user_email: user.email,
+      action_type,
+      entity_type,
+      entity_id,
+      identity_id,
+      details,
+      risk_level,
+      timestamp: new Date().toISOString(),
+      status: 'logged'
+    });
+  } catch (err) {
+    console.error('[ComplianceAuditLog Create]', err.message);
+    return jsonResponse({ error: 'Failed to log action' }, 500);
+  }
 
   return jsonResponse({ message: 'Action logged' });
 }
@@ -83,7 +88,10 @@ async function getAuditLogs(base44, user, data) {
 
   const logs = await base44.entities.ComplianceAuditLog
     .filter(query, '-timestamp', limit)
-    .catch(() => []);
+    .catch((err) => {
+      console.error('[ComplianceAuditLog Filter]', err.message);
+      return [];
+    });
 
   const filtered = logs.filter(l => l.timestamp > cutoff);
 
@@ -109,12 +117,18 @@ async function getComplianceReport(base44, user) {
 
   const logs7d = await base44.entities.ComplianceAuditLog
     .filter({ user_email: user.email }, '-timestamp', 1000)
-    .catch(() => [])
+    .catch((err) => {
+      console.error('[ComplianceAuditLog 7d]', err.message);
+      return [];
+    })
     .then(l => l.filter(x => x.timestamp > days7));
 
   const logs30d = await base44.entities.ComplianceAuditLog
     .filter({ user_email: user.email }, '-timestamp', 1000)
-    .catch(() => [])
+    .catch((err) => {
+      console.error('[ComplianceAuditLog 30d]', err.message);
+      return [];
+    })
     .then(l => l.filter(x => x.timestamp > days30));
 
   const highRiskActions = logs30d.filter(l => l.risk_level === 'high' || l.risk_level === 'critical').length;

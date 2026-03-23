@@ -86,14 +86,17 @@ Deno.serve(async (req) => {
 });
 
 /**
- * Authenticate API key
+ * Authenticate API key with error handling
  */
 async function authenticateKey(base44, apiKey) {
   const keyHash = hashKey(apiKey);
   const keys = await base44.asServiceRole.entities.APIKey.filter(
     { api_key_hash: keyHash, is_active: true },
     null, 1
-  ).catch(() => []);
+  ).catch((err) => {
+    console.error('[APIKey Auth]', err.message);
+    return [];
+  });
 
   const key = keys[0];
   if (!key) return { valid: false };
@@ -107,18 +110,26 @@ async function authenticateKey(base44, apiKey) {
 }
 
 /**
- * Check rate limit
+ * Check rate limit with per-tenant enforcement
  */
 async function checkRateLimit(base44, auth) {
   const config = await base44.asServiceRole.entities.RateLimitConfig.filter(
     { tenant_id: auth.key.tenant_id },
     null, 1
-  ).catch(() => []);
+  ).catch((err) => {
+    console.error('[RateLimitConfig] Fetch error:', err.message);
+    return [];
+  });
 
-  const limit = config[0]?.calls_per_hour || 1000;
+  const limit = Math.min(config[0]?.calls_per_hour || 1000, auth.key.rate_limit_calls_per_hour || 1000);
   const now = new Date();
   const lastReset = auth.key.last_hour_reset ? new Date(auth.key.last_hour_reset) : new Date(now.getTime() - 3600000);
   const hoursPassed = (now - lastReset) / 3600000;
+  
+  // Verify API key not expired
+  if (auth.key.expires_at && new Date(auth.key.expires_at) < now) {
+    return { allowed: false, limit, remaining: 0, reset: now.toISOString() };
+  }
 
   let currentCalls = auth.key.calls_made_this_hour || 0;
   if (hoursPassed >= 1) {
@@ -128,21 +139,40 @@ async function checkRateLimit(base44, auth) {
   const allowed = currentCalls < limit;
   const remaining = Math.max(0, limit - currentCalls - 1);
   const reset = new Date(lastReset.getTime() + 3600000).toISOString();
+  
+  // Log rate limit check for audit
+  if (!allowed) {
+    await base44.asServiceRole.entities.ComplianceAuditLog.create({
+      user_email: auth.key.tenant_id,
+      action_type: 'rate_limit_exceeded',
+      entity_type: 'APIKey',
+      entity_id: auth.key.id,
+      details: { limit, current_calls: currentCalls },
+      risk_level: 'medium',
+      timestamp: now.toISOString()
+    }).catch(() => {});
+  }
 
   return { allowed, limit, remaining, reset };
 }
 
 /**
- * Update key usage stats
+ * Update key usage stats and check for expiration
  */
 async function updateKeyUsage(base44, keyId) {
   const now = new Date();
-  const lastReset = now.getTime() - 3600000; // 1 hour ago
+  const lastReset = new Date(now.getTime() - 3600000); // 1 hour ago
+  
+  // Auto-expire keys after 90 days of last use
+  const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400000);
   
   await base44.asServiceRole.entities.APIKey.update(keyId, {
     last_used: now.toISOString(),
-    last_hour_reset: new Date(lastReset).toISOString()
-  }).catch(() => {});
+    last_hour_reset: lastReset.toISOString(),
+    is_active: now.getTime() - 90 * 86400000 > lastReset.getTime() ? false : true
+  }).catch((err) => {
+    console.error('[APIKey Update]', err.message);
+  });
 }
 
 /**
@@ -157,24 +187,36 @@ async function dispatchHandler(base44, handler, ctx) {
   }
 
   if (handler === 'getOpportunities') {
-    const opps = await base44.asServiceRole.entities.Opportunity.list('-created_date', 50).catch(() => []);
+    const opps = await base44.asServiceRole.entities.Opportunity.list('-created_date', 50).catch((err) => {
+      console.error('[Opportunity List]', err.message);
+      return [];
+    });
     return jsonResponse({ opportunities: opps.map(o => cleanOpp(o)) });
   }
 
   if (handler === 'getOpportunity') {
     const id = path.split('/').pop();
-    const opp = await base44.asServiceRole.entities.Opportunity.filter({ id }, null, 1).then(r => r[0]).catch(() => null);
+    const opp = await base44.asServiceRole.entities.Opportunity.filter({ id }, null, 1).then(r => r[0]).catch((err) => {
+      console.error('[Opportunity Get]', err.message);
+      return null;
+    });
     return opp ? jsonResponse(cleanOpp(opp)) : jsonResponse({ error: 'Not found' }, 404);
   }
 
   if (handler === 'getTasks') {
-    const tasks = await base44.asServiceRole.entities.TaskExecutionQueue.list('-created_date', 50).catch(() => []);
+    const tasks = await base44.asServiceRole.entities.TaskExecutionQueue.list('-created_date', 50).catch((err) => {
+      console.error('[TaskExecutionQueue List]', err.message);
+      return [];
+    });
     return jsonResponse({ tasks: tasks.map(t => ({ id: t.id, status: t.status, opportunity_id: t.opportunity_id, priority: t.priority })) });
   }
 
   if (handler === 'getTask') {
     const id = path.split('/').pop();
-    const task = await base44.asServiceRole.entities.TaskExecutionQueue.filter({ id }, null, 1).then(r => r[0]).catch(() => null);
+    const task = await base44.asServiceRole.entities.TaskExecutionQueue.filter({ id }, null, 1).then(r => r[0]).catch((err) => {
+      console.error('[TaskExecutionQueue Get]', err.message);
+      return null;
+    });
     return task ? jsonResponse({ id: task.id, status: task.status, opportunity_id: task.opportunity_id }) : jsonResponse({ error: 'Not found' }, 404);
   }
 
@@ -188,14 +230,22 @@ async function dispatchHandler(base44, handler, ctx) {
       status: 'queued',
       queue_timestamp: new Date().toISOString(),
       priority: 50
-    }).catch(e => null);
+    }).catch((err) => {
+      console.error('[TaskExecutionQueue Create]', err.message);
+      return null;
+    });
 
     return task ? jsonResponse({ task_id: task.id, status: 'queued' }, 201) : jsonResponse({ error: 'Failed to create task' }, 500);
   }
 
   if (handler === 'getUser') {
-    const user = await base44.auth.me();
-    return jsonResponse({ id: user.id, email: user.email, full_name: user.full_name, role: user.role });
+    try {
+      const user = await base44.auth.me();
+      return jsonResponse({ id: user.id, email: user.email, full_name: user.full_name, role: user.role });
+    } catch (err) {
+      console.error('[User Get]', err.message);
+      return jsonResponse({ error: 'Failed to fetch user' }, 500);
+    }
   }
 
   if (handler === 'createAPIKey') {
@@ -206,6 +256,7 @@ async function dispatchHandler(base44, handler, ctx) {
     const { key_name, permissions, rate_limit_calls_per_hour } = body;
     const newKey = generateApiKey();
     const hash = hashKey(newKey);
+    const expiresAt = new Date(Date.now() + 90 * 86400000); // 90 days from now
 
     await base44.asServiceRole.entities.APIKey.create({
       key_name,
@@ -213,20 +264,28 @@ async function dispatchHandler(base44, handler, ctx) {
       api_key_prefix: newKey.substring(0, 8),
       tenant_id: auth.key.tenant_id,
       permissions: permissions || ['read:opportunities', 'read:tasks'],
-      rate_limit_calls_per_hour: rate_limit_calls_per_hour || 1000
-    }).catch(() => {});
+      rate_limit_calls_per_hour: rate_limit_calls_per_hour || 1000,
+      expires_at: expiresAt.toISOString()
+    }).catch((err) => {
+      console.error('[APIKey Create]', err.message);
+    });
 
     return jsonResponse({ api_key: newKey, prefix: newKey.substring(0, 8), message: 'Save this key securely' }, 201);
   }
 
   if (handler === 'listAPIKeys') {
-    const keys = await base44.asServiceRole.entities.APIKey.filter({ tenant_id: auth.key.tenant_id }, null, 100).catch(() => []);
+    const keys = await base44.asServiceRole.entities.APIKey.filter({ tenant_id: auth.key.tenant_id }, null, 100).catch((err) => {
+      console.error('[APIKey List]', err.message);
+      return [];
+    });
     return jsonResponse({ keys: keys.map(k => ({ key_name: k.key_name, prefix: k.api_key_prefix, is_active: k.is_active, created_date: k.created_date })) });
   }
 
   if (handler === 'revokeAPIKey') {
     const id = path.split('/').pop();
-    await base44.asServiceRole.entities.APIKey.update(id, { is_active: false }).catch(() => {});
+    await base44.asServiceRole.entities.APIKey.update(id, { is_active: false }).catch((err) => {
+      console.error('[APIKey Revoke]', err.message);
+    });
     return jsonResponse({ message: 'API key revoked' });
   }
 

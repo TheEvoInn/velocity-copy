@@ -44,11 +44,17 @@ Deno.serve(async (req) => {
 async function syncIdentities(base44, user) {
   const identities = await base44.entities.AIIdentity
     .filter({ user_email: user.email, is_active: true }, null, 100)
-    .catch(() => []);
+    .catch((err) => {
+      console.error('[AIIdentity List]', err.message);
+      return [];
+    });
 
   const linkedAccounts = await base44.entities.LinkedAccount
     .filter({ created_by: user.email }, null, 200)
-    .catch(() => []);
+    .catch((err) => {
+      console.error('[LinkedAccount List]', err.message);
+      return [];
+    });
 
   const syncResults = [];
 
@@ -84,7 +90,9 @@ async function syncIdentities(base44, user) {
       accounts_checked: accountsForIdentity.length,
       conflicts_found: conflicts,
       status: syncStatus
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error('[IdentitySyncLog Create]', err.message);
+    });
 
     syncResults.push({
       identity_id: identity.id,
@@ -108,7 +116,10 @@ async function syncIdentities(base44, user) {
 async function detectConflicts(base44, user) {
   const identities = await base44.entities.AIIdentity
     .filter({ user_email: user.email }, null, 100)
-    .catch(() => []);
+    .catch((err) => {
+      console.error('[AIIdentity Conflict]', err.message);
+      return [];
+    });
 
   const conflicts = [];
 
@@ -134,7 +145,10 @@ async function detectConflicts(base44, user) {
   // Check for overlapping platforms
   const linkedAccounts = await base44.entities.LinkedAccount
     .filter({ created_by: user.email }, null, 200)
-    .catch(() => []);
+    .catch((err) => {
+      console.error('[LinkedAccount Conflict]', err.message);
+      return [];
+    });
 
   const platformMap = {};
   linkedAccounts.forEach(acc => {
@@ -173,7 +187,10 @@ async function detectConflicts(base44, user) {
 async function getSyncStatus(base44, user) {
   const logs = await base44.entities.IdentitySyncLog
     .filter({ user_email: user.email }, '-sync_timestamp', 100)
-    .catch(() => []);
+    .catch((err) => {
+      console.error('[IdentitySyncLog Get]', err.message);
+      return [];
+    });
 
   const recentLogs = logs.slice(0, 10);
   const lastSync = recentLogs[0]?.sync_timestamp || null;
@@ -200,12 +217,16 @@ async function resolveConflict(base44, user, data) {
 
   if (action === 'merge') {
     // Merge identity_2 into identity_1
-    await base44.entities.AIIdentity.update(identity_2, { is_active: false }).catch(() => {});
+    await base44.entities.AIIdentity.update(identity_2, { is_active: false }).catch((err) => {
+      console.error('[AIIdentity Merge]', err.message);
+    });
   }
 
   if (action === 'revoke') {
     // Deactivate the conflicting identity
-    await base44.entities.AIIdentity.update(identity_2, { is_active: false }).catch(() => {});
+    await base44.entities.AIIdentity.update(identity_2, { is_active: false }).catch((err) => {
+      console.error('[AIIdentity Revoke]', err.message);
+    });
   }
 
   return jsonResponse({

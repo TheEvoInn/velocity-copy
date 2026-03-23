@@ -37,7 +37,8 @@ async function executeNextTask(base44, user) {
     timestamp: new Date().toISOString(),
     executed: false,
     task_id: null,
-    steps: []
+    steps: [],
+    lock_token: null
   };
 
   try {
@@ -49,7 +50,7 @@ async function executeNextTask(base44, user) {
     ).catch(() => []);
 
     const tasksArray = Array.isArray(tasks) ? tasks : [];
-    
+
     if (tasksArray.length === 0) {
       result.steps.push('No queued tasks found');
       return Response.json({ success: true, result });
@@ -58,14 +59,42 @@ async function executeNextTask(base44, user) {
     const task = tasksArray[0];
      result.task_id = task.id;
 
-     // Mark task as processing
-     result.steps.push('Marking task as processing...');
-     await base44.entities.TaskExecutionQueue.update(task.id, {
-       status: 'processing',
-       start_timestamp: new Date().toISOString()
-     }).catch(e => {
-       result.steps.push(`Error: ${e.message}`);
-     });
+      // Mark task as processing
+      result.steps.push('Marking task as processing...');
+      await base44.entities.TaskExecutionQueue.update(task.id, {
+        status: 'processing',
+        start_timestamp: new Date().toISOString()
+      }).catch(e => {
+        result.steps.push(`Error: ${e.message}`);
+      });
+
+      // ─── PHASE 0: Acquire execution lock ────────────────────────────
+      result.steps.push('Acquiring task execution lock...');
+      const lockResult = await base44.functions.invoke('taskExecutionLockManager', {
+        action: 'acquire_lock',
+        platform: task.platform,
+        accountId: task.identity_id
+      }).catch(e => ({ success: false, error: e.message }));
+
+      if (!lockResult.success) {
+        result.steps.push(`⏳ Account locked: ${lockResult.message || 'Task queued for later'}`);
+        // Queue task for retry
+        await base44.functions.invoke('taskExecutionLockManager', {
+          action: 'queue_task',
+          taskId: task.id,
+          reason: lockResult.message || 'Account in use by another task'
+        }).catch(() => null);
+
+        // Revert processing status
+        await base44.entities.TaskExecutionQueue.update(task.id, {
+          status: 'queued'
+        }).catch(() => null);
+
+        return Response.json({ success: true, result, queued: true });
+      }
+
+      result.lock_token = lockResult.lock_token;
+      result.steps.push('✓ Execution lock acquired');
 
      // ─── PHASE 4: Account preparation ──────────────────────────────
     result.steps.push('Preparing accounts for task execution...');
@@ -276,11 +305,29 @@ async function executeNextTask(base44, user) {
       }
     }).catch(() => {});
 
+    // Release execution lock
+    if (result.lock_token) {
+      await base44.functions.invoke('taskExecutionLockManager', {
+        action: 'release_lock',
+        lockToken: result.lock_token
+      }).catch(() => null);
+      result.steps.push('✓ Execution lock released');
+    }
+
     result.executed = true;
     return Response.json({ success: true, result });
 
   } catch (e) {
     result.steps.push(`Fatal error: ${e.message}`);
+    
+    // Release lock on fatal error
+    if (result.lock_token) {
+      await base44.functions.invoke('taskExecutionLockManager', {
+        action: 'release_lock',
+        lockToken: result.lock_token
+      }).catch(() => null);
+    }
+
     return Response.json({ success: false, result }, { status: 500 });
   }
 }
@@ -290,6 +337,7 @@ async function executeBatch(base44, user) {
     timestamp: new Date().toISOString(),
     tasks_processed: 0,
     tasks_completed: 0,
+    tasks_queued: 0,
     errors: []
   };
 
@@ -304,9 +352,30 @@ async function executeBatch(base44, user) {
     const tasksArray = Array.isArray(tasks) ? tasks : [];
     batch.tasks_processed = tasksArray.length;
 
-    // Execute each task sequentially
+    // Execute each task sequentially (locks ensure one per account)
     for (const task of tasksArray) {
+      let lockToken = null;
       try {
+        // Acquire lock for this task
+        const lockResult = await base44.functions.invoke('taskExecutionLockManager', {
+          action: 'acquire_lock',
+          platform: task.platform,
+          accountId: task.identity_id
+        }).catch(e => ({ success: false, error: e.message }));
+
+        if (!lockResult.success) {
+          // Queue for later
+          await base44.functions.invoke('taskExecutionLockManager', {
+            action: 'queue_task',
+            taskId: task.id,
+            reason: 'Account locked by concurrent task'
+          }).catch(() => null);
+          batch.tasks_queued++;
+          continue;
+        }
+
+        lockToken = lockResult.lock_token;
+
         // Mark as processing
         await base44.entities.TaskExecutionQueue.update(task.id, {
           status: 'processing',
@@ -347,15 +416,31 @@ async function executeBatch(base44, user) {
           batch.tasks_completed++;
         }
 
+        // Release lock
+        if (lockToken) {
+          await base44.functions.invoke('taskExecutionLockManager', {
+            action: 'release_lock',
+            lockToken
+          }).catch(() => null);
+        }
+
       } catch (taskError) {
         batch.errors.push(`Task ${task.id} failed: ${taskError.message}`);
+        
+        // Release lock on error
+        if (lockToken) {
+          await base44.functions.invoke('taskExecutionLockManager', {
+            action: 'release_lock',
+            lockToken
+          }).catch(() => null);
+        }
       }
     }
 
     // Log batch execution
     await base44.entities.ActivityLog.create({
       action_type: 'execution',
-      message: `📦 Batch execution: ${batch.tasks_completed}/${batch.tasks_processed} tasks completed`,
+      message: `📦 Batch execution: ${batch.tasks_completed}/${batch.tasks_processed} completed, ${batch.tasks_queued} queued (locked accounts)`,
       severity: batch.errors.length === 0 ? 'success' : 'warning',
       metadata: batch
     }).catch(() => {});

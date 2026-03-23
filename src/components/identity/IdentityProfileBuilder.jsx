@@ -343,9 +343,16 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
               <p className="text-xs text-slate-500">Full name: {[form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ') || 'Enter name'}</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-white mb-2">Role</label>
-              <Select value={form.role_label} onValueChange={(v) => setForm(p => ({ ...p, role_label: v }))}>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white">Role</label>
+              <Select value={showCustomRoleInput ? 'Custom' : form.role_label} onValueChange={(v) => {
+                if (v === 'Custom') {
+                  setShowCustomRoleInput(true);
+                } else {
+                  setForm(p => ({ ...p, role_label: v }));
+                  setShowCustomRoleInput(false);
+                }
+              }}>
                 <SelectTrigger className="bg-slate-800 border-slate-700">
                   <SelectValue />
                 </SelectTrigger>
@@ -353,8 +360,27 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
                   {ROLES.map(role => (
                     <SelectItem key={role} value={role}>{role}</SelectItem>
                   ))}
+                  <SelectItem value="Custom">Custom Role</SelectItem>
                 </SelectContent>
               </Select>
+              {showCustomRoleInput && (
+                <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700 space-y-2">
+                  <Input
+                    value={customRole}
+                    onChange={(e) => setCustomRole(e.target.value)}
+                    placeholder="e.g., AI Prompt Engineer, Supply Chain Manager"
+                    className="bg-slate-700 border-slate-600 text-sm"
+                  />
+                  <Button
+                    onClick={researchCustomRole}
+                    disabled={researchingRole}
+                    size="sm"
+                    className="w-full bg-violet-600 hover:bg-violet-500 text-xs"
+                  >
+                    {researchingRole ? 'Researching...' : 'Research & Auto-Fill'}
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div>

@@ -17,6 +17,7 @@ import AdminPredictions from '@/components/admin/AdminPredictions.jsx';
 import AdminProductionHardening from '@/components/admin/AdminProductionHardening.jsx';
 import { Shield, LayoutDashboard, Users, TrendingUp, DollarSign, Activity, Zap, AlertTriangle, BarChart3, Joystick, Lock, Bell, Database, Brain, Wrench, Settings, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function AdminPanel() {
   const { user, logout } = useAuth();

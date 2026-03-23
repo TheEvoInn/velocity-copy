@@ -199,80 +199,109 @@ function MobileTabBar({ currentPath, onMoreClick }) {
   );
 }
 
-// ─── Mobile More Drawer (for Chat / extra pages) ──────────────────────────────
+// ─── Mobile More Drawer ───────────────────────────────────────────────────────
 function MobileDrawer({ isOpen, onClose, currentPath }) {
   if (!isOpen) return null;
+  const secondaryDepts = DEPARTMENTS.filter(d => !MOBILE_PRIMARY_TABS.includes(d.path));
+
   return (
     <div className="fixed inset-0 z-[60] md:hidden">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <nav className="absolute top-0 right-0 h-full w-72 glass-card-bright border-l border-violet-500/20 p-6 flex flex-col gap-4 overflow-y-auto">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center">
-              <Zap className="w-3 h-3 text-white" />
-            </div>
-            <span className="font-orbitron text-sm text-white tracking-widest">VELOCITY NAV</span>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+      <nav
+        className="absolute bottom-0 left-0 right-0 rounded-t-2xl flex flex-col overflow-hidden"
+        style={{
+          background: 'rgba(8,10,28,0.98)',
+          border: '1px solid rgba(124,58,237,0.3)',
+          borderBottom: 'none',
+          maxHeight: '85vh',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-slate-600" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3">
+          <span className="font-orbitron text-sm text-white tracking-wider">ALL SECTIONS</span>
+          <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
-          <span className="text-violet-400 text-xs">✦</span>
-          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
-        </div>
+        <div className="overflow-y-auto px-4 pb-4 space-y-1">
+          {/* All departments */}
+          {DEPARTMENTS.map(dept => {
+            const Icon = dept.icon;
+            const isActive = currentPath === dept.path ||
+              (dept.path === '/Dashboard' && currentPath === '/') ||
+              (dept.path !== '/Dashboard' && currentPath.startsWith(dept.path));
+            return (
+              <Link
+                key={dept.path}
+                to={dept.path}
+                onClick={onClose}
+                className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 active:scale-[0.98] ${
+                  isActive
+                    ? `bg-gradient-to-r ${dept.gradient} ${dept.activeBorder}`
+                    : 'border-transparent hover:border-slate-700/60 hover:bg-white/5'
+                }`}
+                style={isActive ? { boxShadow: `0 0 16px ${dept.glow}` } : {}}
+              >
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: isActive ? `${dept.color}25` : 'rgba(255,255,255,0.06)',
+                    border: `1px solid ${isActive ? dept.color + '50' : 'rgba(255,255,255,0.1)'}`,
+                  }}
+                >
+                  <Icon className="w-4 h-4" style={{ color: isActive ? dept.color : '#94a3b8' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold ${isActive ? dept.textActive : 'text-slate-200'}`}>{dept.label}</p>
+                  <p className="text-xs text-slate-500 truncate">{dept.subtitle}</p>
+                </div>
+                {isActive && <ChevronRight className="w-4 h-4 shrink-0" style={{ color: dept.color }} />}
+              </Link>
+            );
+          })}
 
-        {DEPARTMENTS.map(dept => {
-          const isActive = currentPath === dept.path || (dept.path !== '/Dashboard' && currentPath.startsWith(dept.path));
-          return (
-            <Link
-              key={dept.path}
-              to={dept.path}
-              onClick={onClose}
-              className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-300 ${
-                isActive ? `bg-gradient-to-r ${dept.gradient} ${dept.activeBorder}` : 'border-slate-800/60 hover:border-slate-700 hover:bg-white/5'
-              }`}
-              style={isActive ? { boxShadow: `0 0 20px ${dept.glow}` } : {}}
-            >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-                style={{
-                  background: isActive ? `${dept.color}20` : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${isActive ? dept.color + '40' : 'rgba(255,255,255,0.08)'}`,
-                  boxShadow: isActive ? `0 0 12px ${dept.glow}` : 'none',
-                }}>
-                {dept.planet}
-              </div>
-              <div>
-                <p className={`font-orbitron text-xs tracking-wide ${isActive ? dept.textActive : 'text-slate-300'}`}>{dept.label}</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">{dept.subtitle}</p>
-              </div>
-              {isActive && <ChevronRight className="w-4 h-4 ml-auto" style={{ color: dept.color }} />}
-            </Link>
-          );
-        })}
+          {/* Divider */}
+          <div className="h-px bg-slate-800/80 my-2" />
 
-        <div className="mt-auto pt-4 border-t border-slate-800/60 space-y-1.5">
+          {/* Extra links */}
           <Link to="/Chat" onClick={onClose}
-            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all">
-            <MessageSquare className="w-4 h-4 text-violet-400" />
-            <span className="text-sm text-slate-300">VELOCITY AI</span>
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-violet-500/30 hover:bg-violet-500/5 transition-all active:scale-[0.98]">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-500/10 border border-violet-500/20 shrink-0">
+              <MessageSquare className="w-4 h-4 text-violet-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-200">Velocity AI</p>
+              <p className="text-xs text-slate-500">Chat & commands</p>
+            </div>
           </Link>
-          <Link to="/IdentityWalletView" onClick={onClose}
-            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all">
-            <span className="text-base">🪪</span>
-            <span className="text-sm text-slate-300">Identity Wallet</span>
+
+          <Link to="/IdentityManager" onClick={onClose}
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all active:scale-[0.98]">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20 shrink-0">
+              <Target className="w-4 h-4 text-cyan-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-200">Identity Manager</p>
+              <p className="text-xs text-slate-500">AI personas & profiles</p>
+            </div>
           </Link>
-          <Link to="/NotificationsDashboard" onClick={onClose}
-            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all">
-            <span className="text-base">🔔</span>
-            <span className="text-sm text-slate-300">Notifications</span>
-          </Link>
-          <Link to="/CrossSystemAutomation" onClick={onClose}
-            className="flex items-center gap-3 p-3 rounded-xl border border-slate-800/60 hover:border-pink-500/30 hover:bg-pink-500/5 transition-all">
-            <span className="text-base">⚙️</span>
-            <span className="text-sm text-slate-300">Multi-Dept Automation</span>
+
+          <Link to="/UserAccessPage" onClick={onClose}
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-slate-600/50 hover:bg-white/5 transition-all active:scale-[0.98]">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-slate-700/40 border border-slate-600/30 shrink-0">
+              <Settings className="w-4 h-4 text-slate-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-200">Settings</p>
+              <p className="text-xs text-slate-500">Account & preferences</p>
+            </div>
           </Link>
         </div>
       </nav>

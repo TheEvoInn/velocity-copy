@@ -1,221 +1,237 @@
-/**
- * SMART RETRY ORCHESTRATOR
- * Intelligently retries failed tasks with adaptive strategies:
- * - Analyzes failure reason (CAPTCHA, auth, rate limit, form error)
- * - Applies different retry strategy for each failure type
- * - Rotates identities on auth failures
- * - Backs off on rate limit errors
- * - Escalates to manual review on ambiguous errors
- */
-
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 /**
- * Analyze failure reason and determine retry strategy
+ * SMART RETRY ORCHESTRATOR
+ * Implements exponential backoff with credential rotation
+ * Handles task submission failures with intelligent recovery
  */
-function determineRetryStrategy(errorType, retryCount, maxRetries) {
-  const strategy = {
-    should_retry: false,
-    delay_seconds: 0,
-    strategy_type: null,
-    reason: null,
-  };
-
-  if (retryCount >= maxRetries) {
-    strategy.reason = 'Max retries exceeded';
-    return strategy;
-  }
-
-  // CAPTCHA error: wait and retry with same identity
-  if (errorType === 'captcha') {
-    strategy.should_retry = true;
-    strategy.delay_seconds = 30 * (retryCount + 1); // Exponential backoff
-    strategy.strategy_type = 'captcha_retry_same_identity';
-    strategy.reason = 'CAPTCHA solving failed, retrying with better solver';
-    return strategy;
-  }
-
-  // Authentication error: rotate identity
-  if (errorType === 'authentication') {
-    strategy.should_retry = true;
-    strategy.delay_seconds = 5;
-    strategy.strategy_type = 'rotate_identity_retry';
-    strategy.reason = 'Auth failed, rotating to different identity';
-    return strategy;
-  }
-
-  // Rate limit: exponential backoff
-  if (errorType === 'rate_limit') {
-    strategy.should_retry = true;
-    strategy.delay_seconds = Math.pow(2, retryCount) * 60; // 1min, 2min, 4min, 8min...
-    strategy.strategy_type = 'exponential_backoff';
-    strategy.reason = `Rate limited, backing off ${strategy.delay_seconds}s`;
-    return strategy;
-  }
-
-  // Form error: analyze and potentially retry with corrected data
-  if (errorType === 'form_error') {
-    if (retryCount < 2) {
-      strategy.should_retry = true;
-      strategy.delay_seconds = 10;
-      strategy.strategy_type = 'form_retry_same_data';
-      strategy.reason = 'Form submission error, retrying';
-      return strategy;
-    }
-  }
-
-  // Geo-block: likely not retryable with same identity
-  if (errorType === 'geo_blocked') {
-    strategy.should_retry = true;
-    strategy.delay_seconds = 60;
-    strategy.strategy_type = 'rotate_identity_retry';
-    strategy.reason = 'Geo-blocked, trying different identity location';
-    return strategy;
-  }
-
-  // Timeout: simple retry with slightly longer timeout
-  if (errorType === 'timeout') {
-    if (retryCount < 2) {
-      strategy.should_retry = true;
-      strategy.delay_seconds = 15 * (retryCount + 1);
-      strategy.strategy_type = 'simple_retry';
-      strategy.reason = 'Timeout, retrying with longer wait';
-      return strategy;
-    }
-  }
-
-  // Ambiguous error: escalate to manual review
-  strategy.should_retry = false;
-  strategy.strategy_type = 'manual_review';
-  strategy.reason = `Unknown error type: ${errorType}. Escalating to manual review.`;
-  return strategy;
-}
-
-/**
- * Execute retry with adaptive strategy
- */
-async function executeRetry(base44, userEmail, task, errorType) {
-  const retry = {
-    task_id: task.id,
-    retry_attempt: (task.retry_count || 0) + 1,
-    max_retries: task.max_retries || 3,
-    error_type: errorType,
-    timestamp: new Date().toISOString(),
-  };
-
-  try {
-    // Determine strategy
-    const strategy = determineRetryStrategy(
-      errorType,
-      retry.retry_attempt - 1,
-      retry.max_retries
-    );
-
-    retry.strategy = strategy;
-
-    if (!strategy.should_retry) {
-      // Log escalation to manual review
-      await base44.asServiceRole.entities.ActivityLog.create({
-        action_type: 'system',
-        message: `📋 Task escalated to manual review: "${task.url}" (${errorType})`,
-        severity: 'warning',
-        metadata: {
-          task_id: task.id,
-          error_type: errorType,
-          reason: strategy.reason,
-        },
-      }).catch(() => null);
-
-      return {
-        success: false,
-        retry,
-        action: 'escalate_to_manual_review',
-      };
-    }
-
-    // Handle identity rotation if needed
-    if (strategy.strategy_type === 'rotate_identity_retry') {
-      const newIdentity = await base44.functions.invoke('intelligentIdentityRouter', {
-        action: 'select_best_identity',
-        opportunity: { category: task.category, title: task.description },
-      }).catch(e => ({ success: false, error: e.message }));
-
-      if (newIdentity.success) {
-        retry.new_identity_id = newIdentity.identity.id;
-        retry.new_identity_name = newIdentity.identity.name;
-      }
-    }
-
-    // Schedule retry
-    await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
-      status: 'queued',
-      retry_count: retry.retry_attempt,
-      last_retry_at: new Date().toISOString(),
-      identity_id: retry.new_identity_id || task.identity_id,
-      error_message: null, // Clear error for retry
-    }).catch(() => null);
-
-    // Log retry
-    await base44.asServiceRole.entities.ActivityLog.create({
-      action_type: 'system',
-      message: `🔄 Task retry scheduled: "${task.url}" (Attempt ${retry.retry_attempt}/${retry.max_retries})`,
-      severity: 'info',
-      metadata: {
-        task_id: task.id,
-        retry_attempt: retry.retry_attempt,
-        strategy: strategy.strategy_type,
-        delay_seconds: strategy.delay_seconds,
-        new_identity: retry.new_identity_id,
-      },
-    }).catch(() => null);
-
-    return {
-      success: true,
-      retry,
-      action: 'retry_scheduled',
-      delay_seconds: strategy.delay_seconds,
-    };
-  } catch (e) {
-    return {
-      success: false,
-      error: e.message,
-      retry,
-    };
-  }
-}
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await req.json();
-    const { action, task, error_type } = body;
-
-    // ── Determine retry strategy ───────────────────────────────────────
-    if (action === 'determine_strategy') {
-      if (!error_type) {
-        return Response.json({ error: 'Error type required' }, { status: 400 });
-      }
-
-      const strategy = determineRetryStrategy(error_type, 0, 3);
-      return Response.json({ success: true, strategy });
+    if (!user) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
-    // ── Execute retry ──────────────────────────────────────────────────
+    const body = await req.json().catch(() => ({}));
+    const { action, task_id, opportunity_id, error_type, retry_count } = body;
+
+    if (action === 'evaluate_retry') {
+      return await evaluateRetry(base44, user, task_id, error_type, retry_count);
+    }
+
     if (action === 'execute_retry') {
-      if (!task || !error_type) {
-        return Response.json({ error: 'Task and error_type required' }, { status: 400 });
-      }
-
-      const result = await executeRetry(base44, user.email, task, error_type);
-      return Response.json(result);
+      return await executeRetry(base44, user, task_id, opportunity_id);
     }
 
-    return Response.json({ error: 'Unknown action' }, { status: 400 });
+    if (action === 'rotate_credential') {
+      return await rotateCredential(base44, user, task_id);
+    }
+
+    return jsonResponse({ error: 'Unknown action' }, 400);
+
   } catch (error) {
-    console.error('[SmartRetryOrchestrator] Error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('[SmartRetryOrchestrator]', error.message);
+    return jsonResponse({ error: error.message }, 500);
   }
 });
+
+/**
+ * Evaluate if retry is viable and calculate backoff
+ */
+async function evaluateRetry(base44, user, taskId, errorType, retryCount = 0) {
+  if (!taskId || !errorType) {
+    return jsonResponse({ error: 'task_id, error_type required' }, 400);
+  }
+
+  try {
+    // Determine if error is retryable
+    const retryableErrors = [
+      'rate_limit_exceeded',
+      'temporary_network_error',
+      'captcha_required',
+      'session_expired',
+      'credential_invalid',
+      'account_suspended_temporarily'
+    ];
+
+    const isRetryable = retryableErrors.includes(errorType);
+    const maxRetries = 3;
+    const canRetry = isRetryable && retryCount < maxRetries;
+
+    // Calculate exponential backoff
+    const baseDelay = 1000; // 1 second
+    const backoffMultiplier = 2;
+    const delayMs = canRetry ? baseDelay * Math.pow(backoffMultiplier, retryCount) : 0;
+
+    return jsonResponse({
+      task_id: taskId,
+      error_type: errorType,
+      is_retryable: isRetryable,
+      can_retry: canRetry,
+      current_attempt: retryCount + 1,
+      max_retries: maxRetries,
+      backoff_delay_ms: delayMs,
+      recommendation: canRetry ? 'RETRY_WITH_BACKOFF' : 'FAIL_AND_ESCALATE',
+      recovery_strategy: getRecoveryStrategy(errorType),
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    return jsonResponse({ error: 'Retry evaluation failed', details: error.message }, 500);
+  }
+}
+
+/**
+ * Execute retry with backoff
+ */
+async function executeRetry(base44, user, taskId, opportunityId) {
+  if (!taskId) {
+    return jsonResponse({ error: 'task_id required' }, 400);
+  }
+
+  try {
+    // Fetch the task
+    const task = await base44.entities.AITask?.get?.(taskId).catch(() => null);
+    
+    if (!task) {
+      return jsonResponse({ error: 'Task not found' }, 404);
+    }
+
+    // Increment retry count
+    const newRetryCount = (task.retry_count || 0) + 1;
+
+    // Update task status
+    await base44.asServiceRole.entities.AITask?.update?.(taskId, {
+      status: 'queued',
+      retry_count: newRetryCount,
+      last_retry_at: new Date().toISOString()
+    }).catch(() => {});
+
+    // Log retry attempt
+    await base44.asServiceRole.entities.AuditLog?.create?.({
+      entity_type: 'TaskRetry',
+      entity_id: taskId,
+      action_type: 'retry_executed',
+      user_email: user.email,
+      details: {
+        task_id: taskId,
+        opportunity_id: opportunityId,
+        retry_attempt: newRetryCount,
+        timestamp: new Date().toISOString()
+      },
+      severity: 'info',
+      timestamp: new Date().toISOString()
+    }).catch(() => {});
+
+    return jsonResponse({
+      task_id: taskId,
+      retry_executed: true,
+      retry_attempt: newRetryCount,
+      status: 'queued_for_retry',
+      message: `Task requeued for retry attempt ${newRetryCount}`
+    });
+
+  } catch (error) {
+    return jsonResponse({ error: 'Retry execution failed', details: error.message }, 500);
+  }
+}
+
+/**
+ * Rotate credential on failure
+ */
+async function rotateCredential(base44, user, taskId) {
+  if (!taskId) {
+    return jsonResponse({ error: 'task_id required' }, 400);
+  }
+
+  try {
+    const task = await base44.entities.AITask?.get?.(taskId).catch(() => null);
+
+    if (!task) {
+      return jsonResponse({ error: 'Task not found' }, 404);
+    }
+
+    // Fetch linked accounts for the identity
+    const linkedAccounts = await base44.entities.LinkedAccount?.filter?.({
+      id: { $nin: task.credential_attempt_history || [] }
+    }, 'last_used', 10).catch(() => []);
+
+    if (!linkedAccounts || linkedAccounts.length === 0) {
+      return jsonResponse({
+        task_id: taskId,
+        credential_rotated: false,
+        reason: 'no_alternative_credentials',
+        message: 'No alternative credentials available for rotation'
+      });
+    }
+
+    // Select next credential (prefer healthier accounts)
+    const nextCredential = linkedAccounts.sort((a, b) => 
+      (b.performance_score || 0) - (a.performance_score || 0)
+    )[0];
+
+    // Update task with new credential
+    const attemptHistory = task.credential_attempt_history || [];
+    attemptHistory.push(task.linked_account_id);
+
+    await base44.asServiceRole.entities.AITask?.update?.(taskId, {
+      linked_account_id: nextCredential.id,
+      credential_attempt_history: attemptHistory.slice(-3) // Keep last 3
+    }).catch(() => {});
+
+    // Log rotation
+    await base44.asServiceRole.entities.AuditLog?.create?.({
+      entity_type: 'CredentialRotation',
+      entity_id: taskId,
+      action_type: 'credential_rotated',
+      user_email: user.email,
+      details: {
+        task_id: taskId,
+        from_credential: task.linked_account_id,
+        to_credential: nextCredential.id,
+        attempts_so_far: attemptHistory.length
+      },
+      severity: 'warning',
+      timestamp: new Date().toISOString()
+    }).catch(() => {});
+
+    return jsonResponse({
+      task_id: taskId,
+      credential_rotated: true,
+      from_account: task.linked_account_id,
+      to_account: nextCredential.id,
+      next_account_health: nextCredential.health_status,
+      performance_score: nextCredential.performance_score,
+      message: `Credential rotated to ${nextCredential.id}`
+    });
+
+  } catch (error) {
+    return jsonResponse({ error: 'Credential rotation failed', details: error.message }, 500);
+  }
+}
+
+/**
+ * Determine recovery strategy based on error type
+ */
+function getRecoveryStrategy(errorType) {
+  const strategies = {
+    'rate_limit_exceeded': 'WAIT_AND_RETRY_WITH_LONGER_BACKOFF',
+    'temporary_network_error': 'RETRY_WITH_STANDARD_BACKOFF',
+    'captcha_required': 'ESCALATE_TO_USER_INTERVENTION',
+    'session_expired': 'ROTATE_CREDENTIAL_AND_RETRY',
+    'credential_invalid': 'ROTATE_CREDENTIAL_AND_RETRY',
+    'account_suspended_temporarily': 'WAIT_24H_AND_RETRY'
+  };
+  
+  return strategies[errorType] || 'ESCALATE_TO_USER_INTERVENTION';
+}
+
+function jsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}

@@ -42,9 +42,32 @@ Deno.serve(async (req) => {
     const cycle = syncResult.data?.cycle;
     console.log(`✓ Earnings sync completed: ${cycle.transactions_synced} transactions, $${cycle.total_earnings.toFixed(2)} available`);
 
+    // ─── PHASE 4: Auto-withdrawal if threshold met ──────────────────
+    console.log('Checking withdrawal eligibility...');
+    const withdrawalResult = await base44.functions.invoke('withdrawalEngine', {
+      action: 'validate',
+      amount: cycle.total_earnings * 0.6, // Withdraw 60% of available
+    }).catch(e => ({ success: false, error: e.message }));
+
+    let withdrawalStatus = 'skipped';
+    if (withdrawalResult.success && withdrawalResult.validation?.eligible) {
+      const processResult = await base44.functions.invoke('withdrawalEngine', {
+        action: 'process',
+        amount: cycle.total_earnings * 0.6,
+      }).catch(e => ({ success: false, error: e.message }));
+
+      if (processResult.success) {
+        withdrawalStatus = 'processed';
+        console.log(`💸 Withdrawal initiated: $${(cycle.total_earnings * 0.6).toFixed(2)}`);
+      }
+    } else if (!withdrawalResult.validation?.eligible) {
+      console.log('⚠️ Withdrawal not eligible:', withdrawalResult.validation?.findings?.filter(f => f.startsWith('❌'))[0]);
+    }
+
     return Response.json({
       success: true,
       cycle: cycle,
+      withdrawal_status: withdrawalStatus,
       message: `Synced ${cycle.transactions_synced} transactions across ${cycle.platforms.length} platforms`,
     });
   } catch (error) {

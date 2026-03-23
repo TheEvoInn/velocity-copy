@@ -90,6 +90,18 @@ export default function Control() {
           </Link>
         </div>
 
+        {/* Active Template Banner */}
+        {appliedTemplateName && (
+          <div className="flex items-center gap-3 p-3 mb-4 rounded-xl border border-violet-500/30 bg-violet-500/8">
+            <Sparkles className="w-4 h-4 text-violet-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-xs text-slate-400">Active Template: </span>
+              <span className="text-xs font-semibold text-violet-300">{appliedTemplateName}</span>
+            </div>
+            <Link to="/TemplatesLibrary" className="text-[10px] text-violet-400 hover:text-violet-300 shrink-0">Change →</Link>
+          </div>
+        )}
+
         {/* Status Grid */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <Card className="glass-card p-4">
@@ -99,8 +111,8 @@ export default function Control() {
           </Card>
           <Card className="glass-card p-4">
             <div className="text-xs text-slate-400 mb-1">Active Workflows</div>
-            <div className="text-2xl font-bold text-cyan-400">{activeWorkflows}</div>
-            <div className="text-xs text-slate-600 mt-1">of {workflows.length} total</div>
+            <div className="text-2xl font-bold text-cyan-400">{activeWorkflows + activeStrategies}</div>
+            <div className="text-xs text-slate-600 mt-1">{workflows.length} flows · {strategies.length} strategies</div>
           </Card>
           <Card className="glass-card p-4">
             <div className="text-xs text-slate-400 mb-1">System Status</div>

@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrentUser, useUserWallet, useUserProfile } from '@/hooks/useUserData';
 import { TrendingUp, Wallet, DollarSign, PieChart, ArrowDownRight, ArrowUpRight, BarChart3 } from 'lucide-react';
+import BankAccountSettings from '@/components/finance/BankAccountSettings';
 
 function TxRow({ tx }) {
   const isEarning = tx.type === 'earning' || tx.type === 'bonus';
@@ -52,6 +53,7 @@ export default function Finance() {
   const TABS = [
     { key: 'overview', label: 'Overview' },
     { key: 'transactions', label: `Transactions (${transactions.length})` },
+    { key: 'bank', label: 'Bank Accounts' },
   ];
 
   return (
@@ -198,6 +200,13 @@ export default function Finance() {
               : transactions.map(tx => <TxRow key={tx.id} tx={tx} />)
             }
           </div>
+        </div>
+      )}
+
+      {/* Bank Accounts */}
+      {activeTab === 'bank' && (
+        <div style={{ background: 'rgba(10,15,42,0.7)', border: '1px solid rgba(255,255,255,0.06)' }} className="rounded-2xl p-5">
+          <BankAccountSettings />
         </div>
       )}
     </div>

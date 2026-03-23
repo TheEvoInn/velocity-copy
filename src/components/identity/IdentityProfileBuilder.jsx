@@ -18,8 +18,22 @@ const COLORS = ['#10b981', '#8b5cf6', '#3b82f6', '#ec4899', '#f59e0b', '#ef4444'
 export default function IdentityProfileBuilder({ identity, mode = 'create', onComplete, onCancel }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  // Parse identity name into first/middle/last
+  const parseName = (fullName) => {
+    const parts = (fullName || '').trim().split(/\s+/);
+    return {
+      firstName: parts[0] || '',
+      middleName: parts.length > 2 ? parts.slice(1, -1).join(' ') : '',
+      lastName: parts.length > 1 ? parts[parts.length - 1] : ''
+    };
+  };
+
+  const initialNameParts = parseName(identity?.name);
+
   const [form, setForm] = useState({
-    name: identity?.name || '',
+    firstName: initialNameParts.firstName,
+    middleName: initialNameParts.middleName,
+    lastName: initialNameParts.lastName,
     role_label: identity?.role_label || 'Freelancer',
     email: identity?.email || '',
     phone: identity?.phone || '',
@@ -41,8 +55,21 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
 
   const saveMutation = useMutation({
     mutationFn: async (formData) => {
+      // Combine name parts
+      const nameParts = [formData.firstName, formData.middleName, formData.lastName]
+        .filter(Boolean);
+      const fullName = nameParts.join(' ');
+
       const data = {
-        ...formData,
+        name: fullName,
+        role_label: formData.role_label,
+        email: formData.email,
+        phone: formData.phone,
+        tagline: formData.tagline,
+        bio: formData.bio,
+        communication_tone: formData.communication_tone,
+        email_signature: formData.email_signature,
+        proposal_style: formData.proposal_style,
         skills: formData.skills.split(',').map(s => s.trim()).filter(Boolean),
         avatar_url: avatarUrl,
         created_by: user?.email,
@@ -82,8 +109,8 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
   };
 
   const handleSubmit = () => {
-    if (!form.name?.trim()) {
-      toast.error('Identity name is required');
+    if (!form.firstName?.trim() || !form.lastName?.trim()) {
+      toast.error('First and last name are required');
       return;
     }
     saveMutation.mutate(form);
@@ -249,14 +276,29 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
 
           {/* Basic Info */}
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-white mb-2">Identity Name *</label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
-                placeholder="e.g., Alex Freeman"
-                className="bg-slate-800 border-slate-700"
-              />
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-white">Identity Name *</label>
+              <div className="grid grid-cols-3 gap-2">
+                <Input
+                  value={form.firstName}
+                  onChange={(e) => setForm(p => ({ ...p, firstName: e.target.value }))}
+                  placeholder="First *"
+                  className="bg-slate-800 border-slate-700"
+                />
+                <Input
+                  value={form.middleName}
+                  onChange={(e) => setForm(p => ({ ...p, middleName: e.target.value }))}
+                  placeholder="Middle"
+                  className="bg-slate-800 border-slate-700"
+                />
+                <Input
+                  value={form.lastName}
+                  onChange={(e) => setForm(p => ({ ...p, lastName: e.target.value }))}
+                  placeholder="Last *"
+                  className="bg-slate-800 border-slate-700"
+                />
+              </div>
+              <p className="text-xs text-slate-500">Full name: {[form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ') || 'Enter name'}</p>
             </div>
 
             <div>

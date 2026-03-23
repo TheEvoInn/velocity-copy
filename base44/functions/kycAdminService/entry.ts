@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
   try {
@@ -77,29 +78,39 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (action === 'mark_check_again_acknowledged' && id) {
+    if (action === 'mark_check_again_acknowledged') {
       try {
-        const record = await base44.asServiceRole.entities.KYCVerification.update(id, {
+        // Get user's KYC record
+        const all = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
+        const record = all.find(r => r.created_by === user.email || r.email_verified === user.email);
+        if (!record) return Response.json({ error: 'KYC record not found' }, { status: 404 });
+        
+        const updated = await base44.asServiceRole.entities.KYCVerification.update(record.id, {
           admin_status: 'submitted',
           check_again_fields: [],
         });
-        console.log(`[kycAdminService] marked check_again acknowledged for ${id}`);
-        return Response.json({ record });
+        console.log(`[kycAdminService] marked check_again acknowledged for ${record.id}`);
+        return Response.json({ record: updated });
       } catch (err) {
         console.error(`[kycAdminService] mark_check_again_acknowledged failed: ${err.message}`);
         throw err;
       }
     }
 
-    if (action === 'reapply_kyc' && id) {
+    if (action === 'reapply_kyc') {
       try {
-        const record = await base44.asServiceRole.entities.KYCVerification.update(id, {
+        // Get user's KYC record
+        const all = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 500);
+        const record = all.find(r => r.created_by === user.email || r.email_verified === user.email);
+        if (!record) return Response.json({ error: 'KYC record not found' }, { status: 404 });
+        
+        const updated = await base44.asServiceRole.entities.KYCVerification.update(record.id, {
           admin_status: 'submitted',
           status: 'submitted',
           check_again_fields: [],
         });
-        console.log(`[kycAdminService] reapplied KYC ${id}`);
-        return Response.json({ record });
+        console.log(`[kycAdminService] reapplied KYC ${record.id}`);
+        return Response.json({ record: updated });
       } catch (err) {
         console.error(`[kycAdminService] reapply_kyc failed: ${err.message}`);
         throw err;

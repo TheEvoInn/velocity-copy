@@ -151,9 +151,10 @@ Deno.serve(async (req) => {
           const kvd = identity.kyc_verified_data || {};
           let config = {};
           try { config = identity.onboarding_config ? JSON.parse(identity.onboarding_config) : {}; } catch {}
+          const ownerEmail = identity.user_email || identity.created_by;
 
           await base44.asServiceRole.entities.KYCVerification.create({
-            user_email: identity.user_email,
+            user_email: ownerEmail,
             full_legal_name: kvd.full_legal_name || `${config.first_name || ''} ${config.last_name || ''}`.trim(),
             date_of_birth: kvd.date_of_birth || config.date_of_birth || '2000-01-01',
             residential_address: kvd.residential_address || config.address || 'N/A',

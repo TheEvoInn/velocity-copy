@@ -399,18 +399,12 @@ export default function AppLayout() {
               <ActiveIdentityBanner />
             </div>
 
-            {/* Mobile: AI shortcut + menu */}
+            {/* Mobile: AI shortcut */}
             <Link to="/Chat"
-              className="md:hidden p-2 rounded-xl border border-violet-500/25 text-violet-400"
+              className="md:hidden p-2 rounded-xl border border-violet-500/25 text-violet-400 active:scale-95 transition-transform"
               style={{ background: 'rgba(124,58,237,0.1)' }}>
               <MessageSquare className="w-4 h-4" />
             </Link>
-            <button
-              onClick={() => setDrawerOpen(v => !v)}
-              className="md:hidden p-2 rounded-xl border border-slate-700/60 text-slate-400 hover:text-white"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
           </div>
         </div>
 

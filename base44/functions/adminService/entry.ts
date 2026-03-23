@@ -35,8 +35,10 @@ Deno.serve(async (req) => {
       // For identities that completed onboarding but have no KYCVerification record,
       // synthesize one from AIIdentity.kyc_verified_data or onboarding_config
       for (const identity of (identities || [])) {
-        if (!identity.user_email) continue;
-        if (kycByEmail[identity.user_email]) continue; // already have a real record
+        // Use user_email or fall back to created_by (the actual user email)
+        const ownerEmail = identity.user_email || identity.created_by;
+        if (!ownerEmail) continue;
+        if (kycByEmail[ownerEmail]) continue; // already have a real record
 
         const kvd = identity.kyc_verified_data;
         let config = {};

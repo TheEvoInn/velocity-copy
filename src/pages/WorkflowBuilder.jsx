@@ -46,22 +46,57 @@ export default function WorkflowBuilder() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!strategy.name) {
-        throw new Error('Strategy name is required');
+      if (!strategy.name?.trim()) {
+        throw new Error('Please enter a strategy name before saving');
       }
+      const payload = {
+        title: strategy.name,
+        description: strategy.description,
+        variant: strategy.variant || 'fastest',
+        status: 'active',
+        steps: strategy.blocks?.map((b, i) => ({ day: String(i + 1), action: b.label, expected_outcome: '', completed: false })) || [],
+        categories: strategy.targetPlatforms || [],
+        performance_notes: JSON.stringify({
+          conditions: strategy.conditions,
+          maxConcurrentTasks: strategy.maxConcurrentTasks,
+          maxDailySpend: strategy.maxDailySpend,
+          blocks: strategy.blocks,
+        }),
+      };
       if (strategy.id) {
-        return base44.entities.Strategy.update(strategy.id, strategy);
+        return base44.entities.Strategy.update(strategy.id, payload);
       } else {
-        return base44.entities.Strategy.create(strategy);
+        return base44.entities.Strategy.create(payload);
       }
     },
-    onSuccess: () => {
-      toast.success('Strategy saved successfully!');
+    onSuccess: (saved) => {
+      toast.success('Strategy saved and activated!');
       qc.invalidateQueries({ queryKey: ['customStrategies'] });
       refetchStrategies();
-      setStrategy({ ...DEFAULT_STRATEGY });
+      // Keep current strategy loaded, just update its id
+      if (saved?.id) setStrategy(prev => ({ ...prev, id: saved.id }));
     },
-    onError: e => toast.error(`Failed to save: ${e.message}`),
+    onError: e => toast.error(e.message),
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, currentStatus }) => {
+      return base44.entities.Strategy.update(id, { status: currentStatus === 'active' ? 'paused' : 'active' });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customStrategies'] });
+      refetchStrategies();
+      toast.success('Strategy updated!');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => base44.entities.Strategy.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customStrategies'] });
+      refetchStrategies();
+      toast.success('Strategy deleted.');
+    },
   });
 
   const applyRecommendation = (rec) => {

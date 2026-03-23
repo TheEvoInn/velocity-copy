@@ -7,7 +7,8 @@ import AdminOpportunities from '@/components/admin/AdminOpportunities.jsx';
 import AdminTransactions from '@/components/admin/AdminTransactions.jsx';
 import AdminActivityLog from '@/components/admin/AdminActivityLog.jsx';
 import AdminSystemHealth from '@/components/admin/AdminSystemHealth.jsx';
-import { Shield, LayoutDashboard, Users, TrendingUp, DollarSign, Activity, Zap, LogOut } from 'lucide-react';
+import AdminInterventions from '@/components/admin/AdminInterventions.jsx';
+import { Shield, LayoutDashboard, Users, TrendingUp, DollarSign, Activity, Zap, AlertTriangle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function AdminPanel() {
@@ -70,6 +71,9 @@ export default function AdminPanel() {
             <TabsTrigger value="health" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-400 gap-1.5">
               <Zap className="w-3.5 h-3.5" /> System Health
             </TabsTrigger>
+            <TabsTrigger value="interventions" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-400 gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5" /> Interventions
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><AdminOverview /></TabsContent>
@@ -78,6 +82,7 @@ export default function AdminPanel() {
           <TabsContent value="transactions"><AdminTransactions /></TabsContent>
           <TabsContent value="activity"><AdminActivityLog /></TabsContent>
           <TabsContent value="health"><AdminSystemHealth /></TabsContent>
+          <TabsContent value="interventions"><AdminInterventions /></TabsContent>
         </Tabs>
       </div>
     </div>

@@ -74,7 +74,7 @@ const DEPARTMENTS = [
     planet: '⚙️',
   },
   {
-    path: '/DigitalCommerce',
+    path: '/DigitalResellers',
     icon: ShoppingCart,
     label: 'Commerce',
     subtitle: 'Digital Storefronts',

@@ -42,7 +42,7 @@ export function useRealtimeEventBus() {
           'WebhookConfig': ['webhookConfigs']
         };
 
-        const keysToInvalidate = cacheInvalidations[entity_name] || [entity_name.toLowerCase()];
+        const keysToInvalidate = entity_name ? (cacheInvalidations[entity_name] || [entity_name.toLowerCase()]) : [];
 
         // INVALIDATE IMMEDIATELY - no delay
         keysToInvalidate.forEach(key => {

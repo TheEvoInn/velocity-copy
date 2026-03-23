@@ -34,6 +34,7 @@ import WorkflowBuilder from './pages/WorkflowBuilder';
 import BankSettings from './pages/BankSettings';
 import AutomationManager from './pages/AutomationManager';
 import APIManagement from './pages/APIManagement';
+import ComplianceDashboard from './pages/ComplianceDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -86,6 +87,7 @@ const AuthenticatedApp = () => {
         <Route path="/BankSettings" element={<BankSettings />} />
         <Route path="/AutomationManager" element={<AutomationManager />} />
         <Route path="/APIManagement" element={<APIManagement />} />
+        <Route path="/ComplianceDashboard" element={<ComplianceDashboard />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

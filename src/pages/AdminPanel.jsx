@@ -14,7 +14,8 @@ import AdminCompliance from '@/components/admin/AdminCompliance.jsx';
 import NotificationCenter from '@/components/notifications/NotificationCenter.jsx';
 import AuditTrailDashboard from '@/components/admin/AuditTrailDashboard.jsx';
 import AdminPredictions from '@/components/admin/AdminPredictions.jsx';
-import { Shield, LayoutDashboard, Users, TrendingUp, DollarSign, Activity, Zap, AlertTriangle, BarChart3, Joystick, Lock, Bell, Database, Brain, LogOut } from 'lucide-react';
+import AdminProductionHardening from '@/components/admin/AdminProductionHardening.jsx';
+import { Shield, LayoutDashboard, Users, TrendingUp, DollarSign, Activity, Zap, AlertTriangle, BarChart3, Joystick, Lock, Bell, Database, Brain, Wrench, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function AdminPanel() {
@@ -98,6 +99,9 @@ export default function AdminPanel() {
             <TabsTrigger value="predictions" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-400 gap-1.5">
               <Brain className="w-3.5 h-3.5" /> Predictions
             </TabsTrigger>
+            <TabsTrigger value="hardening" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white text-slate-400 gap-1.5">
+              <Wrench className="w-3.5 h-3.5" /> Hardening
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><AdminOverview /></TabsContent>
@@ -113,6 +117,7 @@ export default function AdminPanel() {
           <TabsContent value="notifications"><NotificationCenter /></TabsContent>
           <TabsContent value="audit"><AuditTrailDashboard /></TabsContent>
           <TabsContent value="predictions"><AdminPredictions /></TabsContent>
+          <TabsContent value="hardening"><AdminProductionHardening /></TabsContent>
         </Tabs>
       </div>
     </div>

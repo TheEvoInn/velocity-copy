@@ -58,7 +58,17 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Queue task in Agent Worker
+      // ─ New: Load credentials for platform via sync orchestrator ─
+      const credentialRes = await base44.asServiceRole.functions.invoke('credentialSyncOrchestrator', {
+        action: 'get_best_credential_for_execution',
+        platform: opp.platform || 'unknown',
+        task_id: null,
+        purpose: `Execute ${opp.category} opportunity on ${opp.platform}`
+      }).catch(() => null);
+
+      const vault_id = credentialRes?.data?.vault_id || null;
+
+      // Queue task in Agent Worker with credential injection
       const taskRes = await base44.asServiceRole.functions.invoke('agentWorker', {
         action: 'queue_task',
         url: opp.url,
@@ -66,6 +76,8 @@ Deno.serve(async (req) => {
         opportunity_type: opp.opportunity_type || 'other',
         platform: opp.platform || opp.source || 'unknown',
         identity_id: identity.id,
+        vault_id: vault_id,
+        credential_available: !!vault_id,
         priority: calculatePriority(opp),
         estimated_value: opp.profit_estimate_high || opp.profit_estimate_low || 0,
         deadline: opp.deadline

@@ -82,7 +82,7 @@ export default function Control() {
               <p className="text-xs text-slate-400">Identities · Workflows · Security · Admin</p>
             </div>
           </div>
-          <Link to="/AdminControlPanel">
+          <Link to="/AdminPanel">
             <Button className="btn-cosmic gap-2">
               <Settings className="w-4 h-4" />
               Admin Panel

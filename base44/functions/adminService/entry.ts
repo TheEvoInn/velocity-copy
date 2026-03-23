@@ -12,182 +12,205 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
-    // ── LIST USERS ────────────────────────────────────────────────────────────
     if (action === 'list_users') {
-      const users = await base44.asServiceRole.entities.User.list('-created_date', 1000);
-      return Response.json({ users: Array.isArray(users) ? users : [] });
+      const users = await base44.asServiceRole.entities.User.list('-created_date', 200);
+      return Response.json({ users });
     }
 
-    // ── LIST KYC — merges KYCVerification records + AIIdentity onboarding data ─
     if (action === 'list_kycs') {
-      // Fetch both sources in parallel
-      const [kycRecords, identities] = await Promise.all([
-        base44.asServiceRole.entities.KYCVerification.list('-created_date', 1000).catch(() => []),
-        base44.asServiceRole.entities.AIIdentity.list('-created_date', 1000).catch(() => []),
-      ]);
+      // Get real KYC records
+      const realKycs = await base44.asServiceRole.entities.KYCVerification.list('-created_date', 200);
 
-      // Build a map of existing KYC records by user_email
-      const kycByEmail = {};
-      for (const k of (kycRecords || [])) {
-        if (k.user_email) kycByEmail[k.user_email] = k;
-      }
+      // Get all AIIdentity records with onboarding data
+      const identities = await base44.asServiceRole.entities.AIIdentity.list('-created_date', 500);
 
-      // For identities that completed onboarding but have no KYCVerification record,
-      // synthesize one from AIIdentity.kyc_verified_data or onboarding_config
-      for (const identity of (identities || [])) {
-        // Use user_email or fall back to created_by (the actual user email)
-        const ownerEmail = identity.user_email || identity.created_by;
-        if (!ownerEmail) continue;
-        if (kycByEmail[ownerEmail]) continue; // already have a real record
+      const virtualKycs = [];
+      for (const identity of identities) {
+        if (!identity.onboarding_config && !identity.kyc_verified_data) continue;
 
-        const kvd = identity.kyc_verified_data;
         let config = {};
         try { config = identity.onboarding_config ? JSON.parse(identity.onboarding_config) : {}; } catch {}
 
-        const hasKYCData = kvd?.full_legal_name || config?.first_name || config?.government_id_type;
-        if (!hasKYCData) continue;
+        const kvd = identity.kyc_verified_data || {};
+        const ownerEmail = identity.user_email || identity.created_by;
 
-        // Synthesize a virtual KYC record so admin can see it
-        kycByEmail[ownerEmail] = {
-          id: `identity_${identity.id}`, // virtual ID — signals it came from AIIdentity
+        // Skip if no personal data
+        const hasData = kvd.full_legal_name || config.full_legal_name || config.personal_info?.full_legal_name;
+        if (!hasData) continue;
+
+        // Skip if already has a real KYC record
+        const alreadyReal = realKycs.find(k => k.identity_id === identity.id);
+        if (alreadyReal) continue;
+
+        const personal = config.personal_info || config || {};
+
+        virtualKycs.push({
+          id: `identity_${identity.id}`,
           source: 'identity_onboarding',
           identity_id: identity.id,
           user_email: ownerEmail,
-          full_legal_name: kvd?.full_legal_name || `${config.first_name || ''} ${config.last_name || ''}`.trim(),
-          date_of_birth: kvd?.date_of_birth || config.date_of_birth,
-          residential_address: kvd?.residential_address || config.address,
-          city: kvd?.city || config.city,
-          state: kvd?.state || config.state,
-          postal_code: kvd?.postal_code || config.postal_code,
-          country: kvd?.country || config.country,
-          phone_number: kvd?.phone_number || config.phone,
-          government_id_type: kvd?.government_id_type || config.government_id_type,
-          id_document_front_url: kvd?.id_document_front_url || config.id_document_front,
-          id_document_back_url: kvd?.id_document_back_url || config.id_document_back,
-          selfie_url: kvd?.selfie_url || config.selfie,
-          status: identity.onboarding_status === 'complete' ? 'submitted' : 'pending',
+          full_legal_name: kvd.full_legal_name || personal.full_legal_name || '',
+          date_of_birth: kvd.date_of_birth || personal.date_of_birth || '',
+          residential_address: kvd.residential_address || personal.residential_address || '',
+          city: kvd.city || personal.city || '',
+          state: kvd.state || personal.state || '',
+          postal_code: kvd.postal_code || personal.postal_code || '',
+          country: kvd.country || personal.country || '',
+          phone_number: kvd.phone_number || personal.phone_number || '',
+          government_id_type: kvd.government_id_type || personal.government_id_type || '',
+          id_document_front_url: kvd.id_document_front_url || '',
+          id_document_back_url: kvd.id_document_back_url || '',
+          selfie_url: kvd.selfie_url || '',
+          status: 'submitted',
           admin_status: null,
-          submitted_at: identity.updated_date,
-          onboarding_complete: identity.onboarding_complete,
-        };
+          submitted_at: identity.updated_date || identity.created_date,
+          onboarding_complete: identity.onboarding_complete || false,
+        });
       }
 
-      return Response.json({ kycs: Object.values(kycByEmail) });
+      const allKycs = [
+        ...realKycs.map(k => ({ ...k, source: 'kyc_entity' })),
+        ...virtualKycs
+      ];
+
+      return Response.json({ kycs: allKycs });
     }
 
-    // ── LIST IDENTITIES ────────────────────────────────────────────────────────
-    if (action === 'list_identities') {
-      const identities = await base44.asServiceRole.entities.AIIdentity.list('-created_date', 1000);
-      return Response.json({ identities: Array.isArray(identities) ? identities : [] });
-    }
-
-    // ── APPROVE KYC ────────────────────────────────────────────────────────────
     if (action === 'approve_kyc') {
-      const { kyc_id, user_email } = body;
+      const { kyc_id } = body;
 
-      if (kyc_id && kyc_id.startsWith('identity_')) {
-        // It's a virtual record from AIIdentity — need to create a real KYCVerification first
-        const identity_id = kyc_id.replace('identity_', '');
-        const identity = await base44.asServiceRole.entities.AIIdentity.list('-created_date', 1000)
-          .then(list => list.find(i => i.id === identity_id));
-
+      if (kyc_id.startsWith('identity_')) {
+        const identityId = kyc_id.replace('identity_', '');
+        const identity = await base44.asServiceRole.entities.AIIdentity.get(identityId);
         if (identity) {
           const kvd = identity.kyc_verified_data || {};
           let config = {};
           try { config = identity.onboarding_config ? JSON.parse(identity.onboarding_config) : {}; } catch {}
           const ownerEmail = identity.user_email || identity.created_by;
+          const personal = config.personal_info || config || {};
 
-          // Create the real KYCVerification record now
           const created = await base44.asServiceRole.entities.KYCVerification.create({
             user_email: ownerEmail,
-            full_legal_name: kvd.full_legal_name || `${config.first_name || ''} ${config.last_name || ''}`.trim(),
-            date_of_birth: kvd.date_of_birth || config.date_of_birth || '2000-01-01',
-            residential_address: kvd.residential_address || config.address || 'N/A',
+            identity_id: identityId,
+            full_legal_name: kvd.full_legal_name || personal.full_legal_name || '',
+            date_of_birth: kvd.date_of_birth || personal.date_of_birth || '',
+            residential_address: kvd.residential_address || personal.residential_address || '',
+            city: kvd.city || personal.city || '',
+            state: kvd.state || personal.state || '',
+            postal_code: kvd.postal_code || personal.postal_code || '',
+            country: kvd.country || personal.country || '',
+            phone_number: kvd.phone_number || personal.phone_number || '',
+            government_id_type: kvd.government_id_type || personal.government_id_type || '',
+            id_document_front_url: kvd.id_document_front_url || '',
+            id_document_back_url: kvd.id_document_back_url || '',
+            selfie_url: kvd.selfie_url || '',
             status: 'approved',
-            admin_status: 'approved',
             verified_at: new Date().toISOString(),
-            approved_at: new Date().toISOString(),
-            reviewed_by: user.email,
-            submitted_at: identity.updated_date,
-            government_id_type: kvd.government_id_type || config.government_id_type,
-            user_approved_for_autopilot: true,
           });
 
-          // Mark autopilot clearance on identity
-          await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
-            'kyc_verified_data.kyc_tier': 'standard',
-            'kyc_verified_data.autopilot_clearance': {
-              can_submit_w9: true,
-              can_submit_grant_applications: true,
-              can_submit_financial_onboarding: true,
-            },
+          await base44.asServiceRole.entities.AIIdentity.update(identityId, {
+            kyc_verified_data: { ...kvd, kyc_tier: 'standard', synced_at: new Date().toISOString() }
           });
+
+          return Response.json({ success: true, created_id: created.id });
         }
-      } else if (kyc_id) {
-        // Real KYCVerification record
+      } else {
         await base44.asServiceRole.entities.KYCVerification.update(kyc_id, {
           status: 'approved',
-          admin_status: 'approved',
           verified_at: new Date().toISOString(),
-          approved_at: new Date().toISOString(),
-          reviewed_by: user.email,
-          user_approved_for_autopilot: true,
         });
+        return Response.json({ success: true });
       }
-
-      return Response.json({ success: true });
     }
 
-    // ── DENY KYC ───────────────────────────────────────────────────────────────
     if (action === 'deny_kyc') {
       const { kyc_id, reason } = body;
 
-      if (kyc_id && kyc_id.startsWith('identity_')) {
-        const identity_id = kyc_id.replace('identity_', '');
-        const identity = await base44.asServiceRole.entities.AIIdentity.list('-created_date', 1000)
-          .then(list => list.find(i => i.id === identity_id));
-
+      if (kyc_id.startsWith('identity_')) {
+        const identityId = kyc_id.replace('identity_', '');
+        const identity = await base44.asServiceRole.entities.AIIdentity.get(identityId);
         if (identity) {
           const kvd = identity.kyc_verified_data || {};
           let config = {};
           try { config = identity.onboarding_config ? JSON.parse(identity.onboarding_config) : {}; } catch {}
           const ownerEmail = identity.user_email || identity.created_by;
+          const personal = config.personal_info || config || {};
 
           await base44.asServiceRole.entities.KYCVerification.create({
             user_email: ownerEmail,
-            full_legal_name: kvd.full_legal_name || `${config.first_name || ''} ${config.last_name || ''}`.trim(),
-            date_of_birth: kvd.date_of_birth || config.date_of_birth || '2000-01-01',
-            residential_address: kvd.residential_address || config.address || 'N/A',
+            identity_id: identityId,
+            full_legal_name: kvd.full_legal_name || personal.full_legal_name || '',
             status: 'rejected',
-            admin_status: 'rejected',
-            reviewed_by: user.email,
-            rejection_reason: reason || 'Rejected by administrator',
-            submitted_at: identity.updated_date,
+            rejection_reason: reason || 'Denied by admin',
+            verified_at: new Date().toISOString(),
           });
         }
-      } else if (kyc_id) {
+      } else {
         await base44.asServiceRole.entities.KYCVerification.update(kyc_id, {
           status: 'rejected',
-          admin_status: 'rejected',
-          reviewed_by: user.email,
-          rejection_reason: reason || 'Rejected by administrator',
+          rejection_reason: reason || 'Denied by admin',
         });
       }
-
       return Response.json({ success: true });
     }
 
-    // ── UPDATE USER ROLE ───────────────────────────────────────────────────────
     if (action === 'update_user_role') {
       const { user_id, role } = body;
       await base44.asServiceRole.entities.User.update(user_id, { role });
       return Response.json({ success: true });
     }
 
+    if (action === 'get_stats') {
+      const [users, opportunities, transactions, identities, kycs, activityLogs] = await Promise.all([
+        base44.asServiceRole.entities.User.list('-created_date', 500),
+        base44.asServiceRole.entities.Opportunity.list('-created_date', 500),
+        base44.asServiceRole.entities.Transaction.list('-created_date', 500),
+        base44.asServiceRole.entities.AIIdentity.list('-created_date', 500),
+        base44.asServiceRole.entities.KYCVerification.list('-created_date', 200),
+        base44.asServiceRole.entities.ActivityLog.list('-created_date', 100),
+      ]);
+
+      const totalRevenue = transactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+      const activeOpps = opportunities.filter(o => ['new','reviewing','queued','executing'].includes(o.status)).length;
+      const completedOpps = opportunities.filter(o => o.status === 'completed').length;
+
+      return Response.json({
+        stats: {
+          total_users: users.length,
+          total_opportunities: opportunities.length,
+          active_opportunities: activeOpps,
+          completed_opportunities: completedOpps,
+          total_revenue: totalRevenue,
+          total_identities: identities.length,
+          kyc_pending: kycs.filter(k => k.status === 'submitted' || k.status === 'pending').length,
+          kyc_approved: kycs.filter(k => k.status === 'approved').length,
+          recent_activity: activityLogs.slice(0, 20),
+          users,
+        }
+      });
+    }
+
+    if (action === 'list_opportunities') {
+      const opps = await base44.asServiceRole.entities.Opportunity.list('-created_date', 200);
+      return Response.json({ opportunities: opps });
+    }
+
+    if (action === 'list_transactions') {
+      const txns = await base44.asServiceRole.entities.Transaction.list('-created_date', 200);
+      return Response.json({ transactions: txns });
+    }
+
+    if (action === 'list_activity') {
+      const logs = await base44.asServiceRole.entities.ActivityLog.list('-created_date', 200);
+      return Response.json({ logs });
+    }
+
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {
-    console.error('[adminService]', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

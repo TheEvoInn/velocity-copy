@@ -223,7 +223,7 @@ export default function WorkflowWizard({ onComplete }) {
 
         <Button
           onClick={goNext}
-          disabled={!responses[currentStep.id] && !currentStep.multi}
+          disabled={!currentStep.multi && !responses[currentStep.id] && currentStep.type !== 'input'}
           className="bg-cyan-600 hover:bg-cyan-500 text-white gap-1"
         >
           {step === WIZARD_STEPS.length - 1 ? (

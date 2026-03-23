@@ -67,26 +67,45 @@ async function executeNextTask(base44, user) {
        result.steps.push(`Error: ${e.message}`);
      });
 
-     // ─── PHASE 4: Intelligent identity routing ────────────────────────
-     result.steps.push('Selecting optimal identity...');
-     const opportunity = await base44.entities.Opportunity.filter(
-       { id: task.opportunity_id }, null, 1
-     ).then(opps => opps[0]).catch(() => null);
+     // ─── PHASE 4: Account preparation ──────────────────────────────
+    result.steps.push('Preparing accounts for task execution...');
+    const opportunity = await base44.entities.Opportunity.filter(
+      { id: task.opportunity_id }, null, 1
+    ).then(opps => opps[0]).catch(() => null);
 
-     let selectedIdentity = task.identity_id;
-     if (opportunity) {
-       const routingResult = await base44.functions.invoke('intelligentIdentityRouter', {
-         action: 'select_best_identity',
-         opportunity
-       }).catch(e => ({ success: false, error: e.message }));
+    if (opportunity) {
+      const accountPrepResult = await base44.functions.invoke('autopilotAccountPreparation', {
+        action: 'prepare_account',
+        identityId: task.identity_id,
+        opportunity
+      }).catch(e => ({ success: false, error: e.message }));
 
-       if (routingResult.success) {
-         selectedIdentity = routingResult.identity.id;
-         result.steps.push(`✓ Identity selected: "${routingResult.identity.name}" (score: ${routingResult.score}/100)`);
-       } else {
-         result.steps.push(`⚠️ Using assigned identity: ${task.identity_id}`);
-       }
-     }
+      if (accountPrepResult.success && accountPrepResult.result?.account_prepared) {
+        result.steps.push('✓ Account verified/created and ready');
+      } else if (accountPrepResult.requires_manual_setup) {
+        result.steps.push('⚠️ Platform requires manual setup - continuing with existing identity');
+      } else {
+        result.steps.push(`⚠️ Account preparation: ${accountPrepResult.error || 'Issue encountered'}`);
+      }
+    }
+
+    // ─── PHASE 5: Intelligent identity routing ────────────────────────
+    result.steps.push('Selecting optimal identity...');
+
+    let selectedIdentity = task.identity_id;
+    if (opportunity) {
+      const routingResult = await base44.functions.invoke('intelligentIdentityRouter', {
+        action: 'select_best_identity',
+        opportunity
+      }).catch(e => ({ success: false, error: e.message }));
+
+      if (routingResult.success) {
+        selectedIdentity = routingResult.identity.id;
+        result.steps.push(`✓ Identity selected: "${routingResult.identity.name}" (score: ${routingResult.score}/100)`);
+      } else {
+        result.steps.push(`⚠️ Using assigned identity: ${task.identity_id}`);
+      }
+    }
 
      // Update task with selected identity
      await base44.entities.TaskExecutionQueue.update(task.id, {

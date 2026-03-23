@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import PlatformCredentialForm from '../components/exchange/PlatformCredentialForm';
+import IntegrationSyncManager from '../components/integrations/IntegrationSyncManager';
 
 // ── Platform catalog ───────────────────────────────────────────────────────────
 export const PLATFORMS = [
@@ -326,6 +327,12 @@ export default function ExchangeConnectivity() {
           API keys are never displayed in full — only the last 4 characters are stored for reference.
           Each user's credentials are fully isolated with strict row-level security.
         </p>
+      </div>
+
+      {/* ── Sync Manager ── */}
+      <div className="mt-8 pt-8 border-t border-slate-800/60">
+        <h2 className="font-orbitron text-sm font-bold tracking-widest text-white mb-4">AUTOMATIC DATA SYNC</h2>
+        <IntegrationSyncManager />
       </div>
 
       {/* ── Add / Edit modal ── */}

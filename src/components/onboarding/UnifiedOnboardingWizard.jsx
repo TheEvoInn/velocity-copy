@@ -472,21 +472,59 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
         // Get current user email
         const user = await base44.auth.me();
 
-        // Sync to backend via identity update + system sync function
-          await base44.entities.AIIdentity.update(identityId, {
-            user_email: user?.email,
-            onboarding_complete: true,
-            onboarding_status: 'complete',
-            onboarding_config: JSON.stringify(allData),
-          });
+        // Sync to backend via orchestrator (creates KYC, Identity, Wallet, etc.)
+        const syncResult = await base44.functions.invoke('onboardingOrchestratorEngine', {
+          action: 'complete_onboarding',
+          data: {
+            identity: {
+              full_name: `${allData.first_name} ${allData.last_name}`,
+              date_of_birth: allData.date_of_birth,
+              address: `${allData.address}, ${allData.city}, ${allData.state} ${allData.postal_code}, ${allData.country}`,
+              email: allData.email,
+              phone: allData.phone,
+              communication_preference: allData.communication_preference,
+            },
+            kyc: {
+              government_id_type: allData.government_id_type,
+              government_id_number: allData.government_id_number,
+              id_expiry: allData.id_expiry,
+              government_id_front_url: allData.id_document_front,
+              government_id_back_url: allData.id_document_back,
+              selfie_url: allData.selfie,
+            },
+            wallet: {
+              bank_name: allData.bank_name,
+              account_type: allData.account_type,
+              account_number: allData.account_number,
+              routing_number: allData.routing_number,
+              account_holder_name: allData.account_holder_name,
+              available_capital: 0,
+              wallet_balance: 0,
+            },
+            credentials: {
+              platform_credentials: []
+            },
+            departments: {
+              vipz_preferences: {},
+              ned_preferences: { risk_tolerance: allData.risk_level },
+              autopilot_preferences: {
+                enabled: allData.enable_autopilot || false,
+                daily_target: allData.daily_earning_target ? Number(allData.daily_earning_target) : 500,
+                categories: allData.work_categories ? allData.work_categories.split(',').map(c => c.trim()) : [],
+              },
+            }
+          }
+        });
 
-          // Trigger system sync to propagate to all modules
-          await base44.functions.invoke('onboardingSystemSync', {
-            identity_id: identityId,
-            onboarding_data: allData,
-          });
+        // Update AIIdentity with onboarding metadata
+        await base44.entities.AIIdentity.update(identityId, {
+          user_email: user?.email,
+          onboarding_complete: true,
+          onboarding_status: 'complete',
+          onboarding_config: JSON.stringify(allData),
+        });
 
-        qc.invalidateQueries({ queryKey: ['identities'] });
+        qc.invalidateQueries({ queryKey: ['identities', 'kycVerification', 'userGoals'] });
         onComplete?.();
       } else {
         setCurrentStep((prev) => prev + 1);

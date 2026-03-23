@@ -37,6 +37,7 @@ import APIManagement from './pages/APIManagement';
 import ComplianceDashboard from './pages/ComplianceDashboard';
 import OptimizationDashboard from './pages/OptimizationDashboard';
 import Phase4Dashboard from './pages/Phase4Dashboard';
+import Phase5Dashboard from './pages/Phase5Dashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -92,6 +93,7 @@ const AuthenticatedApp = () => {
         <Route path="/ComplianceDashboard" element={<ComplianceDashboard />} />
         <Route path="/OptimizationDashboard" element={<OptimizationDashboard />} />
         <Route path="/Phase4Dashboard" element={<Phase4Dashboard />} />
+        <Route path="/Phase5Dashboard" element={<Phase5Dashboard />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

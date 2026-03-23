@@ -38,10 +38,10 @@ const DEPARTMENTS = [
     planet: '🔭',
   },
   {
-    path: '/Execution',
+    path: '/AutoPilot',
     icon: Cpu,
     label: 'Execute',
-    subtitle: 'Tasks & Automation',
+    subtitle: 'Unified Autopilot & Tasks',
     color: '#3b82f6',
     glow: 'rgba(59,130,246,0.5)',
     gradient: 'from-blue-500/20 to-indigo-600/10',
@@ -100,7 +100,7 @@ const DEPARTMENTS = [
 ];
 
 // Primary tabs shown in mobile bottom bar (most important 5)
-const MOBILE_PRIMARY_TABS = ['/Dashboard', '/Discovery', '/Execution', '/Finance', '/Control'];
+const MOBILE_PRIMARY_TABS = ['/Dashboard', '/Discovery', '/AutoPilot', '/Finance', '/Control'];
 
 // ─── Desktop Nav Item ─────────────────────────────────────────────────────────
 function NavItem({ dept, isActive }) {

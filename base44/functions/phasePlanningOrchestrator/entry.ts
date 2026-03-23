@@ -42,7 +42,8 @@ Deno.serve(async (req) => {
 });
 
 /**
- * Get phase roadmap
+ * Get phase roadmap - CONSECUTIVE BACK-TO-BACK EXECUTION
+ * Each phase executes immediately after completion of previous phase
  */
 async function getPhasRoadmap(base44, user) {
   try {
@@ -50,67 +51,85 @@ async function getPhasRoadmap(base44, user) {
       {
         phase: 5,
         name: 'Performance & Scaling',
-        status: 'planning',
+        execution_mode: 'consecutive',
+        sequence_position: 'next_immediate',
+        status: 'ready_to_start',
+        dependencies: ['Phase 4 Complete'],
         duration_weeks: 4,
-        start_date: new Date(Date.now() + 7 * 86400000).toISOString(),
-        focus_areas: ['Caching optimization', 'Auto-scaling', 'Performance monitoring'],
+        start_trigger: 'phase_4_completion_confirmed',
+        focus_areas: ['Distributed caching', 'Auto-scaling infrastructure', 'Load balancing'],
         key_deliverables: [
-          'Distributed cache system',
-          'Auto-scaling policies',
-          'Real-time metrics dashboard'
+          'Redis distributed cache implementation',
+          'K8s auto-scaling policies',
+          'Global CDN integration'
         ],
-        estimated_improvement: '20-30x throughput'
+        estimated_improvement: '20-30x throughput',
+        transition: 'automatic_to_phase_6_on_completion'
       },
       {
         phase: 6,
-        name: 'Advanced Intelligence',
-        status: 'design',
+        name: 'Advanced Intelligence & Routing',
+        execution_mode: 'consecutive',
+        sequence_position: 'after_phase_5',
+        status: 'waiting_for_phase_5_completion',
+        dependencies: ['Phase 5 Complete'],
         duration_weeks: 6,
-        start_date: new Date(Date.now() + 28 * 86400000).toISOString(),
-        focus_areas: ['ML predictions', 'Advanced routing', 'Anomaly detection'],
+        start_trigger: 'phase_5_completion_confirmed',
+        focus_areas: ['ML-based routing', 'Predictive scaling', 'Intelligent load distribution'],
         key_deliverables: [
-          'ML-based opportunity scoring',
-          'Intelligent identity routing',
-          'Predictive anomaly detection'
+          'ML prediction models deployed',
+          'Dynamic routing engine live',
+          'Real-time optimization pipeline'
         ],
-        estimated_improvement: '40% better opportunity matching'
+        estimated_improvement: '35-50x throughput',
+        transition: 'automatic_to_phase_7_on_completion'
       },
       {
         phase: 7,
         name: 'Enterprise & Multi-tenancy',
-        status: 'backlog',
+        execution_mode: 'consecutive',
+        sequence_position: 'after_phase_6',
+        status: 'waiting_for_phase_6_completion',
+        dependencies: ['Phase 6 Complete'],
         duration_weeks: 8,
-        start_date: new Date(Date.now() + 56 * 86400000).toISOString(),
+        start_trigger: 'phase_6_completion_confirmed',
         focus_areas: ['Multi-tenant support', 'SSO integration', 'Advanced RBAC'],
         key_deliverables: [
           'Multi-tenant architecture',
           'Enterprise SSO/SAML',
           'Role-based access control'
         ],
-        estimated_improvement: 'Enterprise-ready platform'
+        estimated_improvement: 'Enterprise-ready platform',
+        transition: 'automatic_to_phase_8_on_completion'
       },
       {
         phase: 8,
-        name: 'Global Expansion',
-        status: 'backlog',
-        duration_weeks: 10,
-        start_date: new Date(Date.now() + 84 * 86400000).toISOString(),
-        focus_areas: ['Multi-region deployment', 'Localization', 'Compliance'],
+        name: 'Final Optimization & Production Hardening',
+        execution_mode: 'consecutive',
+        sequence_position: 'after_phase_7',
+        status: 'waiting_for_phase_7_completion',
+        dependencies: ['Phase 7 Complete'],
+        duration_weeks: 6,
+        start_trigger: 'phase_7_completion_confirmed',
+        focus_areas: ['Security audit', 'Penetration testing', 'Failover testing'],
         key_deliverables: [
-          'Multi-region infrastructure',
-          'i18n/l10n support',
-          'GDPR/regional compliance'
+          'Full security audit completion',
+          'Incident response automation',
+          'DR failover validation'
         ],
-        estimated_improvement: 'Global deployment ready'
+        estimated_improvement: '99.99% availability',
+        transition: 'production_ready_on_completion'
       }
     ];
 
     return jsonResponse({
+      execution_model: 'consecutive_back_to_back',
       total_phases: roadmap.length,
       roadmap,
       current_phase: 4,
-      next_phase: 5,
-      timeline_months: 12
+      next_phase_starts: 'immediately_on_phase_4_completion',
+      zero_gap_timeline: true,
+      total_duration_weeks: 24
     });
   } catch (error) {
     console.error('[Get Roadmap]', error.message);
@@ -118,60 +137,42 @@ async function getPhasRoadmap(base44, user) {
   }
 }
 
-/**
- * Plan a specific phase
- */
-async function planPhase(base44, user, body) {
-  const { phase_number } = body;
-
-  if (!phase_number) {
-    return jsonResponse({ error: 'phase_number required' }, 400);
-  }
-
-  try {
     const phasePlans = {
       5: {
         phase: 5,
         name: 'Performance & Scaling',
+        execution_mode: 'consecutive_immediate_start',
         milestones: [
-          {
-            week: 1,
-            task: 'Design distributed cache architecture',
-            status: 'planning'
-          },
-          {
-            week: 2,
-            task: 'Implement cache layer with Redis',
-            status: 'pending'
-          },
-          {
-            week: 3,
-            task: 'Deploy auto-scaling policies',
-            status: 'pending'
-          },
-          {
-            week: 4,
-            task: 'Performance testing and optimization',
-            status: 'pending'
-          }
+          { day: 1, task: 'Deploy Redis distributed cache', status: 'in_progress' },
+          { day: 5, task: 'Configure K8s auto-scaling', status: 'pending' },
+          { day: 10, task: 'Integrate global CDN', status: 'pending' },
+          { day: 20, task: 'Performance validation and go-live', status: 'pending' },
+          { day: 28, task: 'Phase 5 complete → Phase 6 begins immediately', status: 'pending' }
         ],
-        required_resources: {
-          engineers: 2,
-          devops: 1,
-          qa: 1,
-          estimated_hours: 200
-        },
-        risks: [
-          { risk: 'Cache consistency issues', mitigation: 'Implement strong consistency model' },
-          { risk: 'Scaling bottlenecks', mitigation: 'Load testing before deployment' }
-        ]
+        required_resources: { engineers: 2, devops: 1, qa: 1 },
+        completion_gates: ['All deliverables deployed', 'Performance targets met', 'Zero critical issues'],
+        next_phase_auto_trigger: true
+      },
+      6: {
+        phase: 6,
+        name: 'Advanced Intelligence & Routing',
+        execution_mode: 'consecutive_starts_on_phase_5_complete',
+        milestones: [
+          { day: 1, task: 'Deploy ML prediction models', status: 'pending' },
+          { day: 10, task: 'Activate intelligent routing', status: 'pending' },
+          { day: 20, task: 'Real-time optimization pipeline live', status: 'pending' },
+          { day: 40, task: 'Phase 6 complete → Phase 7 begins immediately', status: 'pending' }
+        ],
+        required_resources: { engineers: 3, ml_engineers: 1, devops: 1, qa: 2 },
+        completion_gates: ['ML models validated', 'Routing efficiency improved', 'System stable'],
+        next_phase_auto_trigger: true
       }
     };
 
     const plan = phasePlans[phase_number] || {
       phase: phase_number,
-      status: 'not_planned_yet',
-      message: 'Phase planning template created'
+      status: 'template_created',
+      message: 'Phase planning template - consecutive execution mode'
     };
 
     return jsonResponse(plan);
@@ -195,33 +196,47 @@ async function getPhaseDependencies(base44, user, body) {
     const dependencies = {
       5: {
         phase: 5,
-        name: 'Performance & Scaling',
+        execution_model: 'consecutive',
         depends_on: [1, 2, 3, 4],
-        blocker_items: [],
-        can_start_now: true,
-        prerequisite_completion: 100
+        prerequisite_completion: 100,
+        can_start_immediately: true,
+        blocks_phase: [6],
+        completion_auto_triggers: 'Phase 6 start (zero gap)'
       },
       6: {
         phase: 6,
-        name: 'Advanced Intelligence',
+        execution_model: 'consecutive',
         depends_on: [5],
-        blocker_items: ['opt_parallelization', 'enh_ml_predictions'],
+        prerequisite_completion: 'phase_5_complete',
         can_start_now: false,
-        prerequisite_completion: 0
+        start_trigger: 'phase_5_completion_confirmation',
+        blocks_phase: [7],
+        completion_auto_triggers: 'Phase 7 start (zero gap)'
       },
       7: {
         phase: 7,
-        name: 'Enterprise & Multi-tenancy',
-        depends_on: [5, 6],
-        blocker_items: ['Phase 6 completion'],
+        execution_model: 'consecutive',
+        depends_on: [6],
+        prerequisite_completion: 'phase_6_complete',
         can_start_now: false,
-        prerequisite_completion: 0
+        start_trigger: 'phase_6_completion_confirmation',
+        blocks_phase: [8],
+        completion_auto_triggers: 'Phase 8 start (zero gap)'
+      },
+      8: {
+        phase: 8,
+        execution_model: 'consecutive',
+        depends_on: [7],
+        prerequisite_completion: 'phase_7_complete',
+        can_start_now: false,
+        start_trigger: 'phase_7_completion_confirmation',
+        completion_auto_triggers: 'Production ready'
       }
     };
 
     return jsonResponse(dependencies[phase_number] || {
       phase: phase_number,
-      message: 'Phase not yet defined'
+      message: 'Phase not defined in consecutive roadmap'
     });
   } catch (error) {
     console.error('[Get Dependencies]', error.message);

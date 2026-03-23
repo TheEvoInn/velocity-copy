@@ -348,85 +348,8 @@ function getCuratedOpportunities(userEmail) {
     { title: 'RLHF Preference Ranking — Remotasks', category: 'ai_training', platform: 'remotasks.com', url: 'https://remotasks.com', estimated_pay: 22, time_estimate_minutes: 45, difficulty: 'beginner', description: 'Compare AI outputs and select better responses. Trains large language models.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
     { title: 'AI Red-Teaming Evaluator — Surge AI', category: 'ai_training', platform: 'surge.ai', url: 'https://surge.ai', estimated_pay: 35, time_estimate_minutes: 60, difficulty: 'intermediate', description: 'Find failure modes and edge cases in AI systems. High pay, expert evaluators preferred.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
 
-    // Transcription
-    { title: 'Podcast Episode Transcription — Rev', category: 'transcription', platform: 'rev.com', url: 'https://rev.com/freelancers', estimated_pay: 20, time_estimate_minutes: 45, difficulty: 'beginner', description: 'Transcribe podcast audio at $0.45/min. Work anytime. Weekly payouts via PayPal.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Legal Deposition Transcription — GoTranscript', category: 'transcription', platform: 'gotranscript.com', url: 'https://gotranscript.com/transcription-jobs', estimated_pay: 28, time_estimate_minutes: 60, difficulty: 'intermediate', description: 'Transcribe legal deposition audio. Higher pay rate for accuracy. Flexible schedule.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-    { title: 'YouTube Caption Creator — TranscribeMe', category: 'transcription', platform: 'transcribeme.com', url: 'https://transcribeme.com/jobs', estimated_pay: 22, time_estimate_minutes: 40, difficulty: 'beginner', description: 'Create accurate captions for YouTube content. $0.79/audio minute. No minimum hours.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-
-    // Writing
-    { title: 'SEO Blog Post — Tech Niche — Textbroker', category: 'writing', platform: 'textbroker.com', url: 'https://textbroker.com/freelance-writing', estimated_pay: 50, time_estimate_minutes: 90, difficulty: 'intermediate', description: '1000-word SEO articles for tech websites. Textbroker Level 4 pay: $0.05/word.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Product Description Copywriter — Upwork', category: 'writing', platform: 'upwork.com', url: 'https://upwork.com/freelance-jobs/copywriting', estimated_pay: 40, time_estimate_minutes: 60, difficulty: 'intermediate', description: 'Write 300-word product descriptions for Amazon/Shopify stores. $40–80/page.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-    { title: 'Email Newsletter Copywriter — iWriter', category: 'writing', platform: 'iwriter.com', url: 'https://iwriter.com/register', estimated_pay: 55, time_estimate_minutes: 75, difficulty: 'intermediate', description: 'Write SaaS company newsletters. Recurring work available. $30-60 per newsletter.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-
-    // Micro-tasks
-    { title: 'Product Categorization HITs — MTurk', category: 'microtasks', platform: 'mturk.com', url: 'https://mturk.com', estimated_pay: 10, time_estimate_minutes: 20, difficulty: 'beginner', description: 'Categorize products and websites. $0.05-0.25 per HIT. High volume available.', can_ai_complete: true, online_only: true, discovery_method: 'api' },
-    { title: 'Sentiment Tagging Batch — Clickworker', category: 'microtasks', platform: 'clickworker.com', url: 'https://clickworker.com/en/micro-jobs', estimated_pay: 12, time_estimate_minutes: 25, difficulty: 'beginner', description: 'Tag text sentiment for NLP datasets. Batch tasks available, paid weekly.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-    { title: 'Quick Answer Tasks — Picoworkers', category: 'microtasks', platform: 'picoworkers.com', url: 'https://picoworkers.com', estimated_pay: 6, time_estimate_minutes: 10, difficulty: 'beginner', description: 'Complete quick internet tasks: searches, signups, reviews. $0.10-2.00 each.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-
-    // Research
-    { title: 'B2B Lead Research — Upwork', category: 'research', platform: 'upwork.com', url: 'https://upwork.com/freelance-jobs/lead-generation', estimated_pay: 40, time_estimate_minutes: 60, difficulty: 'beginner', description: 'Find and verify B2B contacts from LinkedIn. $0.50-2.00 per qualified lead.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Market Research Report — Wonder', category: 'research', platform: 'wonder.com', url: 'https://askwonder.com/researcher', estimated_pay: 75, time_estimate_minutes: 120, difficulty: 'intermediate', description: 'Research questions for businesses. Expert researchers earn $15-25/hr on Wonder.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Surveys
-    { title: 'Academic Research Study — Prolific', category: 'surveys', platform: 'prolific.ac', url: 'https://prolific.ac', estimated_pay: 16, time_estimate_minutes: 20, difficulty: 'beginner', description: 'Participate in university research. Average $12-16/hr. Fast approval, frequent studies.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'UX Research Interview — User Interviews', category: 'surveys', platform: 'userinterviews.com', url: 'https://userinterviews.com/apply', estimated_pay: 75, time_estimate_minutes: 60, difficulty: 'beginner', description: 'Participate in remote user research sessions. $75+ per hour-long session.', can_ai_complete: false, online_only: true, discovery_method: 'scrape' },
-
-    // VA tasks
-    { title: 'Email Inbox Management — Fancy Hands', category: 'virtual_assistant', platform: 'fancy hands', url: 'https://fancyhands.com', estimated_pay: 20, time_estimate_minutes: 30, difficulty: 'beginner', description: 'Handle executive email tasks: draft replies, organize inbox, schedule meetings.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Shopify Store VA — Upwork', category: 'virtual_assistant', platform: 'upwork.com', url: 'https://upwork.com/freelance-jobs/virtual-assistant', estimated_pay: 25, time_estimate_minutes: 60, difficulty: 'beginner', description: 'Manage product listings, order tracking, and customer messages for ecommerce stores.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Digital Products
-    { title: 'Notion Productivity Template Pack — Gumroad', category: 'digital_products', platform: 'gumroad.com', url: 'https://gumroad.com', estimated_pay: 200, time_estimate_minutes: 240, difficulty: 'intermediate', description: 'Create and sell a Notion template bundle. Passive income once listed. $10-50 per sale.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Canva Template Pack — Etsy', category: 'digital_products', platform: 'etsy.com', url: 'https://etsy.com', estimated_pay: 150, time_estimate_minutes: 180, difficulty: 'intermediate', description: 'Design Canva social media templates and sell on Etsy. 60% passive income potential.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Website Testing
-    { title: 'Usability Test — UserTesting.com', category: 'testing_websites', platform: 'usertesting.com', url: 'https://usertesting.com/be-a-user-tester', estimated_pay: 10, time_estimate_minutes: 20, difficulty: 'beginner', description: 'Navigate websites while recording your screen and thinking aloud. $10 per 20-min test.', can_ai_complete: false, online_only: true, discovery_method: 'search' },
-    { title: 'Beta App Bug Reporter — BetaBound', category: 'testing_websites', platform: 'betabound.com', url: 'https://betabound.com', estimated_pay: 20, time_estimate_minutes: 30, difficulty: 'beginner', description: 'Test beta apps and report bugs. Compensation varies by project, typically $10-50/test.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Game Testing
-    { title: 'Mobile Game Beta Tester — PlaytestCloud', category: 'game_testing', platform: 'playtestcloud.com', url: 'https://playtestcloud.com', estimated_pay: 12, time_estimate_minutes: 30, difficulty: 'beginner', description: 'Play new mobile games and provide written feedback. $9-15 per 20-30 minute session.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'PC Game QA Tester — uTest', category: 'game_testing', platform: 'utest.com', url: 'https://utest.com', estimated_pay: 30, time_estimate_minutes: 60, difficulty: 'beginner', description: 'Find and report bugs in PC games. Paid per accepted bug report. Flexible schedule.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Data Entry
-    { title: 'Product Specs Data Entry — Upwork', category: 'data_entry', platform: 'upwork.com', url: 'https://upwork.com/freelance-jobs/data-entry', estimated_pay: 25, time_estimate_minutes: 90, difficulty: 'beginner', description: 'Enter product specifications from PDFs into Google Sheets. $15-25/hr for fast typers.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Contact List Building — Microworkers', category: 'data_entry', platform: 'microworkers.com', url: 'https://microworkers.com', estimated_pay: 18, time_estimate_minutes: 45, difficulty: 'beginner', description: 'Research and compile business contact lists. $0.20-0.50 per verified contact.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Translation
-    { title: 'Spanish→English Marketing Translation — Gengo', category: 'translation', platform: 'gengo.com', url: 'https://gengo.com/translators', estimated_pay: 45, time_estimate_minutes: 60, difficulty: 'intermediate', description: 'Translate marketing copy. Standard level: $0.06/word. Pro level: $0.12/word.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'App UI String Localization — ProZ', category: 'translation', platform: 'proz.com', url: 'https://proz.com/jobs', estimated_pay: 60, time_estimate_minutes: 90, difficulty: 'intermediate', description: 'Localize app UI strings for global markets. High demand for Asian and European languages.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Customer Support
-    { title: 'Remote Chat Support Agent — LiveOps', category: 'customer_support', platform: 'liveops.com', url: 'https://join.liveops.com', estimated_pay: 20, time_estimate_minutes: 60, difficulty: 'beginner', description: 'Handle customer inquiries via live chat. No calls. Flexible scheduling, paid per hour.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Email Support Specialist — Upwork', category: 'customer_support', platform: 'upwork.com', url: 'https://upwork.com/freelance-jobs/customer-service', estimated_pay: 22, time_estimate_minutes: 60, difficulty: 'intermediate', description: 'Handle customer support emails using templates. $15-25/hr. SaaS companies prefer quick learners.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Coding
-    { title: 'WordPress Bug Fix — Codementor', category: 'coding', platform: 'codementor.io', url: 'https://codementor.io/freelance-jobs', estimated_pay: 60, time_estimate_minutes: 60, difficulty: 'intermediate', description: 'Fix CSS/PHP issues on WordPress sites. Clear scope tasks, paid on delivery.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Landing Page HTML Build — Fiverr', category: 'coding', platform: 'fiverr.com', url: 'https://fiverr.com', estimated_pay: 80, time_estimate_minutes: 120, difficulty: 'intermediate', description: 'Build responsive landing pages from Figma designs. $75-150 per page. High demand.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Design
-    { title: 'Social Media Graphics Pack — 99designs', category: 'design', platform: '99designs.com', url: 'https://99designs.com/freelance-designers', estimated_pay: 70, time_estimate_minutes: 90, difficulty: 'intermediate', description: 'Design 10-post social media brand kits. $65-150 per pack. Canva or Figma acceptable.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Logo Design Contest Entry — Designcrowd', category: 'design', platform: 'designcrowd.com', url: 'https://designcrowd.com', estimated_pay: 100, time_estimate_minutes: 60, difficulty: 'intermediate', description: 'Win-based logo contests. Average $150-500 prizes. AI design tools allowed.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Social Media
-    { title: 'Social Media Post Scheduler — Fiverr', category: 'social_media', platform: 'fiverr.com', url: 'https://fiverr.com/categories/online-marketing/social-media-marketing', estimated_pay: 45, time_estimate_minutes: 60, difficulty: 'beginner', description: 'Schedule and manage social media content for small businesses. $40-80/month retainer.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Instagram Hashtag Researcher — Upwork', category: 'social_media', platform: 'upwork.com', url: 'https://upwork.com', estimated_pay: 25, time_estimate_minutes: 45, difficulty: 'beginner', description: 'Research niche hashtags and competitor analysis for Instagram brands. $20-35/hr.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Affiliate
-    { title: 'Affiliate Review Article — Impact.com', category: 'affiliate_marketing', platform: 'impact.com', url: 'https://impact.com/partners', estimated_pay: 90, time_estimate_minutes: 90, difficulty: 'intermediate', description: 'Write SEO review articles for software affiliate programs. $30-100 commission per conversion.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-
-    // Marketplace Listing
-    { title: 'Amazon Listing Optimization — Upwork', category: 'marketplace_listing', platform: 'upwork.com', url: 'https://upwork.com/freelance-jobs/amazon', estimated_pay: 60, time_estimate_minutes: 60, difficulty: 'intermediate', description: 'Optimize Amazon product titles, bullets, and descriptions for SEO. $50-100/ASIN.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-
-    // Review Writing
-    { title: 'Software Review Writer — G2 Tasks', category: 'review_writing', platform: 'microworkers.com', url: 'https://microworkers.com', estimated_pay: 8, time_estimate_minutes: 15, difficulty: 'beginner', description: 'Write detailed software reviews. $2-10 per accepted review. Fast approval.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Content Creation
-    { title: 'UGC Video Creator — Billo', category: 'content_creation', platform: 'billo.app', url: 'https://billo.app/creators', estimated_pay: 50, time_estimate_minutes: 60, difficulty: 'beginner', description: 'Create short UGC product review videos for brands. $50-150 per video. No experience needed.', can_ai_complete: false, online_only: true, discovery_method: 'search' },
-    { title: 'Short-Form Script Writer — Fiverr', category: 'content_creation', platform: 'fiverr.com', url: 'https://fiverr.com', estimated_pay: 35, time_estimate_minutes: 45, difficulty: 'beginner', description: 'Write scripts for YouTube Shorts and TikTok videos. High volume available. $25-60/script.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
-
-    // Dropshipping
-    { title: 'Winning Product Research — Fiverr', category: 'dropshipping', platform: 'fiverr.com', url: 'https://fiverr.com/categories/business/e-commerce-services', estimated_pay: 45, time_estimate_minutes: 90, difficulty: 'intermediate', description: 'Research trending dropshipping products using tools like Minea or AdSpy. $40-75/report.', can_ai_complete: true, online_only: true, discovery_method: 'search' },
-    { title: 'Shopify Product Description Writer — Upwork', category: 'dropshipping', platform: 'upwork.com', url: 'https://upwork.com', estimated_pay: 30, time_estimate_minutes: 60, difficulty: 'beginner', description: 'Write compelling product descriptions for Shopify dropshipping stores. $25-50/batch.', can_ai_complete: true, online_only: true, discovery_method: 'scrape' },
+    // All hardcoded opportunities removed
+    // Use real APIs for live opportunities
   ].map(opp => ({
     ...opp,
     user_email: userEmail,
@@ -435,6 +358,8 @@ function getCuratedOpportunities(userEmail) {
     pay_currency: 'USD',
     keywords_matched: (KEYWORD_MAP[opp.category]?.primary?.slice(0, 2) || []),
   })).filter(o => o.score > 0);
+  ];
+  return []; // DEPRECATED: Return empty — use real APIs
 }
 
 // ─── MAIN HANDLER ─────────────────────────────────────────────────────────────

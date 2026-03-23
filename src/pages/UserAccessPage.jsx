@@ -10,6 +10,7 @@ import AutopilotSettings from '../components/account/AutopilotSettings';
 import ConnectedAccountsSettings from '../components/account/ConnectedAccountsSettings';
 import ComplianceSettings from '../components/account/ComplianceSettings';
 import NotificationsHub from '../components/notifications/NotificationsHub';
+import KYCConsolidationStatus from '../components/account/KYCConsolidationStatus';
 
 export default function UserAccessPage() {
   const [activeTab, setActiveTab] = useState('account');
@@ -116,6 +117,12 @@ export default function UserAccessPage() {
 
           {/* Sidebar Info */}
           <div className="space-y-4">
+            {/* KYC Consolidation Status - Kristopher Tibbetts */}
+            <KYCConsolidationStatus 
+              targetEmail="kristopherwork90@gmail.com" 
+              fullName="Kristopher Tibbetts"
+            />
+
             {/* Live Status */}
             <Card className="bg-slate-900/50 border-slate-700">
               <CardHeader>

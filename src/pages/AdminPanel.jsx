@@ -241,32 +241,81 @@ export default function AdminPanel() {
                           {/* KYC section */}
                           {userKYC ? (
                             <div className="bg-slate-800/40 rounded p-3">
-                              <p className="text-xs font-semibold text-violet-400 mb-2">KYC Verification</p>
-                              <div className="space-y-1 text-xs text-slate-300 mb-3">
-                                <p>Legal Name: <span className="text-white">{userKYC.full_legal_name || '—'}</span></p>
-                                <p>Status: <span className="text-white capitalize">{userKYC.status}</span></p>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-semibold text-violet-400">KYC Verification</p>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  userKYC.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
+                                  userKYC.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                                  'bg-amber-500/20 text-amber-400'
+                                }`}>{userKYC.status || 'pending'}</span>
+                              </div>
+
+                              {/* Personal Info */}
+                              <div className="grid grid-cols-2 gap-1 text-xs text-slate-300 mb-3">
+                                <p>Name: <span className="text-white">{userKYC.full_legal_name || '—'}</span></p>
+                                <p>DOB: <span className="text-white">{userKYC.date_of_birth || '—'}</span></p>
+                                <p>Phone: <span className="text-white">{userKYC.phone_number || '—'}</span></p>
+                                <p>ID Type: <span className="text-white capitalize">{userKYC.government_id_type?.replace(/_/g,' ') || '—'}</span></p>
+                                <p className="col-span-2">Address: <span className="text-white">{[userKYC.residential_address, userKYC.city, userKYC.state, userKYC.postal_code, userKYC.country].filter(Boolean).join(', ') || '—'}</span></p>
                                 {userKYC.verified_at && (
-                                  <p>Verified: <span className="text-emerald-400">{new Date(userKYC.verified_at).toLocaleString()}</span></p>
+                                  <p className="col-span-2">Verified: <span className="text-emerald-400">{new Date(userKYC.verified_at).toLocaleString()}</span></p>
+                                )}
+                                {userKYC.source === 'identity_onboarding' && (
+                                  <p className="col-span-2 text-amber-400/70 italic">* Submitted via identity onboarding</p>
                                 )}
                               </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => approveMutation.mutate(userKYC.id)}
-                                  disabled={approveMutation.isPending || userKYC.status === 'approved'}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1"
-                                >
-                                  <CheckCircle2 className="w-3 h-3" /> Approve
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => denyMutation.mutate(userKYC.id)}
-                                  disabled={denyMutation.isPending || userKYC.status === 'rejected'}
-                                  className="bg-red-700 hover:bg-red-800 text-white text-xs gap-1"
-                                >
-                                  <XCircle className="w-3 h-3" /> Deny
-                                </Button>
-                              </div>
+
+                              {/* Document Images */}
+                              {(userKYC.id_document_front_url || userKYC.id_document_back_url || userKYC.selfie_url) && (
+                                <div className="mb-3">
+                                  <p className="text-xs text-slate-500 mb-2">Submitted Documents</p>
+                                  <div className="grid grid-cols-3 gap-2">
+                                    {userKYC.id_document_front_url && (
+                                      <a href={userKYC.id_document_front_url} target="_blank" rel="noreferrer">
+                                        <img src={userKYC.id_document_front_url} alt="ID Front" className="w-full h-20 object-cover rounded border border-slate-600 hover:border-violet-400 transition-colors" />
+                                        <p className="text-[10px] text-slate-500 text-center mt-0.5">ID Front</p>
+                                      </a>
+                                    )}
+                                    {userKYC.id_document_back_url && (
+                                      <a href={userKYC.id_document_back_url} target="_blank" rel="noreferrer">
+                                        <img src={userKYC.id_document_back_url} alt="ID Back" className="w-full h-20 object-cover rounded border border-slate-600 hover:border-violet-400 transition-colors" />
+                                        <p className="text-[10px] text-slate-500 text-center mt-0.5">ID Back</p>
+                                      </a>
+                                    )}
+                                    {userKYC.selfie_url && (
+                                      <a href={userKYC.selfie_url} target="_blank" rel="noreferrer">
+                                        <img src={userKYC.selfie_url} alt="Selfie" className="w-full h-20 object-cover rounded border border-slate-600 hover:border-violet-400 transition-colors" />
+                                        <p className="text-[10px] text-slate-500 text-center mt-0.5">Selfie</p>
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Actions */}
+                              {userKYC.status !== 'approved' && userKYC.status !== 'rejected' && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => approveMutation.mutate(userKYC.id)}
+                                    disabled={approveMutation.isPending}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3" /> Approve KYC
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => denyMutation.mutate(userKYC.id)}
+                                    disabled={denyMutation.isPending}
+                                    className="bg-red-700 hover:bg-red-800 text-white text-xs gap-1"
+                                  >
+                                    <XCircle className="w-3 h-3" /> Deny KYC
+                                  </Button>
+                                </div>
+                              )}
+                              {(userKYC.status === 'approved' || userKYC.status === 'rejected') && (
+                                <p className="text-xs text-slate-500 italic">Decision already made: <span className="capitalize text-slate-400">{userKYC.status}</span></p>
+                              )}
                             </div>
                           ) : (
                             <div className="bg-slate-800/40 rounded p-3 text-xs text-slate-500">

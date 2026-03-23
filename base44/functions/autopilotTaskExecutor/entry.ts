@@ -67,44 +67,112 @@ async function executeNextTask(base44, user) {
       result.steps.push(`Error: ${e.message}`);
     });
 
-    // Simulate execution steps (in real system, this would interact with platforms)
-    const executionSteps = [
-      { step: 1, action: 'Navigate to URL', status: 'pending' },
-      { step: 2, action: 'Analyze page structure', status: 'pending' },
-      { step: 3, action: 'Extract form fields', status: 'pending' },
-      { step: 4, action: 'Fill form data', status: 'pending' },
-      { step: 5, action: 'Submit application', status: 'pending' }
-    ];
+    // Real browser automation execution (replaces simulation)
+    // Step 1: Inject credentials from vault
+    result.steps.push('Injecting credentials...');
+    const credResult = await base44.functions.invoke('credentialInjection', {
+      action: 'inject_task_credentials',
+      task: { id: task.id, platform: task.platform, url: task.url, identity_id: task.identity_id }
+    }).catch(e => ({ data: { success: false, error: e.message } }));
 
-    result.steps.push(`Executing ${executionSteps.length} steps...`);
-
-    // Simulate step completion
-    for (let i = 0; i < executionSteps.length; i++) {
-      executionSteps[i].status = 'completed';
-      result.steps.push(`✓ Step ${i + 1}: ${executionSteps[i].action}`);
-      
-      // Simulate work taking time
-      await new Promise(resolve => setTimeout(resolve, 100));
+    if (!credResult.data?.success) {
+      result.steps.push(`⚠️ Credential injection: ${credResult.data?.error || 'Failed'}`);
+    } else {
+      result.steps.push('✓ Credentials injected');
     }
 
-    // Mark task as completed
+    // Step 2: Analyze page and extract form fields
+    result.steps.push('Analyzing page structure...');
+    const pageAnalysisResult = await base44.functions.invoke('browserAutomationReal', {
+      action: 'analyze_page',
+      url: task.url
+    }).catch(e => ({ data: { success: false, error: e.message } }));
+
+    if (!pageAnalysisResult.data?.success) {
+      result.steps.push(`⚠️ Page analysis: ${pageAnalysisResult.data?.error || 'Failed'}`);
+    } else {
+      result.steps.push(`✓ Found form fields`);
+    }
+
+    // Step 3: Fill forms with intelligent mapping
+    result.steps.push('Filling form fields...');
+    const formFillResult = await base44.functions.invoke('formFillingEngine', {
+      action: 'build_form_data',
+      formFields: pageAnalysisResult.data?.structure?.inputs || [],
+      identity: { email: task.identity_id },
+      opportunity: { title: task.description, description: task.description }
+    }).catch(e => ({ data: { success: false, error: e.message } }));
+
+    if (!formFillResult.data?.success) {
+      result.steps.push(`⚠️ Form filling: ${formFillResult.data?.error || 'Failed'}`);
+    } else {
+      result.steps.push(`✓ Filled ${formFillResult.data?.fields_filled || 0} fields`);
+    }
+
+    // Step 4: Solve CAPTCHA if present
+    result.steps.push('Checking for CAPTCHA...');
+    const captchaResult = await base44.functions.invoke('captchaSolver', {
+      action: 'check_captcha_service'
+    }).catch(e => ({ data: { available: false } }));
+
+    if (captchaResult.data?.available) {
+      result.steps.push('✓ CAPTCHA solver ready');
+    } else {
+      result.steps.push('ℹ️ CAPTCHA solver not configured');
+    }
+
+    // Step 5: Execute real browser automation with form data
+    result.steps.push('Executing browser automation...');
+    const executionResult = await base44.functions.invoke('browserAutomationReal', {
+      action: 'execute_task',
+      task: {
+        id: task.id,
+        url: task.url,
+        form_fields: formFillResult.data?.form_data || {},
+        credentials: credResult.data?.credentials,
+        authorization_headers: credResult.data?.authorization_headers
+      }
+    }).catch(e => ({ data: { success: false, error: e.message } }));
+
+    if (!executionResult.data?.success) {
+      result.steps.push(`❌ Execution failed: ${executionResult.data?.error || 'Unknown error'}`);
+    } else {
+      result.steps.push(`✓ Real submission completed`);
+    }
+
+    const executionSteps = [
+      { step: 1, action: 'Inject credentials', status: credResult.data?.success ? 'completed' : 'failed' },
+      { step: 2, action: 'Analyze page structure', status: pageAnalysisResult.data?.success ? 'completed' : 'failed' },
+      { step: 3, action: 'Fill form data', status: formFillResult.data?.success ? 'completed' : 'failed' },
+      { step: 4, action: 'Check CAPTCHA', status: 'completed' },
+      { step: 5, action: 'Submit application', status: executionResult.data?.success ? 'completed' : 'failed' }
+    ];
+
+    // Mark task as completed (only if execution succeeded)
     result.steps.push('Finalizing completion...');
+    const finalStatus = executionResult.data?.success ? 'completed' : 'failed';
+    const finalSubmissionStatus = executionResult.data?.success ? true : false;
+
     await base44.entities.TaskExecutionQueue.update(task.id, {
-      status: 'completed',
+      status: finalStatus,
       completion_timestamp: new Date().toISOString(),
-      submission_success: true,
+      submission_success: finalSubmissionStatus,
+      confirmation_number: executionResult.data?.execution?.confirmation?.text,
+      confirmation_text: executionResult.data?.execution?.confirmation?.text,
       execution_steps: executionSteps,
-      execution_time_seconds: Math.round(executionSteps.length * 0.1)
+      execution_time_seconds: Math.round((Date.now() - new Date(task.queue_timestamp).getTime()) / 1000),
+      error_message: executionResult.data?.error
     }).catch(e => {
       result.steps.push(`Error: ${e.message}`);
     });
 
-    // Update related opportunity
-    if (task.opportunity_id) {
+    // Update related opportunity (only mark as completed if submission succeeded)
+    if (task.opportunity_id && finalSubmissionStatus) {
       await base44.entities.Opportunity.update(task.opportunity_id, {
         status: 'completed',
         submission_confirmed: true,
-        submission_timestamp: new Date().toISOString()
+        submission_timestamp: new Date().toISOString(),
+        confirmation_number: executionResult.data?.execution?.confirmation?.text
       }).catch(() => {});
     }
 
@@ -158,23 +226,39 @@ async function executeBatch(base44, user) {
           start_timestamp: new Date().toISOString()
         }).catch(() => {});
 
-        // Simulate completion
+        // Real execution via browser automation
+        const execResult = await base44.functions.invoke('browserAutomationReal', {
+          action: 'execute_task',
+          task: {
+            id: task.id,
+            url: task.url,
+            form_fields: {},
+            credentials: {}
+          }
+        }).catch(e => ({ data: { success: false, error: e.message } }));
+
+        const executionSuccess = execResult.data?.success === true;
+
+        // Update task with real results
         await base44.entities.TaskExecutionQueue.update(task.id, {
-          status: 'completed',
+          status: executionSuccess ? 'completed' : 'failed',
           completion_timestamp: new Date().toISOString(),
-          submission_success: true,
-          execution_time_seconds: Math.round(Math.random() * 60 + 30)
+          submission_success: executionSuccess,
+          execution_time_seconds: execResult.data?.execution?.steps_completed || 0,
+          error_message: execResult.data?.error
         }).catch(() => {});
 
-        // Update opportunity if linked
-        if (task.opportunity_id) {
+        // Update opportunity if linked and execution succeeded
+        if (task.opportunity_id && executionSuccess) {
           await base44.entities.Opportunity.update(task.opportunity_id, {
             status: 'completed',
             submission_confirmed: true
           }).catch(() => {});
         }
 
-        batch.tasks_completed++;
+        if (executionSuccess) {
+          batch.tasks_completed++;
+        }
 
       } catch (taskError) {
         batch.errors.push(`Task ${task.id} failed: ${taskError.message}`);

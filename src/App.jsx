@@ -52,30 +52,32 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/Dashboard" element={<Dashboard />} />
-      <Route path="/StarshipBridge" element={<StarshipBridge />} />
-      <Route path="/Control" element={<Control />} />
-      <Route path="/AutoPilot" element={<AutoPilot />} />
-      <Route path="/AutoPilotEngine" element={<AutoPilotEngine />} />
-      <Route path="/Discovery" element={<Discovery />} />
-      <Route path="/WorkDiscovery" element={<WorkDiscovery />} />
-      <Route path="/Execution" element={<Execution />} />
-      <Route path="/Finance" element={<Finance />} />
-      <Route path="/WalletDashboard" element={<WalletDashboard />} />
-      <Route path="/CryptoAutomation" element={<CryptoAutomation />} />
-      <Route path="/DigitalResellers" element={<DigitalResellers />} />
-      <Route path="/NED" element={<NED />} />
-      <Route path="/VIPZ" element={<VIPZ />} />
-      <Route path="/IdentityManager" element={<IdentityManager />} />
-      <Route path="/Chat" element={<Chat />} />
-      <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
-      <Route path="/admin" element={<AdminPanel />} />
-      <Route path="/AdminPanel" element={<AdminPanel />} />
-      <Route path="/AutopilotLogs" element={<AutopilotLogs />} />
-      <Route path="/AIIdentityStudio" element={<AIIdentityStudio />} />
-      <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
-      <Route path="*" element={<PageNotFound />} />
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/Dashboard" element={<Dashboard />} />
+        <Route path="/StarshipBridge" element={<StarshipBridge />} />
+        <Route path="/Control" element={<Control />} />
+        <Route path="/AutoPilot" element={<AutoPilot />} />
+        <Route path="/AutoPilotEngine" element={<AutoPilotEngine />} />
+        <Route path="/Discovery" element={<Discovery />} />
+        <Route path="/WorkDiscovery" element={<WorkDiscovery />} />
+        <Route path="/Execution" element={<Execution />} />
+        <Route path="/Finance" element={<Finance />} />
+        <Route path="/WalletDashboard" element={<WalletDashboard />} />
+        <Route path="/CryptoAutomation" element={<CryptoAutomation />} />
+        <Route path="/DigitalResellers" element={<DigitalResellers />} />
+        <Route path="/NED" element={<NED />} />
+        <Route path="/VIPZ" element={<VIPZ />} />
+        <Route path="/IdentityManager" element={<IdentityManager />} />
+        <Route path="/Chat" element={<Chat />} />
+        <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/AdminPanel" element={<AdminPanel />} />
+        <Route path="/AutopilotLogs" element={<AutopilotLogs />} />
+        <Route path="/AIIdentityStudio" element={<AIIdentityStudio />} />
+        <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
+        <Route path="*" element={<PageNotFound />} />
+      </Route>
     </Routes>
   );
 };

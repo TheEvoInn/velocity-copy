@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,280 +7,121 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Users, Shield, Search, Trash2, CheckCircle2, XCircle,
-  Mail, Eye, Lock, RefreshCw, Download, Clock, AlertCircle, Activity
+  Eye, RefreshCw, Clock, AlertCircle, Activity, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+async function adminCall(action, extra = {}) {
+  const res = await base44.functions.invoke('adminService', { action, ...extra });
+  if (res.data?.error) throw new Error(res.data.error);
+  return res.data;
+}
 
 export default function AdminPanel() {
   const [searchEmail, setSearchEmail] = useState('');
   const [expandedUser, setExpandedUser] = useState(null);
-  const [liveUpdates, setLiveUpdates] = useState(0);
   const queryClient = useQueryClient();
 
-  // Fetch all users with service role access
-  const { data: users = [], isLoading, refetch } = useQuery({
+  const { data: usersData, isLoading: loadingUsers, refetch, error: usersError } = useQuery({
     queryKey: ['adminUsers'],
-    queryFn: async () => {
-      try {
-        const allUsers = await base44.asServiceRole.entities.User.list('-created_date', 1000);
-        return Array.isArray(allUsers) ? allUsers : [];
-      } catch (error) {
-        console.error('Error fetching users:', error);
-        return [];
-      }
-    },
+    queryFn: () => adminCall('list_users'),
     staleTime: 0,
-    refetchInterval: 10000
   });
 
-  // Real-time subscriptions for live updates
-  useEffect(() => {
-    const unsubscribeUser = base44.entities.User.subscribe((event) => {
-      setLiveUpdates(prev => prev + 1);
-      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
-      toast.info(`User ${event.type}d: ${event.data?.email}`);
-    });
-
-    const unsubscribeKYC = base44.entities.KYCVerification.subscribe((event) => {
-      setLiveUpdates(prev => prev + 1);
-      queryClient.invalidateQueries({ queryKey: ['adminKYCs'] });
-    });
-
-    const unsubscribeIdentity = base44.entities.AIIdentity.subscribe((event) => {
-      setLiveUpdates(prev => prev + 1);
-      queryClient.invalidateQueries({ queryKey: ['adminIdentities'] });
-    });
-
-    const unsubscribeConnection = base44.entities.PlatformConnection.subscribe((event) => {
-      setLiveUpdates(prev => prev + 1);
-      queryClient.invalidateQueries({ queryKey: ['adminConnections'] });
-    });
-
-    return () => {
-      unsubscribeUser();
-      unsubscribeKYC();
-      unsubscribeIdentity();
-      unsubscribeConnection();
-    };
-  }, [queryClient]);
-
-  // Fetch user-related data
-  const { data: kycs = [] } = useQuery({
+  const { data: kycsData, isLoading: loadingKYCs } = useQuery({
     queryKey: ['adminKYCs'],
-    queryFn: async () => {
-      try {
-        return await base44.asServiceRole.entities.KYCVerification.list('-created_date', 1000) || [];
-      } catch {
-        return [];
-      }
-    }
+    queryFn: () => adminCall('list_kycs'),
+    staleTime: 0,
   });
 
-  const { data: identities = [] } = useQuery({
+  const { data: identitiesData } = useQuery({
     queryKey: ['adminIdentities'],
-    queryFn: async () => {
-      try {
-        return await base44.asServiceRole.entities.AIIdentity.list('-created_date', 1000) || [];
-      } catch {
-        return [];
-      }
-    }
+    queryFn: () => adminCall('list_identities'),
+    staleTime: 0,
   });
 
-  const { data: connections = [] } = useQuery({
-    queryKey: ['adminConnections'],
-    queryFn: async () => {
-      try {
-        return await base44.asServiceRole.entities.PlatformConnection.list('-created_date', 1000) || [];
-      } catch {
-        return [];
-      }
-    }
+  const users = usersData?.users || [];
+  const kycs = kycsData?.kycs || [];
+  const identities = identitiesData?.identities || [];
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+    queryClient.invalidateQueries({ queryKey: ['adminKYCs'] });
+    queryClient.invalidateQueries({ queryKey: ['adminIdentities'] });
+  };
+
+  const approveMutation = useMutation({
+    mutationFn: async (kycId) => adminCall('approve_kyc', { kyc_id: kycId }),
+    onSuccess: () => { invalidateAll(); toast.success('KYC approved'); },
+    onError: (e) => toast.error(`Failed: ${e.message}`)
   });
 
-  // Mutations for admin actions
-  const approveUserMutation = useMutation({
-    mutationFn: async (userId) => {
-      const kyc = kycs.find(k => k.created_by === userId);
-      if (kyc) {
-        await base44.asServiceRole.entities.KYCVerification.update(kyc.id, {
-          admin_status: 'approved',
-          status: 'approved'
-        });
-      }
-      return userId;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminKYCs'] });
-      toast.success('User approved');
-    },
-    onError: () => toast.error('Failed to approve user')
+  const denyMutation = useMutation({
+    mutationFn: async (kycId) => adminCall('deny_kyc', { kyc_id: kycId }),
+    onSuccess: () => { invalidateAll(); toast.success('KYC denied'); },
+    onError: (e) => toast.error(`Failed: ${e.message}`)
   });
 
-  const denyUserMutation = useMutation({
-    mutationFn: async (userId) => {
-      const kyc = kycs.find(k => k.created_by === userId);
-      if (kyc) {
-        await base44.asServiceRole.entities.KYCVerification.update(kyc.id, {
-          admin_status: 'rejected',
-          status: 'rejected'
-        });
-      }
-      return userId;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminKYCs'] });
-      toast.success('User denied');
-    },
-    onError: () => toast.error('Failed to deny user')
+  const setRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }) => adminCall('update_user_role', { user_id: userId, role }),
+    onSuccess: () => { invalidateAll(); toast.success('Role updated'); },
+    onError: (e) => toast.error(`Failed: ${e.message}`)
   });
 
-  const deleteUserMutation = useMutation({
-    mutationFn: async (userId) => {
-      // Delete related records first
-      const relatedKYCs = kycs.filter(k => k.created_by === userId);
-      const relatedIdentities = identities.filter(i => i.created_by === userId);
-      const relatedConnections = connections.filter(c => c.created_by === userId);
-
-      for (const kyc of relatedKYCs) {
-        try {
-          await base44.asServiceRole.entities.KYCVerification.delete(kyc.id);
-        } catch {}
-      }
-      for (const identity of relatedIdentities) {
-        try {
-          await base44.asServiceRole.entities.AIIdentity.delete(identity.id);
-        } catch {}
-      }
-      for (const conn of relatedConnections) {
-        try {
-          await base44.asServiceRole.entities.PlatformConnection.delete(conn.id);
-        } catch {}
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminUsers', 'adminKYCs', 'adminIdentities', 'adminConnections'] });
-      toast.success('User and related data deleted');
-      setExpandedUser(null);
-    },
-    onError: () => toast.error('Failed to delete user')
-  });
-
-  const verifyKYCMutation = useMutation({
-    mutationFn: async (kycId) => {
-      await base44.asServiceRole.entities.KYCVerification.update(kycId, {
-        verified_at: new Date().toISOString(),
-        admin_status: 'approved'
-      });
-      return kycId;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminKYCs'] });
-      toast.success('KYC verified');
-    },
-    onError: () => toast.error('Failed to verify KYC')
-  });
-
-  // Filter users by search
-  const filteredUsers = searchEmail.length >= 3
-    ? users.filter(u => u.email?.toLowerCase().includes(searchEmail.toLowerCase()))
+  const filteredUsers = searchEmail.length >= 2
+    ? users.filter(u => u.email?.toLowerCase().includes(searchEmail.toLowerCase()) || u.full_name?.toLowerCase().includes(searchEmail.toLowerCase()))
     : users;
 
-  // Get user stats
   const totalUsers = users.length;
-  const verifiedUsers = kycs.filter(k => k.status === 'approved').length;
-  const rejectedUsers = kycs.filter(k => k.status === 'rejected').length;
-  const pendingKYC = kycs.filter(k => k.status === 'pending' || k.status === 'submitted').length;
-  const usersWithIdentities = identities.length;
-  const activeConnections = connections.filter(c => c.status === 'connected').length;
+  const verifiedCount = kycs.filter(k => k.status === 'approved').length;
+  const rejectedCount = kycs.filter(k => k.status === 'rejected').length;
+  const pendingCount = kycs.filter(k => !['approved', 'rejected'].includes(k.status)).length;
+
+  const isLoading = loadingUsers || loadingKYCs;
 
   return (
     <div className="min-h-screen galaxy-bg p-6">
       <div className="max-w-7xl mx-auto">
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-orbitron font-bold text-white mb-2">ADMIN PANEL</h1>
-            <p className="text-slate-400 text-sm">Full platform administrative control and user management</p>
+            <p className="text-slate-400 text-sm">Platform-wide user and KYC management</p>
           </div>
-          <Button
-            onClick={() => refetch()}
-            disabled={isLoading}
-            variant="outline"
-            className="gap-2"
-          >
+          <Button onClick={() => { invalidateAll(); refetch(); }} disabled={isLoading} variant="outline" className="gap-2">
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
 
-        {/* Live Updates Indicator */}
-        <div className="mb-6 px-4 py-3 rounded-lg bg-cyan-400/10 border border-cyan-400/30 flex items-center gap-2">
-          <Activity className="w-4 h-4 text-cyan-400 animate-pulse" />
-          <span className="text-xs text-cyan-400">Live updates active · {liveUpdates} changes</span>
-        </div>
+        {/* Error state */}
+        {usersError && (
+          <div className="mb-6 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            Error loading users: {usersError.message}
+          </div>
+        )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-xs uppercase">Total</p>
-                  <p className="text-3xl font-bold text-white mt-1">{totalUsers}</p>
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Total Users', value: totalUsers, color: 'text-cyan-400', icon: Users },
+            { label: 'KYC Approved', value: verifiedCount, color: 'text-emerald-400', icon: CheckCircle2 },
+            { label: 'KYC Pending', value: pendingCount, color: 'text-amber-400', icon: Clock },
+            { label: 'KYC Rejected', value: rejectedCount, color: 'text-red-400', icon: AlertCircle },
+          ].map(stat => (
+            <Card key={stat.label} className="glass-card">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-xs uppercase">{stat.label}</p>
+                    <p className={`text-3xl font-bold mt-1 ${stat.color}`}>{isLoading ? '…' : stat.value}</p>
+                  </div>
+                  <stat.icon className={`w-8 h-8 opacity-40 ${stat.color}`} />
                 </div>
-                <Users className="w-8 h-8 text-cyan-400 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-xs uppercase">Verified</p>
-                  <p className="text-3xl font-bold text-emerald-400 mt-1">{verifiedUsers}</p>
-                </div>
-                <CheckCircle2 className="w-8 h-8 text-emerald-400 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-xs uppercase">Rejected</p>
-                  <p className="text-3xl font-bold text-red-400 mt-1">{rejectedUsers}</p>
-                </div>
-                <AlertCircle className="w-8 h-8 text-red-400 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-xs uppercase">Pending</p>
-                  <p className="text-3xl font-bold text-amber-400 mt-1">{pendingKYC}</p>
-                </div>
-                <Clock className="w-8 h-8 text-amber-400 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-xs uppercase">Connected</p>
-                  <p className="text-3xl font-bold text-violet-400 mt-1">{activeConnections}</p>
-                </div>
-                <Shield className="w-8 h-8 text-violet-400 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Search */}
@@ -289,10 +130,9 @@ export default function AdminPanel() {
             <div className="relative">
               <Search className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
               <Input
-                type="email"
-                placeholder="Search by email (min 3 chars)..."
+                placeholder="Search by name or email..."
                 value={searchEmail}
-                onChange={(e) => setSearchEmail(e.target.value)}
+                onChange={e => setSearchEmail(e.target.value)}
                 className="pl-10 bg-slate-800 border-slate-700 text-white"
               />
             </div>
@@ -302,144 +142,159 @@ export default function AdminPanel() {
         {/* Users List */}
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-white">Users ({filteredUsers.length})</CardTitle>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Activity className="w-4 h-4 text-cyan-400" />
+              Users ({filteredUsers.length})
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 max-h-[70vh] overflow-y-auto">
-              {isLoading ? (
-                <div className="text-center py-8 text-slate-400">Loading users...</div>
-              ) : filteredUsers.length === 0 ? (
-                <div className="text-center py-8 text-slate-400">No users found</div>
-              ) : (
-                filteredUsers.map(user => {
-                  const userKYC = kycs.find(k => k.created_by === user.email);
-                  const userIdentities = identities.filter(i => i.created_by === user.email);
-                  const userConnections = connections.filter(c => c.created_by === user.email);
-                  const isExpanded = expandedUser === user.id;
+            {isLoading ? (
+              <div className="text-center py-12 text-slate-400">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+                Loading users...
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="text-center py-12 text-slate-500">No users found</div>
+            ) : (
+              <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
+                {filteredUsers.map(u => {
+                  const userKYC = kycs.find(k => k.created_by === u.email);
+                  const userIdentities = identities.filter(i => i.created_by === u.email);
+                  const isExpanded = expandedUser === u.id;
+
+                  const kycStatusColor = userKYC?.status === 'approved'
+                    ? 'text-emerald-400 border-emerald-400/30'
+                    : userKYC?.status === 'rejected'
+                    ? 'text-red-400 border-red-400/30'
+                    : 'text-amber-400 border-amber-400/30';
 
                   return (
-                    <div key={user.id} className="border border-slate-700 rounded-lg p-4 hover:border-cyan-500/30 transition">
-                      {/* Main user row */}
-                      <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpandedUser(isExpanded ? null : user.id)}>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-slate-500" />
-                            <div>
-                              <p className="text-white font-semibold">{user.full_name || 'Unknown'}</p>
-                              <p className="text-xs text-slate-400">{user.email}</p>
-                            </div>
+                    <div key={u.id} className="border border-slate-700/50 rounded-xl overflow-hidden hover:border-slate-600 transition-colors">
+                      {/* Row */}
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/[0.02]"
+                        onClick={() => setExpandedUser(isExpanded ? null : u.id)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${u.role === 'admin' ? 'bg-cyan-400' : 'bg-slate-600'}`} />
+                          <div className="min-w-0">
+                            <p className="text-white font-medium truncate">{u.full_name || 'No name'}</p>
+                            <p className="text-xs text-slate-400 truncate">{u.email}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                            {user.role || 'user'}
+                        <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                          <Badge variant="outline" className="text-xs">
+                            {u.role || 'user'}
                           </Badge>
-                          <Badge variant={userKYC?.status === 'approved' ? 'default' : 'secondary'}>
-                            {userKYC?.status || 'no kyc'}
-                          </Badge>
+                          {userKYC ? (
+                            <Badge variant="outline" className={`text-xs ${kycStatusColor}`}>
+                              KYC: {userKYC.status}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-slate-500">No KYC</Badge>
+                          )}
+                          {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
                         </div>
                       </div>
 
-                      {/* Expanded details */}
+                      {/* Expanded */}
                       {isExpanded && (
-                        <div className="mt-4 pt-4 border-t border-slate-700 space-y-4">
-                          {/* User metadata */}
-                          <div className="bg-slate-800/30 rounded p-3 text-xs text-slate-400 space-y-1">
-                            <p>Created: <span className="text-cyan-400">{new Date(user.created_date).toLocaleString()}</span></p>
-                            <p>ID: <span className="font-mono text-slate-500">{user.id.substring(0, 12)}...</span></p>
+                        <div className="border-t border-slate-700/50 bg-slate-900/30 p-4 space-y-4">
+
+                          {/* User info */}
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-slate-800/40 rounded p-2">
+                              <p className="text-slate-500 mb-0.5">User ID</p>
+                              <p className="text-slate-300 font-mono">{u.id?.substring(0, 16)}...</p>
+                            </div>
+                            <div className="bg-slate-800/40 rounded p-2">
+                              <p className="text-slate-500 mb-0.5">Joined</p>
+                              <p className="text-slate-300">{new Date(u.created_date).toLocaleDateString()}</p>
+                            </div>
                           </div>
 
-                          {/* KYC Section */}
-                          {userKYC && (
-                            <div className="bg-slate-800/50 rounded p-3">
-                              <p className="text-xs font-semibold text-cyan-400 mb-2">KYC Verification</p>
-                              <div className="space-y-1 text-xs text-slate-300">
+                          {/* Role management */}
+                          <div className="bg-slate-800/40 rounded p-3">
+                            <p className="text-xs font-semibold text-cyan-400 mb-2">Role Management</p>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setRoleMutation.mutate({ userId: u.id, role: 'user' })}
+                                disabled={setRoleMutation.isPending || u.role === 'user'}
+                                className="text-xs"
+                              >
+                                Set User
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setRoleMutation.mutate({ userId: u.id, role: 'admin' })}
+                                disabled={setRoleMutation.isPending || u.role === 'admin'}
+                                className="text-xs border-cyan-400/30 text-cyan-400 hover:bg-cyan-400/10"
+                              >
+                                Set Admin
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* KYC section */}
+                          {userKYC ? (
+                            <div className="bg-slate-800/40 rounded p-3">
+                              <p className="text-xs font-semibold text-violet-400 mb-2">KYC Verification</p>
+                              <div className="space-y-1 text-xs text-slate-300 mb-3">
+                                <p>Legal Name: <span className="text-white">{userKYC.full_legal_name || '—'}</span></p>
                                 <p>Status: <span className="text-white capitalize">{userKYC.status}</span></p>
-                                <p>Name: <span className="text-white">{userKYC.full_legal_name || '—'}</span></p>
-                                <p>Verified: <span className="text-white">{userKYC.verified_at ? new Date(userKYC.verified_at).toLocaleString() : '—'}</span></p>
-                                {userKYC.admin_notes && <p>Notes: <span className="text-slate-400">{userKYC.admin_notes}</span></p>}
-                                <div className="flex flex-wrap gap-2 mt-3">
-                                  {userKYC.status !== 'approved' && (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => approveUserMutation.mutate(user.email)}
-                                      disabled={approveUserMutation.isPending}
-                                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1"
-                                    >
-                                      <CheckCircle2 className="w-3 h-3" /> Approve
-                                    </Button>
-                                  )}
-                                  {userKYC.status !== 'rejected' && (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => denyUserMutation.mutate(user.email)}
-                                      disabled={denyUserMutation.isPending}
-                                      className="bg-red-600 hover:bg-red-700 text-white text-xs gap-1"
-                                    >
-                                      <XCircle className="w-3 h-3" /> Deny
-                                    </Button>
-                                  )}
-                                  {userKYC.verified_at && (
-                                    <Button
-                                      size="sm"
-                                      disabled
-                                      className="bg-slate-700 text-slate-400 text-xs gap-1"
-                                    >
-                                      <Eye className="w-3 h-3" /> Verified
-                                    </Button>
-                                  )}
-                                </div>
+                                {userKYC.verified_at && (
+                                  <p>Verified: <span className="text-emerald-400">{new Date(userKYC.verified_at).toLocaleString()}</span></p>
+                                )}
                               </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => approveMutation.mutate(userKYC.id)}
+                                  disabled={approveMutation.isPending || userKYC.status === 'approved'}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1"
+                                >
+                                  <CheckCircle2 className="w-3 h-3" /> Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => denyMutation.mutate(userKYC.id)}
+                                  disabled={denyMutation.isPending || userKYC.status === 'rejected'}
+                                  className="bg-red-700 hover:bg-red-800 text-white text-xs gap-1"
+                                >
+                                  <XCircle className="w-3 h-3" /> Deny
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-slate-800/40 rounded p-3 text-xs text-slate-500">
+                              No KYC submission found for this user.
                             </div>
                           )}
 
-                          {/* Identities Section */}
+                          {/* Identities */}
                           {userIdentities.length > 0 && (
-                            <div className="bg-slate-800/50 rounded p-3">
-                              <p className="text-xs font-semibold text-violet-400 mb-2">AI Identities ({userIdentities.length})</p>
-                              <div className="space-y-1 text-xs text-slate-300">
-                                {userIdentities.map(identity => (
-                                  <p key={identity.id}>{identity.name} - <Badge variant="outline">{identity.is_active ? 'Active' : 'Inactive'}</Badge></p>
+                            <div className="bg-slate-800/40 rounded p-3">
+                              <p className="text-xs font-semibold text-amber-400 mb-2">AI Identities ({userIdentities.length})</p>
+                              <div className="space-y-1">
+                                {userIdentities.map(id => (
+                                  <div key={id.id} className="flex items-center justify-between text-xs">
+                                    <span className="text-slate-300">{id.name}</span>
+                                    <Badge variant="outline" className="text-xs">{id.is_active ? 'Active' : 'Inactive'}</Badge>
+                                  </div>
                                 ))}
                               </div>
                             </div>
                           )}
-
-                          {/* Connections Section */}
-                          {userConnections.length > 0 && (
-                            <div className="bg-slate-800/50 rounded p-3">
-                              <p className="text-xs font-semibold text-amber-400 mb-2">Platform Connections ({userConnections.length})</p>
-                              <div className="space-y-1 text-xs text-slate-300">
-                                {userConnections.map(conn => (
-                                  <p key={conn.id}>{conn.platform} - <Badge variant="outline">{conn.status}</Badge></p>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Admin Actions */}
-                          <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-700">
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                if (confirm(`Delete ${user.full_name} and all related data?`)) {
-                                  deleteUserMutation.mutate(user.email);
-                                }
-                              }}
-                              disabled={deleteUserMutation.isPending}
-                              variant="destructive"
-                              className="text-xs gap-1"
-                            >
-                              <Trash2 className="w-3 h-3" /> Delete User
-                            </Button>
-                          </div>
                         </div>
                       )}
                     </div>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

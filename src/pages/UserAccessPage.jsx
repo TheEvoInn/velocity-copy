@@ -10,6 +10,7 @@ import AutopilotSettings from '../components/account/AutopilotSettings';
 import ConnectedAccountsSettings from '../components/account/ConnectedAccountsSettings';
 import ComplianceSettings from '../components/account/ComplianceSettings';
 import NotificationsHub from '../components/notifications/NotificationsHub';
+import NotificationPreferences from '../components/notifications/NotificationPreferences';
 import KYCConsolidationStatus from '../components/account/KYCConsolidationStatus';
 
 export default function UserAccessPage() {
@@ -63,9 +64,9 @@ export default function UserAccessPage() {
     },
     {
       id: 'notifications',
-      label: 'Notifications',
+      label: 'Notification Settings',
       icon: Bell,
-      component: () => import('@/components/notifications/NotificationPreferences').then(m => m.default)
+      component: NotificationPreferences
     },
     {
       id: 'notification_history',

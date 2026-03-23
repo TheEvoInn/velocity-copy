@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AdminOverview from '@/components/admin/AdminOverview';
-import AdminUserManagement from '@/components/admin/AdminUserManagement';
-import AdminOpportunities from '@/components/admin/AdminOpportunities';
-import AdminTransactions from '@/components/admin/AdminTransactions';
-import AdminActivityLog from '@/components/admin/AdminActivityLog';
+import AdminOverview from '@/components/admin/AdminOverview.jsx';
+import AdminUserManagement from '@/components/admin/AdminUserManagement.jsx';
+import AdminOpportunities from '@/components/admin/AdminOpportunities.jsx';
+import AdminTransactions from '@/components/admin/AdminTransactions.jsx';
+import AdminActivityLog from '@/components/admin/AdminActivityLog.jsx';
 import { Shield, LayoutDashboard, Users, TrendingUp, DollarSign, Activity, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 

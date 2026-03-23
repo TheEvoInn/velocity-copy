@@ -35,6 +35,7 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
   const [avatarUrl, setAvatarUrl] = useState(identity?.avatar_url || '');
   const [uploading, setUploading] = useState(false);
   const [aiGenerating, setAiGenerating] = useState({});
+  const [suggestedSkills, setSuggestedSkills] = useState([]);
 
   const saveMutation = useMutation({
     mutationFn: async (formData) => {
@@ -119,6 +120,32 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
       toast.error(`AI generation failed: ${err.message}`);
     } finally {
       setAiGenerating(p => ({ ...p, [field]: false }));
+    }
+  };
+
+  const generateSkillSuggestions = async () => {
+    setAiGenerating(p => ({ ...p, skills: true }));
+    try {
+      const prompt = `Generate 8-10 relevant skills for a ${form.role_label} professional. Return only skill names separated by commas, no explanations. Example format: Python, React, UI Design, Project Management`;
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        model: 'gemini_3_flash'
+      });
+      const suggestions = res.split(',').map(s => s.trim()).filter(Boolean).slice(0, 10);
+      setSuggestedSkills(suggestions);
+      toast.success('Skills suggested');
+    } catch (err) {
+      toast.error(`Suggestion failed: ${err.message}`);
+    } finally {
+      setAiGenerating(p => ({ ...p, skills: false }));
+    }
+  };
+
+  const addSkill = (skill) => {
+    const current = form.skills.split(',').map(s => s.trim()).filter(Boolean);
+    if (!current.includes(skill)) {
+      setForm(p => ({ ...p, skills: [...current, skill].join(', ') }));
+      setSuggestedSkills(prev => prev.filter(s => s !== skill));
     }
   };
 
@@ -276,13 +303,41 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
         {/* Skills & Communication */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
           <div>
-            <label className="block text-sm font-medium text-white mb-2">Skills (comma separated)</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-white">Skills (comma separated)</label>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={generateSkillSuggestions}
+                disabled={aiGenerating.skills}
+                className="h-6 px-2 text-xs gap-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+              >
+                <Sparkles className="w-3 h-3" />
+                {aiGenerating.skills ? 'Suggesting...' : 'Get suggestions'}
+              </Button>
+            </div>
             <Textarea
               value={form.skills}
               onChange={(e) => setForm(p => ({ ...p, skills: e.target.value }))}
               placeholder="Python, React, UI Design, ..."
               className="bg-slate-800 border-slate-700 h-20"
             />
+            {suggestedSkills.length > 0 && (
+              <div className="mt-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                <p className="text-xs text-slate-400 mb-2">Suggested skills:</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedSkills.map(skill => (
+                    <button
+                      key={skill}
+                      onClick={() => addSkill(skill)}
+                      className="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-full hover:bg-cyan-500/30 hover:border-cyan-500/60 transition-all active:scale-95"
+                    >
+                      + {skill}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div>

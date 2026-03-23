@@ -130,44 +130,46 @@ function NavItem({ dept, isActive }) {
 }
 
 // ─── Mobile Bottom Tab Bar ────────────────────────────────────────────────────
-function MobileTabBar({ currentPath }) {
+function MobileTabBar({ currentPath, onMoreClick }) {
+  const primaryDepts = DEPARTMENTS.filter(d => MOBILE_PRIMARY_TABS.includes(d.path));
+  const hasSecondaryActive = !MOBILE_PRIMARY_TABS.includes(currentPath) && currentPath !== '/';
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex items-stretch"
       style={{
-        background: 'rgba(5,7,20,0.95)',
-        borderTop: '1px solid rgba(124,58,237,0.2)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
+        background: 'rgba(5,7,20,0.97)',
+        borderTop: '1px solid rgba(124,58,237,0.25)',
+        backdropFilter: 'blur(32px)',
+        WebkitBackdropFilter: 'blur(32px)',
         paddingBottom: 'env(safe-area-inset-bottom)',
+        minHeight: 64,
       }}
     >
-      {DEPARTMENTS.map(dept => {
-        const isActive = currentPath === dept.path ||
-          (dept.path !== '/Dashboard' && currentPath.startsWith(dept.path));
+      {primaryDepts.map(dept => {
         const Icon = dept.icon;
+        const isActive = currentPath === dept.path ||
+          (dept.path === '/Dashboard' && currentPath === '/') ||
+          (dept.path !== '/Dashboard' && currentPath.startsWith(dept.path));
         return (
           <Link
             key={dept.path}
             to={dept.path}
-            className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-all duration-200 relative"
-            style={{ minHeight: 56 }}
+            className="flex-1 flex flex-col items-center justify-center gap-1 transition-all duration-200 relative active:scale-95"
+            style={{ minHeight: 60, paddingTop: 8, paddingBottom: 8 }}
           >
-            {/* Active indicator line */}
             {isActive && (
               <span
-                className="absolute top-0 left-1/4 right-1/4 h-0.5 rounded-full"
-                style={{ background: dept.color, boxShadow: `0 0 8px ${dept.color}` }}
+                className="absolute top-0 left-[20%] right-[20%] h-0.5 rounded-full"
+                style={{ background: dept.color, boxShadow: `0 0 6px ${dept.color}` }}
               />
             )}
+            <Icon
+              className="w-5 h-5 transition-all duration-200"
+              style={{ color: isActive ? dept.color : '#64748b', filter: isActive ? `drop-shadow(0 0 4px ${dept.color})` : 'none' }}
+            />
             <span
-              className="text-xl leading-none transition-transform duration-200"
-              style={{ transform: isActive ? 'scale(1.2)' : 'scale(1)' }}
-            >
-              {dept.planet}
-            </span>
-            <span
-              className="text-[9px] font-orbitron tracking-wide transition-all duration-200"
+              className="text-[10px] font-medium tracking-wide transition-all duration-200 leading-none"
               style={{ color: isActive ? dept.color : '#64748b' }}
             >
               {dept.label}
@@ -175,6 +177,24 @@ function MobileTabBar({ currentPath }) {
           </Link>
         );
       })}
+
+      {/* More button */}
+      <button
+        onClick={onMoreClick}
+        className="flex-1 flex flex-col items-center justify-center gap-1 transition-all duration-200 active:scale-95"
+        style={{ minHeight: 60, paddingTop: 8, paddingBottom: 8 }}
+      >
+        <Menu
+          className="w-5 h-5 transition-all duration-200"
+          style={{ color: hasSecondaryActive ? '#ec4899' : '#64748b' }}
+        />
+        <span
+          className="text-[10px] font-medium tracking-wide leading-none"
+          style={{ color: hasSecondaryActive ? '#ec4899' : '#64748b' }}
+        >
+          More
+        </span>
+      </button>
     </nav>
   );
 }

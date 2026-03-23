@@ -385,9 +385,9 @@ export default function AppLayout() {
               <span className="hidden lg:block font-orbitron text-[10px] tracking-wide">VELOCITY AI</span>
             </Link>
             {user?.role === 'admin' && (
-              <Link to="/AdminControlPanel"
+              <Link to="/AdminPanel"
                 className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-xs ${
-                  location.pathname === '/AdminControlPanel'
+                  location.pathname === '/AdminPanel'
                     ? 'border-red-500/50 text-red-300 bg-red-500/10'
                     : 'border-red-500/20 text-red-400/70 hover:text-red-300 hover:border-red-400/40 hover:bg-red-500/8'
                 }`}

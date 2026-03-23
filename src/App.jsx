@@ -22,7 +22,6 @@ import DigitalResellers from './pages/DigitalResellers';
 import NED from './pages/NED';
 import VIPZ from './pages/VIPZ';
 import IdentityManager from './pages/IdentityManager';
-import AdminControlPanel from './pages/AdminControlPanel';
 import Chat from './pages/Chat';
 import SystemAuditDashboard from './pages/SystemAuditDashboard';
 import AdminPanel from './pages/AdminPanel';

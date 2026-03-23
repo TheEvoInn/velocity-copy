@@ -79,6 +79,7 @@ const AuthenticatedApp = () => {
         <Route path="/AIIdentityStudio" element={<AIIdentityStudio />} />
         <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
         <Route path="/UserAccessPage" element={<UserAccessPage />} />
+        <Route path="/WorkflowBuilder" element={<WorkflowBuilder />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

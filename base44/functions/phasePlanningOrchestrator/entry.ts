@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'get_phase_dependencies') {
-      return await getPhase Dependenciesbase44, user, body);
+      return await getPhase Dependencies(base44, user, body);
     }
 
     if (action === 'get_resource_requirements') {

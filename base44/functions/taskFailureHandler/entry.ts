@@ -45,7 +45,28 @@ Deno.serve(async (req) => {
       }, { status: 500 });
     }
 
-    // Step 2: Orchestrate retry if recoverable
+    // Step 2: Check if user input required (intervention)
+    if (analysisResult.requires_user_input) {
+      const interventionResult = await base44.functions.invoke('createUserIntervention', {
+        task_id,
+        requirement_type: analysisResult.error_type,
+        data_schema: buildDataSchema(analysisResult),
+        priority: 85
+      }).catch(() => null);
+
+      if (interventionResult) {
+        return Response.json({
+          task_id,
+          analysis: analysisResult,
+          intervention_created: true,
+          intervention_id: interventionResult.intervention_id,
+          message: 'User intervention required',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+
+    // Step 3: Orchestrate retry if recoverable
     let retryResult = null;
     if (analysisResult.is_recoverable) {
       retryResult = await base44.functions.invoke('smartRetryOrchestrator', {
@@ -90,3 +111,32 @@ Deno.serve(async (req) => {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+
+function buildDataSchema(analysis) {
+  const schemas = {
+    'captcha': {
+      type: 'object',
+      properties: {
+        captcha_solution: { type: 'string', description: 'Captcha solution code' }
+      },
+      required: ['captcha_solution']
+    },
+    'credential': {
+      type: 'object',
+      properties: {
+        platform: { type: 'string' },
+        username: { type: 'string' },
+        password: { type: 'string' }
+      },
+      required: ['platform', 'username', 'password']
+    },
+    'two_factor': {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: '2FA code' }
+      },
+      required: ['code']
+    }
+  };
+  return schemas[analysis.error_type] || { type: 'object', properties: {} };
+}

@@ -66,8 +66,13 @@ export default function UserAccountSettings() {
     await updateUserMutation.mutateAsync(formData);
   };
 
-  if (!user) {
-    return <div className="text-slate-400">Loading account settings...</div>;
+  if (!user || !formData) {
+    return (
+      <div className="flex items-center gap-3 p-6 text-slate-400">
+        <div className="w-5 h-5 border-2 border-cyan-500/40 border-t-cyan-400 rounded-full animate-spin" />
+        Loading account settings...
+      </div>
+    );
   }
 
   return (

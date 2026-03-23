@@ -32,6 +32,7 @@ import TemplatesLibrary from './pages/TemplatesLibrary';
 import UserAccessPage from './pages/UserAccessPage';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import BankSettings from './pages/BankSettings';
+import AutomationManager from './pages/AutomationManager';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -82,6 +83,7 @@ const AuthenticatedApp = () => {
         <Route path="/UserAccessPage" element={<UserAccessPage />} />
         <Route path="/WorkflowBuilder" element={<WorkflowBuilder />} />
         <Route path="/BankSettings" element={<BankSettings />} />
+        <Route path="/AutomationManager" element={<AutomationManager />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

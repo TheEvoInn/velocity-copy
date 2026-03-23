@@ -358,8 +358,6 @@ function getCuratedOpportunities(userEmail) {
     pay_currency: 'USD',
     keywords_matched: (KEYWORD_MAP[opp.category]?.primary?.slice(0, 2) || []),
   })).filter(o => o.score > 0);
-  ];
-  return []; // DEPRECATED: Return empty — use real APIs
 }
 
 // ─── MAIN HANDLER ─────────────────────────────────────────────────────────────

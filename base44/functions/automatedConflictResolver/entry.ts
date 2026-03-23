@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
       return await getPendingResolutions(base44, user);
     }
 
-    if (action === 'resolve_conflict') {
+    if (action === 'resolve_conflict' || action === 'merge' || action === 'revoke') {
       return await resolveConflict(base44, user, body);
     }
 

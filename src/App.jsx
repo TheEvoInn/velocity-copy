@@ -35,6 +35,7 @@ import BankSettings from './pages/BankSettings';
 import AutomationManager from './pages/AutomationManager';
 import APIManagement from './pages/APIManagement';
 import ComplianceDashboard from './pages/ComplianceDashboard';
+import OptimizationDashboard from './pages/OptimizationDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -88,6 +89,7 @@ const AuthenticatedApp = () => {
         <Route path="/AutomationManager" element={<AutomationManager />} />
         <Route path="/APIManagement" element={<APIManagement />} />
         <Route path="/ComplianceDashboard" element={<ComplianceDashboard />} />
+        <Route path="/OptimizationDashboard" element={<OptimizationDashboard />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

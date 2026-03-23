@@ -30,11 +30,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'get_phase_dependencies') {
-      return await getPhase Dependencies(base44, user, body);
-    }
-
-    if (action === 'get_resource_requirements') {
-      return await getResourceRequirements(base44, user);
+      return await getPhaseDependencies(base44, user, body);
     }
 
     return jsonResponse({ error: 'Unknown action' }, 400);
@@ -188,7 +184,7 @@ async function planPhase(base44, user, body) {
 /**
  * Get phase dependencies
  */
-async function getPhase Dependenciesbase44, user, body) {
+async function getPhaseDependencies(base44, user, body) {
   const { phase_number } = body;
 
   if (!phase_number) {

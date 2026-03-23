@@ -30,6 +30,7 @@ import AutopilotLogs from './pages/AutopilotLogs';
 import AIIdentityStudio from './pages/AIIdentityStudio';
 import TemplatesLibrary from './pages/TemplatesLibrary';
 import UserAccessPage from './pages/UserAccessPage';
+import WorkflowBuilder from './pages/WorkflowBuilder';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

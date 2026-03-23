@@ -16,12 +16,32 @@ const NotificationService = {
 export function useNotifications(autoRefresh = true) {
   const queryClient = useQueryClient();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [wsConnected, setWsConnected] = useState(false);
+
+  // Initialize WebSocket for real-time updates
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/notifications/subscribe`);
+
+    ws.onopen = () => setWsConnected(true);
+    ws.onmessage = (event) => {
+      const notification = JSON.parse(event.data);
+      queryClient.setQueryData(['unreadNotifications'], (old = []) => [notification, ...old]);
+      queryClient.setQueryData(['allNotifications'], (old = []) => [notification, ...old]);
+    };
+    ws.onerror = () => setWsConnected(false);
+    ws.onclose = () => setWsConnected(false);
+
+    return () => ws.close();
+  }, [autoRefresh, queryClient]);
 
   // Fetch unread notifications
   const { data: unreadNotifications = [], isLoading: unreadLoading, refetch: refetchUnread } = useQuery({
     queryKey: ['unreadNotifications'],
     queryFn: () => NotificationService.getUnreadNotifications(),
-    refetchInterval: autoRefresh ? 30000 : false, // Refetch every 30 seconds
+    refetchInterval: autoRefresh && !wsConnected ? 30000 : false, // Fallback to polling if WS disconnected
     staleTime: 5000
   });
 
@@ -29,7 +49,7 @@ export function useNotifications(autoRefresh = true) {
   const { data: allNotifications = [], isLoading: allLoading, refetch: refetchAll } = useQuery({
     queryKey: ['allNotifications'],
     queryFn: () => NotificationService.getNotifications(null, null, 100),
-    refetchInterval: autoRefresh ? 60000 : false,
+    refetchInterval: autoRefresh && !wsConnected ? 60000 : false,
     staleTime: 10000
   });
 
@@ -86,6 +106,8 @@ export function useNotifications(autoRefresh = true) {
     dismiss,
     dismissAll,
     refetchUnread,
-    refetchAll
+    refetchAll,
+    wsConnected,
+    notifications: allNotifications
   };
 }

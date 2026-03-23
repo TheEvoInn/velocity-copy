@@ -236,6 +236,7 @@ export default function WorkflowWizard({ onComplete }) {
 
 function buildStrategyFromResponses(responses) {
   const platforms = responses.platforms || [];
+  const sourceCategories = responses.source_category || [];
   const riskLevel = responses.risk || 'moderate';
   const automationLevel = responses.intensity || 'review';
 
@@ -258,18 +259,24 @@ function buildStrategyFromResponses(responses) {
     });
   }
 
+  const allTargets = [...new Set([...platforms, ...sourceCategories])];
+  const goalLabel = responses.goal ? responses.goal.charAt(0).toUpperCase() + responses.goal.slice(1).replace(/_/g, ' ') : 'Custom';
+  const sourceLabel = sourceCategories.length > 0 ? sourceCategories.join(', ') : 'all sources';
+
   return {
-    name: `${responses.goal ? responses.goal.charAt(0).toUpperCase() + responses.goal.slice(1) : 'Custom'} Strategy`,
-    description: `Auto-generated workflow optimized for ${riskLevel} risk with ${automationLevel} mode`,
+    name: `${goalLabel} — ${riskLevel} risk`,
+    description: `Scans ${sourceLabel} with ${automationLevel} automation. Targets: ${platforms.length > 0 ? platforms.join(', ') : 'all platforms'}.`,
     blocks: [
-      { id: `block_scan_${Date.now()}`, type: 'trigger', label: 'Scan for opportunities', templateId: 'trigger_scan', config: {} },
-      { id: `block_filter_${Date.now()}`, type: 'filter', label: 'Filter by platform', templateId: 'filter_platform', config: { platforms } },
-      { id: `block_action_${Date.now()}`, type: 'action', label: 'Queue task', templateId: 'action_queue', config: {} },
+      { id: `block_scan_${Date.now()}`, type: 'trigger', label: 'Scan for opportunities', templateId: 'trigger_scan', config: { source_categories: sourceCategories } },
+      { id: `block_filter_${Date.now()}`, type: 'filter', label: 'Filter by platform & source', templateId: 'filter_platform', config: { platforms, source_categories: sourceCategories } },
+      { id: `block_action_${Date.now()}`, type: 'action', label: 'Queue task', templateId: 'action_queue', config: { automation: automationLevel } },
     ],
     conditions,
     maxConcurrentTasks: config.maxConcurrentTasks,
     maxDailySpend: parseInt(responses.capital) || config.maxDailySpend,
-    targetPlatforms: platforms.length > 0 ? platforms : ['all'],
+    targetPlatforms: allTargets.length > 0 ? allTargets : ['all'],
+    source_categories: sourceCategories,
+    variant: riskLevel === 'aggressive' ? 'highest_yield' : riskLevel === 'conservative' ? 'safest' : 'fastest',
     enabled: true,
   };
 }

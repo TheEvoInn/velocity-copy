@@ -36,10 +36,7 @@ import AutomationManager from './pages/AutomationManager';
 import APIManagement from './pages/APIManagement';
 import ComplianceDashboard from './pages/ComplianceDashboard';
 import OptimizationDashboard from './pages/OptimizationDashboard';
-import Phase4Dashboard from './pages/Phase4Dashboard';
-import Phase5Dashboard from './pages/Phase5Dashboard';
-import Phase6Dashboard from './pages/Phase6Dashboard';
-import Phase7Dashboard from './pages/Phase7Dashboard';
+
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -94,10 +91,6 @@ const AuthenticatedApp = () => {
         <Route path="/APIManagement" element={<APIManagement />} />
         <Route path="/ComplianceDashboard" element={<ComplianceDashboard />} />
         <Route path="/OptimizationDashboard" element={<OptimizationDashboard />} />
-        <Route path="/Phase4Dashboard" element={<Phase4Dashboard />} />
-        <Route path="/Phase5Dashboard" element={<Phase5Dashboard />} />
-        <Route path="/Phase6Dashboard" element={<Phase6Dashboard />} />
-        <Route path="/Phase7Dashboard" element={<Phase7Dashboard />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

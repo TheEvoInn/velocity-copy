@@ -263,7 +263,7 @@ export default function WorkflowBuilder() {
             <h3 className="font-semibold text-white text-sm mb-3 flex items-center gap-2">
               <Settings className="w-4 h-4" /> Execution Settings
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-xs text-slate-400 block mb-2">Max Concurrent Tasks</label>
                 <input

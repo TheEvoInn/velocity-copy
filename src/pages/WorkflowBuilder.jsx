@@ -286,7 +286,7 @@ export default function WorkflowBuilder() {
                   className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm"
                 />
               </div>
-              <div>
+              <div className="col-span-2 md:col-span-1">
                 <label className="text-xs text-slate-400 block mb-2">Target Platforms</label>
                 <select
                   multiple

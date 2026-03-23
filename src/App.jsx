@@ -70,6 +70,10 @@ const AuthenticatedApp = () => {
       <Route path="/Chat" element={<Chat />} />
       <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
       <Route path="/admin" element={<AdminPanel />} />
+      <Route path="/AdminPanel" element={<AdminPanel />} />
+      <Route path="/AutopilotLogs" element={<AutopilotLogs />} />
+      <Route path="/AIIdentityStudio" element={<AIIdentityStudio />} />
+      <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

@@ -12,8 +12,8 @@ export default function ComplianceSettings() {
   const { data: kyc = {} } = useQuery({
     queryKey: ['kycVerification'],
     queryFn: async () => {
-      const res = await base44.entities.KYCVerification.list(1);
-      return res[0] || {};
+      const result = await base44.functions.invoke('kycAdminService', { action: 'get_my_kyc' });
+      return result.data.record || {};
     }
   });
 

@@ -33,6 +33,7 @@ import UserAccessPage from './pages/UserAccessPage';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import BankSettings from './pages/BankSettings';
 import AutomationManager from './pages/AutomationManager';
+import APIManagement from './pages/APIManagement';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -84,6 +85,7 @@ const AuthenticatedApp = () => {
         <Route path="/WorkflowBuilder" element={<WorkflowBuilder />} />
         <Route path="/BankSettings" element={<BankSettings />} />
         <Route path="/AutomationManager" element={<AutomationManager />} />
+        <Route path="/APIManagement" element={<APIManagement />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

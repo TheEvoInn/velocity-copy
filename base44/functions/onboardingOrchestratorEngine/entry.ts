@@ -203,7 +203,15 @@ async function handleKYCStep(base44, user, data) {
   const existingKYC = kyc?.[0];
 
   const kycData = {
+    user_email: user.email,
     full_legal_name: user.full_name,
+    date_of_birth: data.date_of_birth,
+    residential_address: data.address || '',
+    city: data.city || '',
+    state: data.state || '',
+    postal_code: data.postal_code || '',
+    country: data.country || '',
+    phone_number: data.phone || '',
     government_id_type,
     government_id_number,
     government_id_expiry: id_expiry,
@@ -211,8 +219,7 @@ async function handleKYCStep(base44, user, data) {
     id_document_back_url: government_id_back_url,
     selfie_url,
     status: 'submitted',
-    verified_at: new Date().toISOString(),
-    ai_analysis_status: 'pending'
+    submitted_at: new Date().toISOString()
   };
 
   let savedKYC;

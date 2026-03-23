@@ -257,6 +257,7 @@ export default function TemplatesLibrary() {
       qc.invalidateQueries({ queryKey: ['userGoals'] });
       qc.invalidateQueries({ queryKey: ['platformState'] });
       qc.invalidateQueries({ queryKey: ['strategies'] });
+      qc.invalidateQueries({ queryKey: ['customStrategies'] });
     },
     onError: (error) => {
       console.error('Apply template error:', error);

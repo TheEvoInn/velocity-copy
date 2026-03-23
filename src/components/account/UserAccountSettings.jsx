@@ -9,20 +9,20 @@ import { User, Lock, Bell, Globe, Shield, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function UserAccountSettings() {
-  const [user, setUser] = useState(null);
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch current user
+  const { data: user } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => base44.auth.me(),
+  });
+
+  // Sync formData when user loads
   useEffect(() => {
-    base44.auth.me().then((u) => {
-      if (u) {
-        setUser(u);
-        setFormData(u);
-      }
-    });
-  }, []);
+    if (user && !formData) setFormData(user);
+  }, [user]);
 
   // Fetch user preferences
   const { data: preferences } = useQuery({

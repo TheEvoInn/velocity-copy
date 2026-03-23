@@ -2,44 +2,65 @@
  * NED DEPARTMENT
  * AI crypto intelligence, arbitrage detection, mining/staking automation
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { getDeptStyle } from '@/lib/galaxyTheme';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { TrendingUp, Zap, Wallet, DollarSign } from 'lucide-react';
+import { TrendingUp, Zap, Wallet, DollarSign, RefreshCw } from 'lucide-react';
 
 const style = getDeptStyle('ned');
 
 const DUMMY_COLOR = '#06b6d4';
 
 export default function NED() {
-  const { data: opportunities = [] } = useQuery({
-    queryKey: ['cryptoOpportunities'],
-    queryFn: () => base44.entities.CryptoOpportunity.filter({ created_by: true }, '-priority_score', 50).catch(() => []),
+  const { data: dashboardData = {}, refetch: refetchDashboard, isLoading: dashboardLoading } = useQuery({
+    queryKey: ['ned_dashboard'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('nedRealtimeEngine', {
+        action: 'get_dashboard_summary'
+      });
+      return res.data?.dashboard || {};
+    },
+    refetchInterval: 30000,
     staleTime: 5000,
   });
 
-  const { data: wallets = [] } = useQuery({
-    queryKey: ['cryptoWallets'],
-    queryFn: () => base44.entities.CryptoWallet.filter({ created_by: true }, '-is_primary', 10).catch(() => []),
+  const { data: opportunities = [] } = useQuery({
+    queryKey: ['cryptoOpportunities'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('nedRealtimeEngine', {
+        action: 'get_airdrop_opportunities'
+      });
+      return res.data?.opportunities || [];
+    },
+    refetchInterval: 60000,
     staleTime: 5000,
   });
 
   const { data: stakingPositions = [] } = useQuery({
     queryKey: ['stakingPositions'],
-    queryFn: () => base44.entities.StakingPosition.filter({ created_by: true, status: 'active' }, '-started_at', 20).catch(() => []),
+    queryFn: async () => {
+      const res = await base44.functions.invoke('nedRealtimeEngine', {
+        action: 'get_staking_positions'
+      });
+      return res.data?.positions || [];
+    },
+    refetchInterval: 60000,
     staleTime: 5000,
   });
 
   const stats = {
-    opportunities: opportunities.length,
-    active: opportunities.filter(o => o.status === 'active').length,
-    wallets: wallets.length,
-    totalBalance: wallets.reduce((s, w) => s + (w.balance?.total_balance_usd || 0), 0),
-    staking: stakingPositions.reduce((s, p) => s + (p.daily_reward_usd || 0), 0),
+    opportunities: dashboardData.total_crypto_opportunities || 0,
+    active: dashboardData.airdrop_pending_count || 0,
+    wallets: dashboardData.active_wallets || 0,
+    totalBalance: parseFloat(dashboardData.total_portfolio_value || 0),
+    staking: parseFloat(dashboardData.staking_daily_reward || 0),
+    mining: parseFloat(dashboardData.mining_daily_yield || 0),
+    daily_passive: parseFloat(dashboardData.daily_passive_income || 0),
+    health: dashboardData.health_status || 'SETUP_REQUIRED'
   };
 
   return (
@@ -56,32 +77,49 @@ export default function NED() {
               <p className="text-xs text-slate-400">Crypto Intelligence · Arbitrage · Mining & Staking</p>
             </div>
           </div>
-          <Link to="/CryptoProfitSystems">
-            <Button className="btn-cosmic gap-2">
-              <Zap className="w-4 h-4" />
-              Crypto Dashboard
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => refetchDashboard()}
+              disabled={dashboardLoading}
+            >
+              <RefreshCw className={`w-4 h-4 ${dashboardLoading ? 'animate-spin' : ''}`} />
             </Button>
-          </Link>
+            <Link to="/CryptoProfitSystems">
+              <Button className="btn-cosmic gap-2">
+                <Zap className="w-4 h-4" />
+                Crypto Dashboard
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
           <Card className="glass-card p-4">
-            <div className="text-xs text-slate-400 mb-1">Opportunities</div>
+            <div className="text-xs text-slate-400 mb-1">Airdrops Pending</div>
             <div className="text-2xl font-bold text-cyan-400">{stats.active}</div>
-            <div className="text-xs text-slate-600 mt-1">of {stats.opportunities}</div>
           </Card>
           <Card className="glass-card p-4">
-            <div className="text-xs text-slate-400 mb-1">Wallets</div>
+            <div className="text-xs text-slate-400 mb-1">Total Wallets</div>
             <div className="text-2xl font-bold text-purple-400">{stats.wallets}</div>
           </Card>
           <Card className="glass-card p-4">
-            <div className="text-xs text-slate-400 mb-1">Total Balance</div>
-            <div className="text-2xl font-bold text-emerald-400">${stats.totalBalance.toLocaleString()}</div>
+            <div className="text-xs text-slate-400 mb-1">Portfolio Value</div>
+            <div className="text-2xl font-bold text-emerald-400">${stats.totalBalance.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>
           </Card>
           <Card className="glass-card p-4">
             <div className="text-xs text-slate-400 mb-1">Daily Staking</div>
-            <div className="text-2xl font-bold text-amber-400">${stats.staking.toFixed(0)}</div>
+            <div className="text-2xl font-bold text-amber-400">${stats.staking.toFixed(2)}</div>
+          </Card>
+          <Card className="glass-card p-4">
+            <div className="text-xs text-slate-400 mb-1">Daily Mining</div>
+            <div className="text-2xl font-bold text-violet-400">${stats.mining.toFixed(2)}</div>
+          </Card>
+          <Card className="glass-card p-4">
+            <div className="text-xs text-slate-400 mb-1">Health Status</div>
+            <div className="text-2xl font-bold text-cyan-400">{stats.health}</div>
           </Card>
         </div>
 

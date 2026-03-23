@@ -1,6 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import NotificationService from '@/services/notificationService';
+import { base44 } from '@/api/base44Client';
+
+const NotificationService = {
+  getUnreadNotifications: () => base44.entities.Notification.filter({ is_read: false }, '-created_date', 50),
+  getNotifications: (_a, _b, limit) => base44.entities.Notification.list('-created_date', limit || 100),
+  markAsRead: (id) => base44.entities.Notification.update(id, { is_read: true }),
+  dismiss: (id) => base44.entities.Notification.update(id, { is_dismissed: true }),
+  dismissAllByType: async (type) => {
+    const items = await base44.entities.Notification.filter({ notification_type: type, is_dismissed: false });
+    return Promise.all(items.map(n => base44.entities.Notification.update(n.id, { is_dismissed: true })));
+  },
+};
 
 export function useNotifications(autoRefresh = true) {
   const queryClient = useQueryClient();

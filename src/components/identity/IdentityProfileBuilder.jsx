@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Save, X, Upload, Palette } from 'lucide-react';
+import { Save, X, Upload, Palette, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ROLES = ['Freelancer', 'Developer', 'Designer', 'Writer', 'Marketer', 'Sales Agent', 'Support Agent', 'Custom'];
@@ -34,6 +34,7 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
 
   const [avatarUrl, setAvatarUrl] = useState(identity?.avatar_url || '');
   const [uploading, setUploading] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState({});
 
   const saveMutation = useMutation({
     mutationFn: async (formData) => {
@@ -83,6 +84,42 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
       return;
     }
     saveMutation.mutate(form);
+  };
+
+  const generateWithAI = async (field) => {
+    if (!form.name?.trim()) {
+      toast.error('Enter identity name first');
+      return;
+    }
+
+    setAiGenerating(p => ({ ...p, [field]: true }));
+    try {
+      const context = `Identity: ${form.name} (${form.role_label})\nSkills: ${form.skills}\nTone: ${form.communication_tone}`;
+      let prompt = '';
+
+      if (field === 'tagline') {
+        prompt = `Write a professional one-line tagline for a freelance ${form.role_label} named "${form.name}". The tone should be ${form.communication_tone}. Maximum 10 words.`;
+      } else if (field === 'bio') {
+        prompt = `Write a compelling 2-3 paragraph professional bio for ${form.name}, a ${form.role_label} with skills in: ${form.skills}. Use a ${form.communication_tone} tone. Focus on expertise and value proposition.`;
+      } else if (field === 'proposal_style') {
+        prompt = `Write a brief style guide (5-7 sentences) for how AI should write proposals from the perspective of ${form.name}, a ${form.role_label}. Style: ${form.communication_tone}. Include tips for customization and personalization.`;
+      } else if (field === 'email_signature') {
+        prompt = `Write a professional email signature for ${form.name}. Include name, role (${form.role_label}), and end with a professional sign-off appropriate for ${form.communication_tone} tone.`;
+      }
+
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        model: 'gemini_3_flash'
+      });
+
+      const text = res.trim();
+      setForm(p => ({ ...p, [field]: text }));
+      toast.success(`${field.charAt(0).toUpperCase() + field.slice(1)} generated`);
+    } catch (err) {
+      toast.error(`AI generation failed: ${err.message}`);
+    } finally {
+      setAiGenerating(p => ({ ...p, [field]: false }));
+    }
   };
 
   return (
@@ -192,7 +229,19 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
         {/* Tagline & Bio */}
         <div className="mt-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-white mb-2">Tagline</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-white">Tagline</label>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => generateWithAI('tagline')}
+                disabled={aiGenerating.tagline}
+                className="h-6 px-2 text-xs gap-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+              >
+                <Sparkles className="w-3 h-3" />
+                {aiGenerating.tagline ? 'Writing...' : 'Write'}
+              </Button>
+            </div>
             <Input
               value={form.tagline}
               onChange={(e) => setForm(p => ({ ...p, tagline: e.target.value }))}
@@ -202,7 +251,19 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-white mb-2">Full Bio</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-white">Full Bio</label>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => generateWithAI('bio')}
+                disabled={aiGenerating.bio}
+                className="h-6 px-2 text-xs gap-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+              >
+                <Sparkles className="w-3 h-3" />
+                {aiGenerating.bio ? 'Writing...' : 'Write'}
+              </Button>
+            </div>
             <Textarea
               value={form.bio}
               onChange={(e) => setForm(p => ({ ...p, bio: e.target.value }))}
@@ -242,7 +303,19 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
         {/* Advanced Settings */}
         <div className="mt-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-white mb-2">Email Signature</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-white">Email Signature</label>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => generateWithAI('email_signature')}
+                disabled={aiGenerating.email_signature}
+                className="h-6 px-2 text-xs gap-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+              >
+                <Sparkles className="w-3 h-3" />
+                {aiGenerating.email_signature ? 'Writing...' : 'Write'}
+              </Button>
+            </div>
             <Textarea
               value={form.email_signature}
               onChange={(e) => setForm(p => ({ ...p, email_signature: e.target.value }))}
@@ -252,7 +325,19 @@ export default function IdentityProfileBuilder({ identity, mode = 'create', onCo
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-white mb-2">Proposal Style Guide</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-white">Proposal Style Guide</label>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => generateWithAI('proposal_style')}
+                disabled={aiGenerating.proposal_style}
+                className="h-6 px-2 text-xs gap-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+              >
+                <Sparkles className="w-3 h-3" />
+                {aiGenerating.proposal_style ? 'Writing...' : 'Write'}
+              </Button>
+            </div>
             <Textarea
               value={form.proposal_style}
               onChange={(e) => setForm(p => ({ ...p, proposal_style: e.target.value }))}

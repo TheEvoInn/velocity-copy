@@ -90,9 +90,9 @@ export default function Execution() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
             style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)' }}>
             <Play className="w-6 h-6 text-blue-400" />
           </div>
@@ -101,7 +101,7 @@ export default function Execution() {
             <p className="text-xs text-slate-500 font-mono">Per-user task queue · Browser automation · Live monitoring</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={() => refetch()}
             className="p-2 rounded-xl transition-all"
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#64748b' }}>

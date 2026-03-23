@@ -25,6 +25,9 @@ import IdentityManager from './pages/IdentityManager';
 import Chat from './pages/Chat';
 import SystemAuditDashboard from './pages/SystemAuditDashboard';
 import AdminPanel from './pages/AdminPanel';
+import AutopilotLogs from './pages/AutopilotLogs';
+import AIIdentityStudio from './pages/AIIdentityStudio';
+import TemplatesLibrary from './pages/TemplatesLibrary';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();

@@ -64,7 +64,6 @@ const AuthenticatedApp = () => {
       <Route path="/NED" element={<NED />} />
       <Route path="/VIPZ" element={<VIPZ />} />
       <Route path="/IdentityManager" element={<IdentityManager />} />
-      <Route path="/AdminControlPanel" element={<AdminControlPanel />} />
       <Route path="/Chat" element={<Chat />} />
       <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
       <Route path="/admin" element={<AdminPanel />} />

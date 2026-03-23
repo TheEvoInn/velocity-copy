@@ -35,6 +35,8 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       {/* Add your page Route elements here */}
+      <Route path="/" element={<AdminPanel />} />
+      <Route path="/admin" element={<AdminPanel />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

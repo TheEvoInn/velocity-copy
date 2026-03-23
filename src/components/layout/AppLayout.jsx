@@ -420,7 +420,7 @@ export default function AppLayout() {
         )}
       </header>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer (bottom sheet) */}
       <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} currentPath={location.pathname} />
 
       {/* ── Page Content ── */}

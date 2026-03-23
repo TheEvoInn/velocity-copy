@@ -6,6 +6,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AppLayout from './components/layout/AppLayout';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Page imports
 import Dashboard from './pages/Dashboard';
@@ -99,14 +100,16 @@ const AuthenticatedApp = () => {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClientInstance}>
-      <AuthProvider>
-        <Router>
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClientInstance}>
+        <AuthProvider>
+          <Router>
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }
 

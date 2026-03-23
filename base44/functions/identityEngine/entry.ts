@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
 
     // ── get_active ─────────────────────────────────────────────────────────────
     if (action === 'get_active') {
-      const identities = await base44.entities.AIIdentity.list('-updated_date', 50);
+      const identities = await base44.entities.AIIdentity.filter({ created_by: user.email }, '-updated_date', 50);
       const active = identities.find(i => i.is_active) || identities[0];
 
       if (!active) return Response.json({ identity: null, has_identity: false });
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       if (!identity_id) return Response.json({ error: 'identity_id required' }, { status: 400 });
 
       // Deactivate all, activate the target
-      const all = await base44.entities.AIIdentity.list();
+      const all = await base44.entities.AIIdentity.filter({ created_by: user.email });
       await Promise.all(all.map(id =>
         base44.entities.AIIdentity.update(id.id, { is_active: id.id === identity_id })
       ));
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     if (action === 'inject_identity') {
       const { task_type, platform, action_type } = body;
 
-      const identities = await base44.entities.AIIdentity.list();
+      const identities = await base44.entities.AIIdentity.filter({ created_by: user.email });
       let identity = identities.find(i => i.is_active) || identities[0];
 
       if (!identity) {
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
     if (action === 'auto_select') {
       const { task_type, platform, category, description } = body;
 
-      const identities = await base44.entities.AIIdentity.list();
+      const identities = await base44.entities.AIIdentity.filter({ created_by: user.email });
       if (!identities.length) return Response.json({ identity: null });
 
       // Use LLM to pick best identity
@@ -203,7 +203,7 @@ Return JSON: { "selected_index": number, "reasoning": string }`,
     if (action === 'create_account') {
       const { platform, purpose, identity_id } = body;
 
-      const identities = await base44.entities.AIIdentity.list();
+      const identities = await base44.entities.AIIdentity.filter({ created_by: user.email });
       const identity = identity_id
         ? identities.find(i => i.id === identity_id)
         : identities.find(i => i.is_active) || identities[0];

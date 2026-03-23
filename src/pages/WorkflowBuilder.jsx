@@ -136,13 +136,22 @@ export default function WorkflowBuilder() {
             <Wand2 className="w-4 h-4" />
             {mode === 'wizard' ? 'Advanced Mode' : 'Wizard Mode'}
           </Button>
+          {strategy.id && (
+            <Button
+              onClick={() => setStrategy(DEFAULT_STRATEGY)}
+              variant="outline"
+              className="border-slate-600 text-slate-400 hover:text-white text-xs"
+            >
+              + New Strategy
+            </Button>
+          )}
           <Button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
             className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5"
           >
             <Save className="w-4 h-4" />
-            {saveMutation.isPending ? 'Saving...' : 'Save Strategy'}
+            {saveMutation.isPending ? 'Saving...' : strategy.id ? 'Update Strategy' : 'Save Strategy'}
           </Button>
         </div>
       </div>

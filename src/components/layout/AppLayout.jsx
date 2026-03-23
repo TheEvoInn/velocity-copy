@@ -457,7 +457,7 @@ export default function AppLayout() {
       </div>
 
         {/* ── Mobile Bottom Tab Bar ── */}
-        <MobileTabBar currentPath={location.pathname} />
+        <MobileTabBar currentPath={location.pathname} onMoreClick={() => setDrawerOpen(true)} />
       </div>
     </CyberpunkCommandCenter>
   );

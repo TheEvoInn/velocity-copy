@@ -17,8 +17,8 @@ export default function UserAccessPage() {
   const { data: kycList = [] } = useQuery({
     queryKey: ['kycStatus_sidebar'],
     queryFn: async () => {
-      const me = await base44.auth.me();
-      return base44.entities.KYCVerification.filter({ created_by: me.email }, '-created_date', 1);
+      const result = await base44.functions.invoke('kycAdminService', { action: 'get_my_kyc' });
+      return result.data.record ? [result.data.record] : [];
     }
   });
   const { data: goalsList = [] } = useQuery({

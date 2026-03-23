@@ -22,6 +22,10 @@ export const PLATFORMS = [
   { id: 'stripe',     label: 'Stripe',           icon: '💳', color: '#635bff', category: 'payments',   auth: 'api_key',        fields: [{ key: 'secret_key', label: 'Secret Key (sk_...)', secret: true }] },
   { id: 'paypal',     label: 'PayPal',           icon: '🅿️', color: '#003087', category: 'payments',   auth: 'api_key_secret', fields: [{ key: 'client_id', label: 'Client ID' }, { key: 'client_secret', label: 'Client Secret', secret: true }] },
   { id: 'guru',       label: 'Guru',             icon: '🏆', color: '#ea7f1e', category: 'freelance',   auth: 'api_key',        fields: [{ key: 'api_key', label: 'API Key', secret: true }] },
+  { id: 'coinbase',   label: 'Coinbase',        icon: '₿', color: '#0052ff', category: 'crypto',      auth: 'api_key_secret', fields: [{ key: 'api_key', label: 'API Key', secret: true }, { key: 'api_secret', label: 'API Secret', secret: true }, { key: 'passphrase', label: 'Passphrase (optional)', required: false, secret: true }] },
+  { id: 'kraken',     label: 'Kraken',          icon: '🐙', color: '#623bff', category: 'crypto',      auth: 'api_key_secret', fields: [{ key: 'api_key', label: 'API Key', secret: true }, { key: 'api_secret', label: 'API Secret', secret: true }] },
+  { id: 'binance',    label: 'Binance',         icon: '📊', color: '#f3ba2f', category: 'crypto',      auth: 'api_key_secret', fields: [{ key: 'api_key', label: 'API Key', secret: true }, { key: 'api_secret', label: 'API Secret', secret: true }] },
+  { id: 'other',      label: 'Custom Platform', icon: '⚙️', color: '#64748b', category: 'other',       auth: 'custom',        fields: [{ key: 'platform_url', label: 'API Base URL', placeholder: 'https://api.example.com' }, { key: 'username', label: 'Username' }, { key: 'password', label: 'Password', secret: true }, { key: 'api_key', label: 'API Key (optional)', required: false, secret: true }] },
 ];
 
 const CATEGORIES = ['all', 'marketplace', 'freelance', 'ecommerce', 'payments'];

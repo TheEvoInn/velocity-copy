@@ -31,6 +31,7 @@ import AIIdentityStudio from './pages/AIIdentityStudio';
 import TemplatesLibrary from './pages/TemplatesLibrary';
 import UserAccessPage from './pages/UserAccessPage';
 import WorkflowBuilder from './pages/WorkflowBuilder';
+import BankSettings from './pages/BankSettings';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -80,6 +81,7 @@ const AuthenticatedApp = () => {
         <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
         <Route path="/UserAccessPage" element={<UserAccessPage />} />
         <Route path="/WorkflowBuilder" element={<WorkflowBuilder />} />
+        <Route path="/BankSettings" element={<BankSettings />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

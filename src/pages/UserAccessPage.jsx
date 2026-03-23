@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, Settings, Shield, Zap, Globe, Bell } from 'lucide-react';
@@ -14,6 +15,7 @@ import NotificationPreferences from '../components/notifications/NotificationPre
 import KYCConsolidationStatus from '../components/account/KYCConsolidationStatus';
 
 export default function UserAccessPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('account');
 
   const { data: kycList = [], refetch: refetchKYC } = useQuery({
@@ -125,11 +127,13 @@ export default function UserAccessPage() {
 
           {/* Sidebar Info */}
           <div className="space-y-4">
-            {/* KYC Consolidation Status - Kristopher Tibbetts */}
-            <KYCConsolidationStatus 
-              targetEmail="kristopherwork90@gmail.com" 
-              fullName="Kristopher Tibbetts"
-            />
+             {/* KYC Consolidation Status - Current User */}
+            {user && (
+              <KYCConsolidationStatus 
+                targetEmail={user.email} 
+                fullName={user.full_name || user.email}
+              />
+            )}
 
             {/* Live Status */}
             <Card className="bg-slate-900/50 border-slate-700">

@@ -15,6 +15,7 @@ import Control from './pages/Control';
 import UnifiedAutopilot from './pages/UnifiedAutopilot';
 import Discovery from './pages/Discovery';
 import WorkDiscovery from './pages/WorkDiscovery';
+import ProactiveScout from './pages/ProactiveScout';
 import WalletDashboard from './pages/WalletDashboard';
 import CryptoAutomation from './pages/CryptoAutomation';
 import DigitalResellers from './pages/DigitalResellers';
@@ -67,6 +68,7 @@ const AuthenticatedApp = () => {
         <Route path="/AutoPilot" element={<UnifiedAutopilot />} />
         <Route path="/Execution" element={<UnifiedAutopilot />} />
         <Route path="/Discovery" element={<Discovery />} />
+        <Route path="/ProactiveScout" element={<ProactiveScout />} />
         <Route path="/WorkDiscovery" element={<WorkDiscovery />} />
         <Route path="/Finance" element={<WalletDashboard />} />
         <Route path="/WalletDashboard" element={<WalletDashboard />} />

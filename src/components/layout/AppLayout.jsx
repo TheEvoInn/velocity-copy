@@ -38,6 +38,18 @@ const DEPARTMENTS = [
     planet: '🔭',
   },
   {
+    path: '/ProactiveScout',
+    icon: Telescope,
+    label: 'Scout',
+    subtitle: 'Pre-Opportunity Engine',
+    color: '#00e8ff',
+    glow: 'rgba(0,232,255,0.5)',
+    gradient: 'from-cyan-500/20 to-teal-600/10',
+    activeBorder: 'border-cyan-400/60',
+    textActive: 'text-cyan-300',
+    planet: '🔭',
+  },
+  {
     path: '/AutoPilot',
     icon: Cpu,
     label: 'Execute',

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, RefreshCw, TrendingUp, Zap, AlertCircle } from 'lucide-react';
+import { Sparkles, RefreshCw, TrendingUp, Zap, AlertCircle, CheckCircle2, Layers } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
 const CONFIDENCE_COLOR = (score) => {
@@ -12,6 +13,9 @@ const CONFIDENCE_COLOR = (score) => {
 
 export default function SmartSuggestionsPanel({ onApply, applyingId }) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [implementingAll, setImplementingAll] = useState(false);
+  const [implementedAll, setImplementedAll] = useState(false);
+  const [implementProgress, setImplementProgress] = useState([]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['templateSuggestions', refreshKey],
@@ -21,6 +25,34 @@ export default function SmartSuggestionsPanel({ onApply, applyingId }) {
 
   const suggestions = data?.suggestions || [];
   const analysis = data?.analysis || {};
+
+  const handleImplementAll = async () => {
+    if (!suggestions.length || implementingAll) return;
+    setImplementingAll(true);
+    setImplementProgress([]);
+    const progress = [];
+
+    for (const suggestion of suggestions) {
+      try {
+        await onApply(suggestion);
+        progress.push({ id: suggestion.id, name: suggestion.name, ok: true });
+        setImplementProgress([...progress]);
+      } catch {
+        progress.push({ id: suggestion.id, name: suggestion.name, ok: false });
+        setImplementProgress([...progress]);
+      }
+    }
+
+    // Final cross-system sync notification
+    try {
+      await base44.functions.invoke('unifiedAutopilot', { action: 'autopilot_full_cycle' });
+    } catch { /* non-critical */ }
+
+    setImplementingAll(false);
+    setImplementedAll(true);
+    const succeeded = progress.filter(p => p.ok).length;
+    toast.success(`${succeeded}/${suggestions.length} workflows implemented and synced to autopilot!`);
+  };
 
   return (
     <div className="mb-8">
@@ -41,14 +73,70 @@ export default function SmartSuggestionsPanel({ onApply, applyingId }) {
             )}
           </div>
         </div>
-        <button
-          onClick={() => setRefreshKey(k => k + 1)}
-          disabled={isLoading}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 transition-all disabled:opacity-40"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          {!isLoading && suggestions.length > 0 && (
+            implementedAll ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-[11px] font-orbitron text-emerald-300 tracking-wide">ALL SYNCED</span>
+              </div>
+            ) : (
+              <button
+                onClick={handleImplementAll}
+                disabled={implementingAll}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all duration-200 disabled:opacity-60"
+                style={{
+                  background: implementingAll ? 'rgba(168,85,247,0.1)' : 'linear-gradient(135deg, rgba(168,85,247,0.25), rgba(6,182,212,0.15))',
+                  border: '1px solid rgba(168,85,247,0.5)',
+                  boxShadow: implementingAll ? 'none' : '0 0 16px rgba(168,85,247,0.2)',
+                }}>
+                {implementingAll ? (
+                  <><div className="w-3.5 h-3.5 border border-violet-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[11px] font-orbitron text-violet-300 tracking-wide">
+                    {implementProgress.length}/{suggestions.length} SYNCING…
+                  </span></>
+                ) : (
+                  <><Layers className="w-3.5 h-3.5 text-violet-300" />
+                  <span className="text-[11px] font-orbitron text-violet-300 tracking-wide">IMPLEMENT ALL</span></>
+                )}
+              </button>
+            )
+          )}
+          <button
+            onClick={() => { setRefreshKey(k => k + 1); setImplementedAll(false); setImplementProgress([]); }}
+            disabled={isLoading}
+            className="p-1.5 rounded-lg text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 transition-all disabled:opacity-40"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
+
+      {/* Implement All progress bar */}
+      {implementProgress.length > 0 && (
+        <div className="mb-4 p-3 rounded-xl border border-violet-500/20 bg-violet-500/5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-orbitron text-violet-400 tracking-wider">SYNCING TO ALL SYSTEMS</span>
+            <span className="text-[10px] text-slate-500">{implementProgress.length}/{suggestions.length}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden mb-2">
+            <div className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${(implementProgress.length / suggestions.length) * 100}%`,
+                background: 'linear-gradient(90deg, #a855f7, #06b6d4)',
+              }} />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {implementProgress.map(p => (
+              <span key={p.id} className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                p.ok ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'
+              }`}>
+                {p.ok ? '✓' : '✗'} {p.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Profile gaps */}
       {(analysis.gaps_identified || []).length > 0 && (

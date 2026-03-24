@@ -64,6 +64,8 @@ export default function OnboardingWizard({ onComplete }) {
     try {
       const identity = await base44.entities.AIIdentity.create({
         ...identityData,
+        name: `${identityData.first_name} ${identityData.last_name}`.trim() || identityData.name,
+        role_labels: identityData.role_labels || [],
         skills: Array.isArray(identityData.skills) ? identityData.skills : [],
         preferred_categories: prefData.preferred_categories || [],
         preferred_platforms: [],

@@ -179,26 +179,22 @@ export default function AdminUserManagement() {
                         <p>Joined: <span className="text-white">{format(new Date(u.created_date), 'MMMM d, yyyy HH:mm')}</span></p>
                         <p>Verified: <span className={u.is_verified ? 'text-emerald-400' : 'text-red-400'}>{u.is_verified ? 'Yes' : 'No'}</span></p>
                       </div>
-                      <div className="flex gap-2 pt-2">
-                        {!u.is_verified && (
+                      <div className="flex gap-2 pt-2 flex-wrap">
+                        {u.is_verified ? (
+                          <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            <CheckCircle2 className="w-3 h-3" /> Verified
+                          </span>
+                        ) : (
                           <Button
                             size="sm"
-                            onClick={() => verifyMutation.mutate(u.id)}
-                            disabled={verifyMutation.isPending}
+                            onClick={(e) => { e.stopPropagation(); verifyMutation.mutate(u.id); }}
+                            disabled={verifyMutation.isPending && verifyMutation.variables === u.id}
                             className="text-xs bg-emerald-700 hover:bg-emerald-600 text-white gap-1"
                           >
-                            <CheckCircle2 className="w-3 h-3" /> Force Verify
+                            <CheckCircle2 className="w-3 h-3" />
+                            {verifyMutation.isPending && verifyMutation.variables === u.id ? 'Verifying...' : 'Force Verify'}
                           </Button>
                         )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => roleMutation.mutate({ user_id: u.id, role: u.role === 'admin' ? 'user' : 'admin' })}
-                          disabled={roleMutation.isPending}
-                          className="text-xs border-slate-600 text-slate-300 hover:text-white gap-1"
-                        >
-                          {u.role === 'admin' ? <><User className="w-3 h-3" /> Demote to User</> : <><Shield className="w-3 h-3" /> Promote to Admin</>}
-                        </Button>
                       </div>
                     </div>
 

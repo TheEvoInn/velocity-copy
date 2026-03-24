@@ -10,6 +10,14 @@ const DOC_TYPES = ['utility_bill', 'bank_statement', 'rental_agreement'];
 export default function StepKYC({ data, onChange, onNext, onBack }) {
   const [uploading, setUploading] = useState({});
 
+  // Check what's missing but don't block progress
+  const missing = [];
+  if (!data.full_legal_name?.trim()) missing.push('Full Legal Name');
+  if (!data.date_of_birth) missing.push('Date of Birth');
+  if (!data.residential_address?.trim()) missing.push('Residential Address');
+  if (!data.government_id_type) missing.push('Government ID Type');
+  if (!data.id_document_front_url || !data.id_document_back_url || !data.selfie_url) missing.push('ID Documents/Selfie');
+
   const set = (k, v) => onChange({ ...data, [k]: v });
 
   const upload = async (field, file) => {
@@ -130,16 +138,23 @@ export default function StepKYC({ data, onChange, onNext, onBack }) {
         </div>
       </div>
 
-      <div className="flex gap-2 mt-4 pt-3 border-t border-slate-800">
-        <Button onClick={onBack} variant="outline" size="sm" className="border-slate-700 text-slate-400 h-9 px-4">
-          <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back
-        </Button>
-        <Button onClick={onNext} variant="ghost" size="sm" className="text-slate-500 h-9 px-4">
-          Skip for now
-        </Button>
-        <Button onClick={onNext} size="sm" className="flex-1 bg-amber-600 hover:bg-amber-500 text-white h-9">
-          Submit KYC <ArrowRight className="w-3.5 h-3.5 ml-1" />
-        </Button>
+      <div className="flex flex-col gap-2 mt-4 pt-3 border-t border-slate-800">
+        {missing.length > 0 && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded px-3 py-2 text-xs text-amber-200">
+            ⚠️ Missing: {missing.join(', ')}. You can complete KYC later, but some features will be restricted.
+          </div>
+        )}
+        <div className="flex gap-2">
+          <Button onClick={onBack} variant="outline" size="sm" className="border-slate-700 text-slate-400 h-9 px-4">
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back
+          </Button>
+          <Button onClick={onNext} variant="ghost" size="sm" className="text-slate-500 h-9 px-4">
+            Skip for now
+          </Button>
+          <Button onClick={onNext} size="sm" className="flex-1 bg-amber-600 hover:bg-amber-500 text-white h-9">
+            Submit KYC <ArrowRight className="w-3.5 h-3.5 ml-1" />
+          </Button>
+        </div>
       </div>
     </div>
   );

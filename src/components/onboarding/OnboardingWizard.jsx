@@ -18,7 +18,7 @@ const STEP_LABELS = ['Welcome', 'Identity', 'KYC', 'Preferences', 'Banking', 'Wo
 const STEP_COLORS = ['#8b5cf6', '#7c3aed', '#f59e0b', '#06b6d4', '#10b981', '#8b5cf6', '#7c3aed'];
 
 const DEFAULT_IDENTITY = {
-  name: '', role_label: 'Freelancer', skills: [], communication_tone: 'professional',
+  name: '', first_name: '', last_name: '', role_labels: [], skills: [], communication_tone: 'professional',
   tagline: '', bio: '', proposal_style: '', email: '', portfolio_url: '',
   linkedin: '', social_other: '', auto_select_for_task_types: [],
   can_create_accounts: true, can_communicate: true, color: '#10b981', is_active: true,

@@ -312,7 +312,18 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-200">Setup / Onboarding</p>
-              <p className="text-xs text-slate-500">Configure identity, KYC, autopilot & banking</p>
+              <p className="text-xs text-slate-500">Configure identity, KYC, autopilot &amp; banking</p>
+            </div>
+          </Link>
+
+          <Link to="/AccountCreationDashboard" onClick={onClose}
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all active:scale-[0.98]">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20 shrink-0">
+              <Target className="w-4 h-4 text-cyan-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-200">Account Creation Engine</p>
+              <p className="text-xs text-slate-500">Autopilot accounts, emails &amp; master credentials</p>
             </div>
           </Link>
 

@@ -4,7 +4,7 @@
  * using real user data, real browser automation, and full credential syncing
  */
 
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 /**
  * Detect if a platform's sign-up process is simple and auto-creatable
@@ -37,54 +37,34 @@ function isSignUpSimpleAndAccessible(platform, opportunity) {
 }
 
 /**
- * Retrieve user-approved data from Identity and User Intervention templates
- * Ensures all data is real, authorized, and never fabricated
+ * Retrieve user-approved data — delegates to Master Account Credential Engine
+ * This is the ONLY approved data source. No fabrication allowed.
  */
 async function getUserApprovedData(base44, userEmail, identityId) {
   try {
-    // Get identity profile for KYC-verified data
-    const identity = await base44.asServiceRole.entities.AIIdentity.filter(
-      { id: identityId }, null, 1
-    ).then(results => results[0]).catch(() => null);
+    const result = await base44.functions.invoke('masterAccountCredentialEngine', {
+      action: 'get_master_credentials',
+      identity_id: identityId
+    }).catch(e => ({ data: { success: false, error: e.message } }));
 
-    if (!identity) {
-      return { success: false, error: 'Identity not found' };
+    if (!result.data?.success) {
+      return { success: false, error: result.data?.error || 'Could not resolve master credentials' };
     }
 
-    // Extract real, verified data from KYC
-    const kycData = identity.kyc_verified_data || {};
-    const brandAssets = identity.brand_assets || {};
-
-    // Build user data from verified sources only
-    const userData = {
-      full_name: kycData.full_legal_name || identity.name || 'User',
-      email: kycData.email || identity.email,
-      phone: kycData.phone_number || identity.phone,
-      date_of_birth: kycData.date_of_birth,
-      address: kycData.residential_address,
-      city: kycData.city,
-      state: kycData.state,
-      postal_code: kycData.postal_code,
-      country: kycData.country,
-      // Generate username from verified name
-      username: (kycData.full_legal_name || identity.name || 'user')
-        .toLowerCase()
-        .replace(/\s+/g, '_')
-        .replace(/[^a-z0-9_]/g, ''),
-      // Generate secure password (never stored in plain text later)
-      password: generateSecurePassword()
-    };
-
-    // Validate required data exists
-    if (!userData.email || !userData.full_name) {
-      return { success: false, error: 'Incomplete user data for account creation' };
+    const creds = result.data.credentials;
+    if (!creds.email || !creds.full_name) {
+      return { success: false, error: 'Incomplete master credentials — email and full_name required. Update your AI Identity profile.' };
     }
 
     return {
       success: true,
-      data: userData,
-      verified: true,
-      kyc_tier: kycData.kyc_tier || 'none'
+      data: {
+        ...creds,
+        username: (creds.full_name || 'user').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') + '_' + Math.random().toString(36).substring(2, 6),
+        password: generateSecurePassword()
+      },
+      verified: creds.kyc_verified,
+      kyc_tier: creds.kyc_tier || 'none'
     };
   } catch (e) {
     return { success: false, error: e.message };

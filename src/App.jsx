@@ -37,6 +37,7 @@ import ComplianceDashboard from './pages/ComplianceDashboard';
 import OptimizationDashboard from './pages/OptimizationDashboard';
 import PendingInterventions from './pages/PendingInterventions';
 import Onboarding from './pages/Onboarding';
+import AccountCreationDashboard from './pages/AccountCreationDashboard';
 
 
 const AuthenticatedApp = () => {
@@ -94,6 +95,7 @@ const AuthenticatedApp = () => {
         <Route path="/OptimizationDashboard" element={<OptimizationDashboard />} />
         <Route path="/PendingInterventions" element={<PendingInterventions />} />
         <Route path="/Onboarding" element={<Onboarding />} />
+        <Route path="/AccountCreationDashboard" element={<AccountCreationDashboard />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

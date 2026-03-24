@@ -18,7 +18,9 @@ Deno.serve(async (req) => {
 
     const { action, raw_spec, source_url, github_repo_url, manual_metadata } = await req.json();
 
-    if (action === 'parse_openapi') {
+    if (action === 'test') {
+      return Response.json({ status: 'ok', message: 'apiDocumentationParser functional', available_actions: ['parse_openapi', 'enrich_metadata', 'store_api_metadata'] }, { status: 200 });
+    } else if (action === 'parse_openapi') {
       const parsed = parseOpenAPISpec(raw_spec, source_url);
       return Response.json({ success: true, parsed_metadata: parsed });
     } else if (action === 'enrich_metadata') {
@@ -28,7 +30,7 @@ Deno.serve(async (req) => {
       const stored = await storeAPIMetadata(base44, manual_metadata);
       return Response.json({ success: true, api_metadata_id: stored.id });
     } else {
-      return Response.json({ error: 'Unknown action' }, { status: 400 });
+      return Response.json({ error: 'Unknown action. Available: test, parse_openapi, enrich_metadata, store_api_metadata' }, { status: 400 });
     }
   } catch (error) {
     console.error('[apiDocumentationParser]', error.message);

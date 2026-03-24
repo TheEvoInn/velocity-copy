@@ -18,14 +18,16 @@ Deno.serve(async (req) => {
 
     const { action, api_id, api_metadata } = await req.json();
 
-    if (action === 'verify_api') {
+    if (action === 'test') {
+      return Response.json({ status: 'ok', message: 'apiVerificationEngine functional', available_actions: ['verify_api', 'test_endpoint', 'health_check'] }, { status: 200 });
+    } else if (action === 'verify_api') {
       return await verifyAPI(base44, api_id, api_metadata);
     } else if (action === 'test_endpoint') {
       return await testEndpoint(base44, api_id, api_metadata);
     } else if (action === 'health_check') {
       return await performHealthCheck(base44, api_id);
     } else {
-      return Response.json({ error: 'Unknown action' }, { status: 400 });
+      return Response.json({ error: 'Unknown action. Available: test, verify_api, test_endpoint, health_check' }, { status: 400 });
     }
   } catch (error) {
     console.error('[apiVerificationEngine]', error.message);

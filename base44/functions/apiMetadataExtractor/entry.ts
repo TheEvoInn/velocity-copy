@@ -24,14 +24,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    if (action === 'scan_github') {
+    if (action === 'test') {
+      return Response.json({ status: 'ok', message: 'apiMetadataExtractor functional', available_actions: ['scan_github', 'scan_openapi_registry', 'extract_from_url'] }, { status: 200 });
+    } else if (action === 'scan_github') {
       return await scanGitHub(base44, query);
     } else if (action === 'scan_openapi_registry') {
       return await scanOpenAPIRegistry(base44, query);
     } else if (action === 'extract_from_url') {
       return await extractFromURL(base44, { url: url || query?.url });
     } else {
-      return Response.json({ error: 'Unknown action' }, { status: 400 });
+      return Response.json({ error: 'Unknown action. Available: test, scan_github, scan_openapi_registry, extract_from_url' }, { status: 400 });
     }
   } catch (error) {
     console.error('[apiMetadataExtractor]', error.message);

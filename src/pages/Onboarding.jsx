@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import OnboardingModal from '../components/onboarding/OnboardingModal';
+import OnboardingWizard from '../components/onboarding/OnboardingWizard';
 import { Zap, CheckCircle, ArrowRight, Shield, Wallet, Bot, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -55,9 +55,13 @@ export default function Onboarding() {
     );
   }
 
-  // If wizard open, show it full-screen (OnboardingModal is already a fixed overlay)
+  // If wizard open, show it in the page
   if (showWizard) {
-    return <OnboardingModal onComplete={handleComplete} />;
+    return (
+      <div className="min-h-screen galaxy-bg flex flex-col items-center justify-center px-4 py-12">
+        <OnboardingWizard onComplete={handleComplete} />
+      </div>
+    );
   }
 
   return (

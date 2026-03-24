@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Library, Filter, RefreshCw, Sparkles, Plus } from 'lucide-react';
+import SmartSuggestionsPanel from '@/components/templates/SmartSuggestionsPanel';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -106,6 +107,151 @@ const CURATED_TEMPLATES = [
     goals_config: { risk_tolerance: 'moderate' },
     setup_steps: ['Set capital budget for purchases', 'List resale platforms in Account Manager', 'Review each flip manually before purchase'],
   },
+  // ── NEW EXPANDED TEMPLATES ────────────────────────────────────────────────────
+  {
+    id: 'tpl_amazon_fba',
+    name: 'Amazon FBA Scout',
+    description: 'Scans Amazon for low-competition, high-demand niches and identifies private-label or resale opportunities for FBA.',
+    platform: 'amazon', category: 'resale', difficulty: 'advanced', icon: '🛒', color: '#ff9900',
+    estimated_daily_profit_low: 80, estimated_daily_profit_high: 600, is_official: true, use_count: 1820,
+    tags: ['amazon', 'fba', 'resale', 'products'],
+    autopilot_config: { enabled: true, mode: 'scheduled', execution_mode: 'review_required', max_concurrent_tasks: 2, preferred_categories: ['resale', 'arbitrage'] },
+    execution_rules: { minimum_profit_threshold: 30, minimum_success_probability: 65 },
+    goals_config: { risk_tolerance: 'moderate', available_capital: 500 },
+    setup_steps: ['Link Amazon Seller account', 'Set minimum margin threshold to 30%+', 'Enable FBA category scanning in Discovery'],
+  },
+  {
+    id: 'tpl_etsy_digital',
+    name: 'Etsy Digital Downloads',
+    description: 'Creates and lists AI-generated digital products (printables, templates, art) on Etsy for passive recurring income.',
+    platform: 'etsy', category: 'digital_flip', difficulty: 'beginner', icon: '🎭', color: '#f4623a',
+    estimated_daily_profit_low: 15, estimated_daily_profit_high: 150, is_official: true, use_count: 2341,
+    tags: ['etsy', 'digital', 'passive', 'creative'],
+    autopilot_config: { enabled: true, mode: 'scheduled', execution_mode: 'full_auto', max_concurrent_tasks: 3, preferred_categories: ['digital_flip', 'service'] },
+    execution_rules: { minimum_profit_threshold: 5, minimum_success_probability: 75 },
+    goals_config: { risk_tolerance: 'conservative' },
+    setup_steps: ['Connect Etsy shop credentials', 'Enable AI creative engine for product generation', 'Set listing schedule to 3–5 products/day'],
+  },
+  {
+    id: 'tpl_content_writing_blitz',
+    name: 'Content Writing Blitz',
+    description: 'Multi-platform content writing strategy covering Upwork, Freelancer, and direct client outreach for high-volume writing income.',
+    platform: 'multi', category: 'freelance', difficulty: 'beginner', icon: '✍️', color: '#06b6d4',
+    estimated_daily_profit_low: 60, estimated_daily_profit_high: 400, is_official: true, use_count: 3890,
+    tags: ['writing', 'content', 'articles', 'blogs'],
+    autopilot_config: { enabled: true, mode: 'continuous', execution_mode: 'review_required', max_concurrent_tasks: 8, preferred_categories: ['freelance', 'service'] },
+    execution_rules: { minimum_profit_threshold: 15, minimum_success_probability: 70 },
+    goals_config: { risk_tolerance: 'conservative' },
+    setup_steps: ['Set writing niche in AI Identity skills', 'Connect at least one freelance platform', 'Set review_required to approve proposals daily'],
+  },
+  {
+    id: 'tpl_web_dev_premium',
+    name: 'Web Dev Premium Closer',
+    description: 'Targets $1000+ web development and SaaS projects on Upwork and Toptal. AI generates highly technical proposals.',
+    platform: 'upwork', category: 'freelance', difficulty: 'advanced', icon: '💻', color: '#7c3aed',
+    estimated_daily_profit_low: 300, estimated_daily_profit_high: 2000, is_official: false, use_count: 742,
+    tags: ['web-dev', 'saas', 'premium', 'technical'],
+    autopilot_config: { enabled: true, mode: 'scheduled', execution_mode: 'review_required', max_concurrent_tasks: 2, preferred_categories: ['freelance'] },
+    execution_rules: { minimum_profit_threshold: 500, minimum_success_probability: 55 },
+    goals_config: { risk_tolerance: 'moderate' },
+    setup_steps: ['Add web dev skills to AI Identity (React, Node, etc.)', 'Connect Upwork with verified profile', 'Set daily target ≥ $500 for premium job matching'],
+  },
+  {
+    id: 'tpl_seo_outreach',
+    name: 'SEO & Link Building Agency',
+    description: 'Identifies website owners needing SEO help via outreach automation and pitches monthly retainer packages.',
+    platform: 'multi', category: 'lead_gen', difficulty: 'intermediate', icon: '📈', color: '#ec4899',
+    estimated_daily_profit_low: 100, estimated_daily_profit_high: 800, is_official: false, use_count: 567,
+    tags: ['seo', 'retainer', 'outreach', 'agency'],
+    autopilot_config: { enabled: true, mode: 'scheduled', execution_mode: 'notification_only', max_concurrent_tasks: 4, preferred_categories: ['lead_gen', 'service'] },
+    execution_rules: { minimum_profit_threshold: 200, minimum_success_probability: 45 },
+    goals_config: { risk_tolerance: 'moderate' },
+    setup_steps: ['Configure email outreach account', 'Define target niche (local biz, e-commerce, etc.)', 'Set retainer pricing in Identity profile'],
+  },
+  {
+    id: 'tpl_nft_monitor',
+    name: 'NFT & Crypto Opportunity Monitor',
+    description: 'Monitors NFT mints, token launches, and airdrop opportunities. Auto-queues high-ROI crypto events for review.',
+    platform: 'multi', category: 'arbitrage', difficulty: 'advanced', icon: '🔮', color: '#8b5cf6',
+    estimated_daily_profit_low: 0, estimated_daily_profit_high: 3000, is_official: false, use_count: 1120,
+    tags: ['crypto', 'nft', 'airdrop', 'defi'],
+    autopilot_config: { enabled: true, mode: 'continuous', execution_mode: 'notification_only', max_concurrent_tasks: 2, preferred_categories: ['arbitrage'] },
+    execution_rules: { minimum_profit_threshold: 50, minimum_success_probability: 40 },
+    goals_config: { risk_tolerance: 'aggressive' },
+    setup_steps: ['Connect crypto wallet in Wallet section', 'Enable NED crypto module', 'Set notifications for opportunities above $50 threshold'],
+  },
+  {
+    id: 'tpl_va_agency',
+    name: 'Virtual Assistant Agency',
+    description: 'Positions AI identities as premium virtual assistants. Targets busy executives and agencies needing admin support.',
+    platform: 'multi', category: 'service', difficulty: 'beginner', icon: '🤝', color: '#14b8a6',
+    estimated_daily_profit_low: 40, estimated_daily_profit_high: 250, is_official: true, use_count: 2891,
+    tags: ['va', 'admin', 'support', 'assistant'],
+    autopilot_config: { enabled: true, mode: 'continuous', execution_mode: 'review_required', max_concurrent_tasks: 5, preferred_categories: ['service'] },
+    execution_rules: { minimum_profit_threshold: 10, minimum_success_probability: 70 },
+    goals_config: { risk_tolerance: 'conservative' },
+    setup_steps: ['Set AI Identity to VA role with admin skills', 'Connect Upwork, Fiverr, and People Per Hour', 'Enable proposal auto-generation for admin tasks'],
+  },
+  {
+    id: 'tpl_research_reports',
+    name: 'Research & Analysis Reports',
+    description: 'Targets market research, competitor analysis, and industry report gigs. Delivers AI-generated professional reports.',
+    platform: 'upwork', category: 'service', difficulty: 'intermediate', icon: '📊', color: '#0ea5e9',
+    estimated_daily_profit_low: 80, estimated_daily_profit_high: 600, is_official: false, use_count: 431,
+    tags: ['research', 'analysis', 'reports', 'data'],
+    autopilot_config: { enabled: true, mode: 'continuous', execution_mode: 'review_required', max_concurrent_tasks: 3, preferred_categories: ['service', 'freelance'] },
+    execution_rules: { minimum_profit_threshold: 50, minimum_success_probability: 60 },
+    goals_config: { risk_tolerance: 'moderate' },
+    setup_steps: ['Set AI Identity skills: data analysis, market research', 'Connect Upwork account', 'Enable AI research engine in Autopilot settings'],
+  },
+  {
+    id: 'tpl_micro_saas_launch',
+    name: 'Micro-SaaS Launcher',
+    description: 'Identifies underserved SaaS niches, generates MVP specs, and markets to early adopters via targeted outreach.',
+    platform: 'multi', category: 'digital_flip', difficulty: 'advanced', icon: '🚀', color: '#f97316',
+    estimated_daily_profit_low: 0, estimated_daily_profit_high: 5000, is_official: false, use_count: 284,
+    tags: ['saas', 'product', 'launch', 'revenue'],
+    autopilot_config: { enabled: false, mode: 'manual', execution_mode: 'notification_only', max_concurrent_tasks: 1, preferred_categories: ['digital_flip'] },
+    execution_rules: { minimum_profit_threshold: 500, minimum_success_probability: 30 },
+    goals_config: { risk_tolerance: 'aggressive' },
+    setup_steps: ['Define target niche in strategy settings', 'Configure LinkedIn outreach for early adopters', 'Set revenue milestone alerts at $500, $1000, $5000'],
+  },
+  {
+    id: 'tpl_social_media_mgmt',
+    name: 'Social Media Management',
+    description: 'AI manages client social accounts with scheduled content, engagement automation, and monthly reporting.',
+    platform: 'multi', category: 'service', difficulty: 'beginner', icon: '📱', color: '#ec4899',
+    estimated_daily_profit_low: 30, estimated_daily_profit_high: 300, is_official: true, use_count: 1956,
+    tags: ['social', 'content', 'management', 'clients'],
+    autopilot_config: { enabled: true, mode: 'scheduled', execution_mode: 'review_required', max_concurrent_tasks: 4, preferred_categories: ['service', 'lead_gen'] },
+    execution_rules: { minimum_profit_threshold: 100, minimum_success_probability: 65 },
+    goals_config: { risk_tolerance: 'conservative' },
+    setup_steps: ['Set social media skills in AI Identity', 'Browse and apply to social management gigs', 'Set client reporting schedule to monthly'],
+  },
+  {
+    id: 'tpl_translation_global',
+    name: 'Translation & Localization',
+    description: 'Targets document translation, app localization, and multilingual content gigs worldwide across all major platforms.',
+    platform: 'multi', category: 'freelance', difficulty: 'beginner', icon: '🌐', color: '#22c55e',
+    estimated_daily_profit_low: 30, estimated_daily_profit_high: 200, is_official: false, use_count: 1104,
+    tags: ['translation', 'language', 'localization', 'multilingual'],
+    autopilot_config: { enabled: true, mode: 'continuous', execution_mode: 'full_auto', max_concurrent_tasks: 6, preferred_categories: ['freelance', 'service'] },
+    execution_rules: { minimum_profit_threshold: 10, minimum_success_probability: 75 },
+    goals_config: { risk_tolerance: 'conservative' },
+    setup_steps: ['Add language skills to AI Identity', 'Enable full auto for volume-based execution', 'Set preferred language pairs in settings'],
+  },
+  {
+    id: 'tpl_100k_accelerator',
+    name: '$100K/Year Accelerator',
+    description: 'High-intensity multi-channel strategy combining freelance, lead gen, and arbitrage to hit $274/day across all platforms.',
+    platform: 'multi', category: 'general', difficulty: 'advanced', icon: '🎯', color: '#f9d65c',
+    estimated_daily_profit_low: 200, estimated_daily_profit_high: 500, is_official: true, use_count: 3201,
+    tags: ['accelerator', 'high-income', 'multi-channel', 'aggressive'],
+    autopilot_config: { enabled: true, mode: 'continuous', execution_mode: 'review_required', max_concurrent_tasks: 10, preferred_categories: ['freelance', 'lead_gen', 'arbitrage', 'service'] },
+    execution_rules: { minimum_profit_threshold: 25, minimum_success_probability: 60 },
+    goals_config: { risk_tolerance: 'aggressive', daily_target: 274 },
+    setup_steps: ['Set daily target to $274 in Goals', 'Connect at least 3 platforms', 'Create 2+ AI identities for parallel execution', 'Run full cycle twice daily'],
+  },
 ];
 
 const ALL_PLATFORMS = ['all', 'upwork', 'fiverr', 'ebay', 'freelancer', 'linkedin', 'multi'];
@@ -120,6 +266,7 @@ export default function TemplatesLibrary() {
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
+  const [applyingSuggestionId, setApplyingSuggestionId] = useState(null);
 
   // Load user's saved templates + UserDataStore
   const { data: store, refetch: refetchStore } = useQuery({
@@ -269,6 +416,15 @@ export default function TemplatesLibrary() {
     applyMutation.mutate(template);
   };
 
+  const handleApplySuggestion = async (suggestion) => {
+    setApplyingSuggestionId(suggestion.id);
+    try {
+      await applyMutation.mutateAsync(suggestion);
+    } finally {
+      setApplyingSuggestionId(null);
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {showWizard && (
@@ -312,6 +468,19 @@ export default function TemplatesLibrary() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* AI Smart Suggestions */}
+      <SmartSuggestionsPanel
+        onApply={handleApplySuggestion}
+        applyingId={applyingSuggestionId}
+      />
+
+      {/* Divider */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex-1 h-px bg-slate-800" />
+        <span className="text-[10px] font-orbitron tracking-widest text-slate-600">ALL TEMPLATES</span>
+        <div className="flex-1 h-px bg-slate-800" />
       </div>
 
       {/* Search + Filters */}

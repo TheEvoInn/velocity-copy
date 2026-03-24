@@ -198,8 +198,10 @@ export default function OnboardingModal({ onComplete }) {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]" style={{ overflow: 'hidden' }}
-        style={{ boxShadow: `0 0 60px ${activeColor}22, 0 25px 60px rgba(0,0,0,0.5)` }}>
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]" style={{
+        overflow: 'hidden',
+        boxShadow: `0 0 60px ${activeColor}22, 0 25px 60px rgba(0,0,0,0.5)`
+      }}>
 
         {/* Progress header */}
         {step > 0 && (

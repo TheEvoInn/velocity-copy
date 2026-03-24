@@ -36,6 +36,7 @@ import APIManagement from './pages/APIManagement';
 import ComplianceDashboard from './pages/ComplianceDashboard';
 import OptimizationDashboard from './pages/OptimizationDashboard';
 import PendingInterventions from './pages/PendingInterventions';
+import Onboarding from './pages/Onboarding';
 
 
 const AuthenticatedApp = () => {
@@ -92,6 +93,7 @@ const AuthenticatedApp = () => {
         <Route path="/ComplianceDashboard" element={<ComplianceDashboard />} />
         <Route path="/OptimizationDashboard" element={<OptimizationDashboard />} />
         <Route path="/PendingInterventions" element={<PendingInterventions />} />
+        <Route path="/Onboarding" element={<Onboarding />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

@@ -305,18 +305,19 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
             </div>
           </Link>
 
-          <Link to="/PendingInterventions" onClick={onClose}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-orange-500/30 hover:bg-orange-500/5 transition-all active:scale-[0.98]">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-orange-500/10 border border-orange-500/20 shrink-0">
-              <AlertTriangle className="w-4 h-4 text-orange-400" />
+          <Link to="/Onboarding" onClick={onClose}
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-violet-500/30 hover:bg-violet-500/5 transition-all active:scale-[0.98]">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-500/10 border border-violet-500/20 shrink-0">
+              <Zap className="w-4 h-4 text-violet-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-200">Interventions</p>
-              <p className="text-xs text-slate-500">Resolve Autopilot blocks</p>
+              <p className="text-sm font-semibold text-slate-200">Setup / Onboarding</p>
+              <p className="text-xs text-slate-500">Configure identity, KYC, autopilot & banking</p>
             </div>
           </Link>
 
-          <Link to="/UserAccessPage" onClick={onClose}
+          <Link to="/PendingInterventions" onClick={onClose}
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-orange-500/30 hover:bg-orange-500/5 transition-all active:scale-[0.98]">
             className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-slate-600/50 hover:bg-white/5 transition-all active:scale-[0.98]">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-slate-700/40 border border-slate-600/30 shrink-0">
               <Settings className="w-4 h-4 text-slate-400" />

@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Settings, Shield, Zap, Globe, Bell } from 'lucide-react';
+import { User, Settings, Shield, Zap, Globe, Bell, Rocket } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import UserAccountSettings from '../components/account/UserAccountSettings';
 import IdentitySettings from '../components/account/IdentitySettings';
@@ -178,6 +178,7 @@ export default function UserAccessPage() {
                 <Link to="/AutoPilot" className="block text-blue-400 hover:text-blue-300">→ Autopilot Dashboard</Link>
                 <Link to="/KYCManagement" className="block text-blue-400 hover:text-blue-300">→ KYC Verification</Link>
                 <Link to="/TemplatesLibrary" className="block text-blue-400 hover:text-blue-300">→ Templates Library</Link>
+                <Link to="/Onboarding" className="block text-violet-400 hover:text-violet-300 font-semibold">→ Setup / Onboarding Wizard</Link>
               </CardContent>
             </Card>
 

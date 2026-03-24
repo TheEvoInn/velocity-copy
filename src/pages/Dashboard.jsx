@@ -9,7 +9,7 @@ import { useCurrentUser, useUserProfile, useUserWallet, useUserTasks, useUserOpp
 import {
   Bot, Target, Wallet, Search, Play, Shield, Workflow,
   TrendingUp, Radio, ChevronRight, Cpu, Settings,
-  Power, Rocket, Lock, AlertTriangle
+  Power, Rocket, Lock, AlertTriangle, Zap
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -102,6 +102,14 @@ export default function Dashboard() {
   }, []);
 
   const activeTasks = tasks.filter(t => t.status === 'running').length;
+
+  // Check if onboarding is incomplete
+  const { data: goalsList = [] } = useQuery({
+    queryKey: ['userGoals'],
+    queryFn: () => base44.entities.UserGoals.list('-created_date', 1),
+    staleTime: 60000,
+  });
+  const isOnboarded = goalsList[0]?.onboarded === true;
 
   // Live intervention count
   const { data: interventionData } = useQuery({
@@ -272,6 +280,29 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+
+        {/* ── ONBOARDING BANNER ── */}
+        {!isOnboarded && goalsList.length === 0 && (
+          <Link to="/Onboarding">
+            <div className="mb-4 px-5 py-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+              style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.5)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(124,58,237,0.15)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(124,58,237,0.1)'}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(124,58,237,0.3)', border: '1px solid rgba(124,58,237,0.5)' }}>
+                  <Zap className="w-4 h-4 text-violet-300" />
+                </div>
+                <div>
+                  <span className="font-orbitron text-xs tracking-widest text-violet-300 block">SETUP REQUIRED — COMPLETE YOUR ONBOARDING</span>
+                  <span className="text-[10px] text-slate-500">Identity · KYC · Autopilot · Banking — 5 minutes to activate the full platform</span>
+                </div>
+              </div>
+              <span className="text-xs text-violet-400 flex items-center gap-1 shrink-0">Start <ChevronRight className="w-3 h-3" /></span>
+            </div>
+          </Link>
+        )}
 
         {/* ── INTERVENTION ALERT BANNER ── */}
         {pendingInterventions > 0 && (

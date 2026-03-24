@@ -201,12 +201,11 @@ export default function OnboardingModal({ onComplete }) {
       {/* Background overlay */}
       <div className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm" />
       
-      {/* Modal - scrollable container */}
-      <div className="fixed inset-0 z-[70] overflow-y-auto p-4">
-        <div className="flex justify-center py-8">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl" style={{
-            boxShadow: `0 0 60px ${activeColor}22, 0 25px 60px rgba(0,0,0,0.5)`
-          }}>
+      {/* Modal - CENTERED */}
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl overflow-y-auto" style={{
+          boxShadow: `0 0 60px ${activeColor}22, 0 25px 60px rgba(0,0,0,0.5)`
+        }}>
             
             {/* Progress header */}
             {step > 0 && (
@@ -260,7 +259,6 @@ export default function OnboardingModal({ onComplete }) {
                 />
               )}
             </div>
-          </div>
         </div>
       </div>
     </>

@@ -14,6 +14,7 @@ import StarshipBridge from './pages/StarshipBridge';
 import Control from './pages/Control';
 import UnifiedAutopilot from './pages/UnifiedAutopilot';
 import Discovery from './pages/Discovery';
+import WorkDiscovery from './pages/WorkDiscovery';
 import WalletDashboard from './pages/WalletDashboard';
 import CryptoAutomation from './pages/CryptoAutomation';
 import DigitalResellers from './pages/DigitalResellers';

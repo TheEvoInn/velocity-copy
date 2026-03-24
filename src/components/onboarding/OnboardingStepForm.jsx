@@ -74,31 +74,32 @@ export default function OnboardingStepForm({
       </div>
 
       {/* Form Fields */}
-      <div className="space-y-4 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
-        {fields.map((fieldConfig) => (
-          <OnboardingFieldGroup
-            key={fieldConfig.id}
-            fieldId={fieldConfig.id}
-            label={fieldConfig.label}
-            type={fieldConfig.type || 'text'}
-            value={formData[fieldConfig.id] || ''}
-            onChange={(val) => handleFieldChange(fieldConfig.id, val)}
-            placeholder={fieldConfig.placeholder}
-            required={fieldConfig.required}
-            validation={(val) => {
-              const valid = fieldConfig.validate?.(val) ?? true;
-              handleFieldValidation(fieldConfig.id, valid);
-              return {
-                valid: valid === true,
-                error:
-                  typeof valid === 'string' ? valid : undefined,
-              };
-            }}
-            helpText={fieldConfig.helpText}
-            options={fieldConfig.options}
-            identityId={identityId}
-          />
-        ))}
+       <div className="space-y-4 bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
+         {fields.map((fieldConfig, idx) => (
+           <OnboardingFieldGroup
+             key={fieldConfig.id}
+             fieldId={fieldConfig.id}
+             label={fieldConfig.label}
+             type={fieldConfig.type || 'text'}
+             value={formData[fieldConfig.id] || ''}
+             onChange={(val) => handleFieldChange(fieldConfig.id, val)}
+             placeholder={fieldConfig.placeholder}
+             required={fieldConfig.required}
+             validation={(val) => {
+               const valid = fieldConfig.validate?.(val) ?? true;
+               handleFieldValidation(fieldConfig.id, valid);
+               return {
+                 valid: valid === true,
+                 error:
+                   typeof valid === 'string' ? valid : undefined,
+               };
+             }}
+             helpText={fieldConfig.helpText}
+             options={fieldConfig.options}
+             identityId={identityId}
+             tabIndex={idx + 1}
+           />
+         ))}
       </div>
 
       {/* Actions */}

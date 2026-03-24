@@ -20,6 +20,7 @@ export default function OnboardingFieldGroup({
   options = [], // For select/radio
   accept = '*', // For file inputs
   identityId, // For auto-save to entity
+  tabIndex = 0, // Tab navigation
 }) {
   const fieldConfig = { helpText, accept };
   const [isValid, setIsValid] = useState(true);
@@ -145,6 +146,7 @@ export default function OnboardingFieldGroup({
                 onChange={handleFileUpload}
                 disabled={isUploading}
                 className="hidden"
+                tabIndex={tabIndex}
               />
               <div className="flex items-center gap-2 text-slate-400">
                 {isUploading ? (
@@ -166,20 +168,22 @@ export default function OnboardingFieldGroup({
           )}
         </div>
       ) : type === 'textarea' ? (
-        <textarea
-          value={value}
-          onChange={handleChange}
-          onBlur={onBlur}
-          placeholder={placeholder}
-          className={`${baseInputClasses} resize-none h-24`}
-        />
+       <textarea
+         value={value}
+         onChange={handleChange}
+         onBlur={onBlur}
+         placeholder={placeholder}
+         className={`${baseInputClasses} resize-none h-24`}
+         tabIndex={tabIndex}
+       />
       ) : type === 'select' ? (
-        <select
-          value={value}
-          onChange={handleChange}
-          onBlur={onBlur}
-          className={baseInputClasses}
-        >
+       <select
+         value={value}
+         onChange={handleChange}
+         onBlur={onBlur}
+         className={baseInputClasses}
+         tabIndex={tabIndex}
+       >
           <option value="">{placeholder || 'Select an option'}</option>
           {options.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -188,15 +192,16 @@ export default function OnboardingFieldGroup({
           ))}
         </select>
       ) : type === 'password' ? (
-        <div className="relative">
-          <input
-            type={showPassword ? 'text' : 'password'}
-            value={value}
-            onChange={handleChange}
-            onBlur={onBlur}
-            placeholder={placeholder}
-            className={baseInputClasses}
-          />
+       <div className="relative">
+         <input
+           type={showPassword ? 'text' : 'password'}
+           value={value}
+           onChange={handleChange}
+           onBlur={onBlur}
+           placeholder={placeholder}
+           className={baseInputClasses}
+           tabIndex={tabIndex}
+         />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
@@ -206,14 +211,15 @@ export default function OnboardingFieldGroup({
           </button>
         </div>
       ) : (
-        <input
-          type={type}
-          value={value}
-          onChange={handleChange}
-          onBlur={onBlur}
-          placeholder={placeholder}
-          className={baseInputClasses}
-        />
+       <input
+         type={type}
+         value={value}
+         onChange={handleChange}
+         onBlur={onBlur}
+         placeholder={placeholder}
+         className={baseInputClasses}
+         tabIndex={tabIndex}
+       />
       )}
 
       {/* Error */}

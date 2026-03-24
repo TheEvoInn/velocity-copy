@@ -4,21 +4,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Lock, Key, Eye, EyeOff, Trash2, RefreshCw, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { Lock, Key, Eye, EyeOff, Trash2, RefreshCw, CheckCircle2, AlertCircle, Clock, ShieldCheck, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import CredentialRotationPanel from '../credentials/CredentialRotationPanel';
 
 export default function CredentialManager() {
   const [selectedIdentity, setSelectedIdentity] = useState(null);
-  const [showSecrets, setShowSecrets] = useState({});
-  const [addingCredential, setAddingCredential] = useState(false);
-  const [newCredential, setNewCredential] = useState({
-    platform: '',
-    secret_type: 'password',
-    secret_value: '',
-    account_identifier: ''
+  const [rotatingCred, setRotatingCred] = useState(null);
+  const queryClient = useQueryClient();
+
+  // Load PlatformCredentials (Vault) for rotation oversight
+  const { data: platformCreds = [] } = useQuery({
+    queryKey: ['platformCredentials'],
+    queryFn: () => base44.functions.invoke('credentialVaultManager', { action: 'list', payload: {} }).then(r => r.data?.credentials || []),
+    refetchInterval: 30000,
   });
 
-  const queryClient = useQueryClient();
+  const overdueCount = platformCreds.filter(c => c.next_rotation_due && new Date(c.next_rotation_due) < new Date()).length;
 
   // Fetch identities
   const { data: identities } = useQuery({
@@ -156,9 +158,59 @@ export default function CredentialManager() {
         </div>
       </Card>
 
+      {/* ── Platform Credential Vault — Rotation Overview ── */}
+      {platformCreds.length > 0 && (
+        <Card className="bg-slate-900/50 border-slate-800 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-cyan-400" />
+              Platform Credential Vault
+            </h3>
+            {overdueCount > 0 && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/25">
+                {overdueCount} overdue
+              </span>
+            )}
+          </div>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {platformCreds.map(c => {
+              const overdue = c.next_rotation_due && new Date(c.next_rotation_due) < new Date();
+              return (
+                <div key={c.id} className={`flex items-center justify-between p-2.5 rounded-lg border ${
+                  overdue ? 'bg-red-500/8 border-red-500/20' : 'bg-slate-800/40 border-slate-700'
+                }`}>
+                  <div>
+                    <span className="text-xs font-semibold text-white capitalize">{c.platform}</span>
+                    <span className="text-slate-500 text-xs ml-2">{c.account_label}</span>
+                    {overdue && <span className="text-[10px] text-red-400 ml-2">⚠ Rotation overdue</span>}
+                  </div>
+                  <Button size="sm" variant="ghost"
+                    onClick={() => setRotatingCred(c)}
+                    className="h-7 px-2 text-xs gap-1 text-cyan-400 hover:bg-cyan-500/10">
+                    <RotateCcw className="w-3 h-3" /> Rotate
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Rotation Modal */}
+      {rotatingCred && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
+          <div className="w-full max-w-lg rounded-2xl p-6" style={{ background: 'rgba(10,15,42,0.97)', border: '1px solid rgba(0,232,255,0.25)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-orbitron text-sm text-white tracking-wider">ROTATE CREDENTIAL</h3>
+              <button onClick={() => setRotatingCred(null)} className="text-slate-500 hover:text-white text-lg">&times;</button>
+            </div>
+            <CredentialRotationPanel credential={rotatingCred} onClose={() => { setRotatingCred(null); queryClient.invalidateQueries({ queryKey: ['platformCredentials'] }); }} />
+          </div>
+        </div>
+      )}
+
       {selectedIdentity && (
-        <>
-          {/* Add New Credential */}
+        <>          {/* Add New Credential */}
           <Card className="bg-emerald-950/20 border-emerald-900/30 p-4">
             <button
               onClick={() => setAddingCredential(!addingCredential)}

@@ -24,16 +24,27 @@ export default function RiskManagementPanel({ goals, onUpdate }) {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (goals?.risk_tolerance) setRiskTolerance(goals.risk_tolerance);
-  }, [goals?.id]);
+    if (goals) {
+      setRiskTolerance(goals.risk_tolerance || 'moderate');
+      setMaxDailySpend(goals.available_capital || 500);
+      setMinProfitThreshold(goals.daily_target || 10);
+    }
+  }, [goals?.id, goals?.risk_tolerance, goals?.available_capital, goals?.daily_target]);
 
   const saveMutation = useMutation({
-    mutationFn: () => base44.entities.UserGoals.update(goals.id, { risk_tolerance: riskTolerance }),
+    mutationFn: () => base44.entities.UserGoals.update(goals.id, {
+      risk_tolerance: riskTolerance,
+      available_capital: maxDailySpend,
+      daily_target: minProfitThreshold,
+    }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['userGoals'] });
       if (onUpdate) onUpdate();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    },
+    onError: (error) => {
+      console.error('Failed to save risk profile:', error);
     },
   });
 
@@ -89,7 +100,7 @@ export default function RiskManagementPanel({ goals, onUpdate }) {
             <Input
               type="number"
               value={maxDailySpend}
-              onChange={e => setMaxDailySpend(e.target.value)}
+              onChange={e => setMaxDailySpend(Number(e.target.value))}
               className="pl-7 bg-slate-900/60 border-slate-700/60 text-white text-sm h-9"
             />
           </div>
@@ -103,7 +114,7 @@ export default function RiskManagementPanel({ goals, onUpdate }) {
             <Input
               type="number"
               value={minProfitThreshold}
-              onChange={e => setMinProfitThreshold(e.target.value)}
+              onChange={e => setMinProfitThreshold(Number(e.target.value))}
               className="pl-7 bg-slate-900/60 border-slate-700/60 text-white text-sm h-9"
             />
           </div>
@@ -115,11 +126,11 @@ export default function RiskManagementPanel({ goals, onUpdate }) {
           <div className="relative">
             <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
             <Input
-              type="number"
-              min={0} max={100}
-              value={minSuccessProb}
-              onChange={e => setMinSuccessProb(e.target.value)}
-              className="pl-7 bg-slate-900/60 border-slate-700/60 text-white text-sm h-9"
+             type="number"
+             min={0} max={100}
+             value={minSuccessProb}
+             onChange={e => setMinSuccessProb(Number(e.target.value))}
+             className="pl-7 bg-slate-900/60 border-slate-700/60 text-white text-sm h-9"
             />
           </div>
         </div>

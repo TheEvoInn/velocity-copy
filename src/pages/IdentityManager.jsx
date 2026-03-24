@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useUserIdentities } from '@/hooks/useUserData';
-import { Plus, RefreshCw, Shield, Radio, Power, Users, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Plus, RefreshCw, Shield, Radio, Power, Users, Activity, AlertTriangle, CheckCircle2, Brain } from 'lucide-react';
 import { toast } from 'sonner';
 
 import IdentityPersonaCard from '@/components/identity/IdentityPersonaCard';
@@ -15,6 +15,7 @@ import IdentityMetricsPanel from '@/components/identity/IdentityMetricsPanel';
 import IdentityCreateForm from '@/components/identity/IdentityCreateForm';
 import IdentityOnboardingWizard from '@/components/identity/IdentityOnboardingWizard';
 import IdentityHealthBadge, { getIdentityHealthStatus } from '@/components/identity/IdentityHealthBadge';
+import SkillGapAnalysis from '@/components/identity/SkillGapAnalysis';
 
 export default function IdentityManager() {
   const qc = useQueryClient();
@@ -24,6 +25,7 @@ export default function IdentityManager() {
   const [editingIdentity, setEditingIdentity] = useState(null);
   const [filter, setFilter] = useState('all'); // all | active | inactive | onboarding
   const [onboardingIdentity, setOnboardingIdentity] = useState(null); // identity being onboarded
+  const [activeTab, setActiveTab] = useState('identities'); // identities | skill_gap
 
   // Auto-detect newly created identities that need onboarding
   useEffect(() => {
@@ -194,8 +196,32 @@ export default function IdentityManager() {
         </div>
       )}
 
+      {/* ── TAB BAR ── */}
+      <div className="flex items-center gap-1 mb-5 p-1 rounded-xl"
+        style={{ background: 'rgba(10,15,42,0.6)', border: '1px solid rgba(168,85,247,0.2)' }}>
+        <button onClick={() => setActiveTab('identities')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-orbitron tracking-wider transition-all duration-200 ${
+            activeTab === 'identities' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'text-slate-500 hover:text-slate-300'
+          }`}>
+          <Shield className="w-3.5 h-3.5" /> Identities
+        </button>
+        <button onClick={() => setActiveTab('skill_gap')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-orbitron tracking-wider transition-all duration-200 ${
+            activeTab === 'skill_gap' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'text-slate-500 hover:text-slate-300'
+          }`}>
+          <Brain className="w-3.5 h-3.5" /> Skill Gap Analysis
+        </button>
+      </div>
+
       {/* ── AGGREGATE METRICS ── */}
-      <IdentityMetricsPanel identities={identities} linkedAccounts={allLinkedAccounts} />
+      {activeTab === 'identities' && <IdentityMetricsPanel identities={identities} linkedAccounts={allLinkedAccounts} />}
+
+      {/* ── SKILL GAP TAB ── */}
+      {activeTab === 'skill_gap' && (
+        <SkillGapAnalysis identities={identities} />
+      )}
+
+      {activeTab === 'identities' && <>
 
       {/* ── ONBOARDING NOTICE BANNER ── */}
       {identities.some(i => !i.onboarding_complete) && (
@@ -310,6 +336,7 @@ export default function IdentityManager() {
           All credentials tied to identities are encrypted (AES-256-GCM) in CredentialVault. Switching an identity instantly propagates to Autopilot, Execution, and all active workflows — no stale data. Every switch and credential access is immutably logged.
         </p>
       </div>
+      </> }
 
       {/* ── CREATE / EDIT FORM MODAL ── */}
       {showForm && (

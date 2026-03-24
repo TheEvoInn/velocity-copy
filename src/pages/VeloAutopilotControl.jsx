@@ -77,6 +77,7 @@ export default function VeloAutopilotControl() {
     };
   }, [user?.email, qc]);
 
+  const getTaskStatusColor = (status) => {
     switch (status) {
       case 'completed': return 'text-emerald-400';
       case 'executing': return 'text-cyan-400';

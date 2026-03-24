@@ -68,6 +68,7 @@ const AuthenticatedApp = () => {
         <Route path="/Execution" element={<UnifiedAutopilot />} />
         <Route path="/Discovery" element={<Discovery />} />
         <Route path="/WorkDiscovery" element={<WorkDiscovery />} />
+        <Route path="/Finance" element={<WalletDashboard />} />
         <Route path="/WalletDashboard" element={<WalletDashboard />} />
         <Route path="/CryptoAutomation" element={<CryptoAutomation />} />
         <Route path="/DigitalResellers" element={<DigitalResellers />} />

@@ -43,6 +43,7 @@ import AccountCreationDashboard from './pages/AccountCreationDashboard';
 import VeloIdentityHub from './pages/VeloIdentityHub';
 import VeloAutopilotControl from './pages/VeloAutopilotControl';
 import VeloFinanceCommand from './pages/VeloFinanceCommand';
+import VeloExecutionEngine from './pages/VeloExecutionEngine';
 
 
 const AuthenticatedApp = () => {
@@ -106,6 +107,7 @@ const AuthenticatedApp = () => {
         <Route path="/VeloIdentityHub" element={<VeloIdentityHub />} />
         <Route path="/VeloAutopilotControl" element={<VeloAutopilotControl />} />
         <Route path="/VeloFinanceCommand" element={<VeloFinanceCommand />} />
+        <Route path="/VeloExecutionEngine" element={<VeloExecutionEngine />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

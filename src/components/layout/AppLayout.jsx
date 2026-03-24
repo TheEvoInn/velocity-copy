@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   Zap, LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal, ShoppingCart, Coins,
-  MessageSquare, ChevronRight, X, Menu, Shield, Settings, Target, AlertTriangle, Users
+  MessageSquare, ChevronRight, X, Menu, Shield, Settings, Target, AlertTriangle, Users, Activity
 } from 'lucide-react';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
 import NotificationBell from '../notifications/NotificationBell';
@@ -75,16 +75,16 @@ const DEPARTMENTS = [
     planet: '🔭',
   },
   {
-    path: '/AutoPilot',
-    icon: Cpu,
-    label: 'Execute',
-    subtitle: 'Unified Autopilot & Tasks',
-    color: '#3b82f6',
-    glow: 'rgba(59,130,246,0.5)',
-    gradient: 'from-blue-500/20 to-indigo-600/10',
-    activeBorder: 'border-blue-400/60',
-    textActive: 'text-blue-300',
-    planet: '⚡',
+    path: '/VeloExecutionEngine',
+    icon: Activity,
+    label: 'Execution',
+    subtitle: 'Task Workflows & Logs',
+    color: '#06b6d4',
+    glow: 'rgba(6,182,212,0.5)',
+    gradient: 'from-cyan-500/20 to-blue-600/10',
+    activeBorder: 'border-cyan-400/60',
+    textActive: 'text-cyan-300',
+    planet: '⚙️',
   },
   {
     path: '/VeloFinanceCommand',

@@ -30,10 +30,11 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
 
   const aiGenerate = async (field) => {
     setGenerating(field);
+    const titles = (data.role_labels || []).length > 0 ? data.role_labels.join(', ') : 'Freelancer';
     const prompts = {
-      tagline: `Write a single compelling tagline (max 12 words) for a ${data.role_label || 'Freelancer'} named "${data.name || 'Professional'}" with skills: ${(data.skills || []).join(', ') || 'general'}. Return ONLY the tagline.`,
-      bio: `Write a 3-4 sentence professional bio in first person for "${data.name || 'a professional'}", a ${data.role_label || 'Freelancer'} with skills: ${(data.skills || []).join(', ') || 'general skills'}, tone: ${data.communication_tone || 'professional'}. Make it compelling and credibility-building. Return ONLY the bio.`,
-      proposal_style: `Write 5 specific proposal writing instructions for a ${data.role_label || 'Freelancer'} with ${data.communication_tone || 'professional'} tone. Format as bullet points starting with "- ".`,
+      tagline: `Write a single compelling tagline (max 12 words) for a ${titles} named "${data.first_name || data.name || 'Professional'}" with skills: ${(data.skills || []).join(', ') || 'general'}. Return ONLY the tagline.`,
+      bio: `Write a 3-4 sentence professional bio in first person for "${data.first_name || data.name || 'a professional'}", working as a ${titles} with skills: ${(data.skills || []).join(', ') || 'general skills'}, tone: ${data.communication_tone || 'professional'}. Make it compelling and credibility-building. Return ONLY the bio.`,
+      proposal_style: `Write 5 specific proposal writing instructions for a professional with expertise in ${titles}, using a ${data.communication_tone || 'professional'} tone. Format as bullet points starting with "- ".`,
     };
     try {
       const result = await base44.integrations.Core.InvokeLLM({ prompt: prompts[field] });
@@ -46,8 +47,9 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
   const suggestSkills = async () => {
     setGenerating('skills');
     try {
+      const titles = (data.role_labels || []).length > 0 ? data.role_labels.join(', ') : 'Freelancer';
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `List the top 8 most in-demand and high-earning skills for a ${data.role_label || 'Freelancer'} on freelance platforms. Return ONLY a JSON array of skill name strings, no explanation. Example: ["Writing","SEO","Research"]`,
+       prompt: `List the top 8 most in-demand and high-earning skills for professionals working as ${titles} on freelance platforms. Return ONLY a JSON array of skill name strings, no explanation. Example: ["Writing","SEO","Research"]`,
         response_json_schema: { type: 'object', properties: { skills: { type: 'array', items: { type: 'string' } } } },
       });
       const suggested = result?.skills || [];
@@ -102,9 +104,9 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
           </div>
         </div>
         <div>
-          <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Professional Title</label>
+          <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Professional Titles (Multi-Select)</label>
           <div className="flex flex-wrap gap-1.5">
-            {ROLE_LABELS.slice(0,4).map(r => <Tag key={r} label={r} active={data.role_label === r} onClick={() => set('role_label', r)} />)}
+            {ROLE_LABELS.map(r => <Tag key={r} label={r} active={(data.role_labels || []).includes(r)} onClick={() => toggleArr('role_labels', r)} />)}
           </div>
         </div>
 

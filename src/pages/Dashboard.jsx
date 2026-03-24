@@ -9,8 +9,9 @@ import { useCurrentUser, useUserProfile, useUserWallet, useUserTasks, useUserOpp
 import {
   Bot, Target, Wallet, Search, Play, Shield, Workflow,
   TrendingUp, Radio, ChevronRight, Cpu, Settings,
-  Power, Rocket, Lock
+  Power, Rocket, Lock, AlertTriangle
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 function StatusPulse({ active, size = 3 }) {
   return (
@@ -101,6 +102,14 @@ export default function Dashboard() {
   }, []);
 
   const activeTasks = tasks.filter(t => t.status === 'running').length;
+
+  // Live intervention count
+  const { data: interventionData } = useQuery({
+    queryKey: ['pendingInterventionsCount'],
+    queryFn: () => base44.functions.invoke('userInterventionManager', { action: 'get_pending_interventions' }).then(r => r.data?.interventions || []),
+    refetchInterval: 30000,
+  });
+  const pendingInterventions = interventionData?.length || 0;
   const queuedTasks = tasks.filter(t => t.status === 'queued').length;
   const completedToday = tasks.filter(t =>
     t.status === 'completed' && new Date(t.created_date).toDateString() === new Date().toDateString()
@@ -153,6 +162,11 @@ export default function Dashboard() {
       to: '/StarshipBridge', icon: Rocket, title: 'STARSHIP BRIDGE',
       subtitle: 'Immersive 3D cockpit — the full cinematic control experience',
       color: '#b537f2', stat: null, statLabel: '', active: false
+    },
+    {
+      to: '/PendingInterventions', icon: AlertTriangle, title: 'INTERVENTIONS',
+      subtitle: 'Autopilot blocked — provide missing data, credentials, or decisions',
+      color: '#f97316', stat: pendingInterventions, statLabel: 'pending', active: pendingInterventions > 0
     },
     {
       to: '/admin', icon: Settings, title: 'ADMIN PANEL',
@@ -259,6 +273,24 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* ── INTERVENTION ALERT BANNER ── */}
+        {pendingInterventions > 0 && (
+          <Link to="/PendingInterventions">
+            <div className="mb-4 px-5 py-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+              style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.4)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(249,115,22,0.12)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(249,115,22,0.08)'}>
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-4 h-4 text-orange-400 animate-pulse" />
+                <span className="font-orbitron text-xs tracking-widest text-orange-400">
+                  AUTOPILOT BLOCKED — {pendingInterventions} intervention{pendingInterventions !== 1 ? 's' : ''} require your input
+                </span>
+              </div>
+              <span className="text-xs text-orange-400/70 flex items-center gap-1">Resolve now <ChevronRight className="w-3 h-3" /></span>
+            </div>
+          </Link>
+        )}
+
         {/* ── STATUS BANNER ── */}
         <div className="mb-8 px-5 py-3 rounded-2xl flex items-center justify-between"
           style={{
@@ -332,6 +364,7 @@ export default function Dashboard() {
             <div className="p-4 space-y-2.5">
               {[
                 { to: '/AutoPilot', label: 'Configure Autopilot Engine', color: '#00e8ff', icon: Bot },
+                { to: '/PendingInterventions', label: `Resolve Autopilot Blocks${pendingInterventions > 0 ? ` (${pendingInterventions})` : ''}`, color: '#f97316', icon: AlertTriangle },
                 { to: '/Discovery', label: 'Scan for New Work', color: '#f9d65c', icon: Search },
                 { to: '/Finance', label: 'View Wallet & Earnings', color: '#10b981', icon: Wallet },
                 { to: '/IdentityManager', label: 'Manage AI Identities', color: '#a855f7', icon: Shield },

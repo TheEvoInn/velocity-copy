@@ -78,7 +78,8 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
     </button>
   );
 
-  const isValid = (data.first_name?.trim() && data.last_name?.trim()) || data.name?.trim();
+  // Allow proceeding even if incomplete — warn user but don't block
+  const hasMinimum = (data.first_name?.trim() && data.last_name?.trim()) || data.name?.trim();
 
   return (
     <div>
@@ -226,14 +227,21 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
 
       </div>
 
-      <div className="flex gap-2 mt-4 pt-3 border-t border-slate-800">
-        <Button onClick={onBack} variant="outline" size="sm" className="border-slate-700 text-slate-400 h-9 px-4">
-          <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back
-        </Button>
-        <Button onClick={onNext} disabled={!isValid} size="sm"
-          className="flex-1 bg-violet-600 hover:bg-violet-500 text-white h-9">
-          Next: KYC Setup <ArrowRight className="w-3.5 h-3.5 ml-1" />
-        </Button>
+      <div className="flex flex-col gap-2 mt-4 pt-3 border-t border-slate-800">
+        {!hasMinimum && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded px-3 py-2 text-xs text-amber-200">
+            ⚠️ At least a first/last name or full name is recommended for your identity.
+          </div>
+        )}
+        <div className="flex gap-2">
+          <Button onClick={onBack} variant="outline" size="sm" className="border-slate-700 text-slate-400 h-9 px-4">
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back
+          </Button>
+          <Button onClick={onNext} size="sm"
+            className="flex-1 bg-violet-600 hover:bg-violet-500 text-white h-9">
+            Next: KYC Setup <ArrowRight className="w-3.5 h-3.5 ml-1" />
+          </Button>
+        </div>
       </div>
     </div>
   );

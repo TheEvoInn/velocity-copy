@@ -40,6 +40,9 @@ import OptimizationDashboard from './pages/OptimizationDashboard';
 import PendingInterventions from './pages/PendingInterventions';
 import Onboarding from './pages/Onboarding';
 import AccountCreationDashboard from './pages/AccountCreationDashboard';
+import VeloIdentityHub from './pages/VeloIdentityHub';
+import VeloAutopilotControl from './pages/VeloAutopilotControl';
+import VeloFinanceCommand from './pages/VeloFinanceCommand';
 
 
 const AuthenticatedApp = () => {
@@ -100,6 +103,9 @@ const AuthenticatedApp = () => {
         <Route path="/PendingInterventions" element={<PendingInterventions />} />
         <Route path="/Onboarding" element={<Onboarding />} />
         <Route path="/AccountCreationDashboard" element={<AccountCreationDashboard />} />
+        <Route path="/VeloIdentityHub" element={<VeloIdentityHub />} />
+        <Route path="/VeloAutopilotControl" element={<VeloAutopilotControl />} />
+        <Route path="/VeloFinanceCommand" element={<VeloFinanceCommand />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

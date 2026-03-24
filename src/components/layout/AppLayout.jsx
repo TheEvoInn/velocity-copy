@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   Zap, LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal, ShoppingCart, Coins,
-  MessageSquare, ChevronRight, X, Menu, Shield, Settings, Target, AlertTriangle
+  MessageSquare, ChevronRight, X, Menu, Shield, Settings, Target, AlertTriangle, Users
 } from 'lucide-react';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
 import NotificationBell from '../notifications/NotificationBell';
@@ -25,6 +25,30 @@ const DEPARTMENTS = [
     activeBorder: 'border-cyan-400/60',
     textActive: 'text-cyan-300',
     planet: '🌐',
+  },
+  {
+    path: '/VeloIdentityHub',
+    icon: Users,
+    label: 'Identity',
+    subtitle: 'VELO AI Personas',
+    color: '#06b6d4',
+    glow: 'rgba(6,182,212,0.5)',
+    gradient: 'from-cyan-500/20 to-blue-600/10',
+    activeBorder: 'border-cyan-400/60',
+    textActive: 'text-cyan-300',
+    planet: '👤',
+  },
+  {
+    path: '/VeloAutopilotControl',
+    icon: Zap,
+    label: 'Autopilot',
+    subtitle: 'Master Control',
+    color: '#fbbf24',
+    glow: 'rgba(251,191,36,0.5)',
+    gradient: 'from-amber-500/20 to-yellow-600/10',
+    activeBorder: 'border-amber-400/60',
+    textActive: 'text-amber-300',
+    planet: '⚡',
   },
   {
     path: '/Discovery',
@@ -63,10 +87,10 @@ const DEPARTMENTS = [
     planet: '⚡',
   },
   {
-    path: '/Finance',
+    path: '/VeloFinanceCommand',
     icon: Landmark,
     label: 'Finance',
-    subtitle: 'Wallets & Earnings',
+    subtitle: 'VELO Financial Hub',
     color: '#10b981',
     glow: 'rgba(16,185,129,0.5)',
     gradient: 'from-emerald-500/20 to-teal-600/10',
@@ -290,7 +314,7 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
               <MessageSquare className="w-4 h-4 text-violet-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-200">Velocity AI</p>
+              <p className="text-sm font-semibold text-slate-200">Velo AI</p>
               <p className="text-xs text-slate-500">Chat & commands</p>
             </div>
           </Link>
@@ -415,7 +439,7 @@ export default function AppLayout() {
                 style={{ top: 0, right: -2, boxShadow: '0 0 4px #06b6d4', animation: 'orbit-reverse 3s linear infinite' }} />
             </div>
             <div className="hidden sm:block">
-              <p className="font-orbitron text-xs font-bold tracking-[0.2em] text-white leading-none">VELOCITY</p>
+              <p className="font-orbitron text-xs font-bold tracking-[0.2em] text-white leading-none">VELO AI</p>
               <p className="text-[8px] text-violet-400/70 tracking-[0.15em] leading-none mt-0.5">PROFIT ENGINE</p>
             </div>
           </Link>
@@ -443,7 +467,7 @@ export default function AppLayout() {
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-violet-500/20 text-violet-400 hover:text-violet-300 hover:border-violet-400/40 hover:bg-violet-500/10 transition-all text-xs"
               style={{ boxShadow: '0 0 12px rgba(124,58,237,0.15)' }}>
               <MessageSquare className="w-3.5 h-3.5" />
-              <span className="hidden lg:block font-orbitron text-[10px] tracking-wide">VELOCITY AI</span>
+              <span className="hidden lg:block font-orbitron text-[10px] tracking-wide">VELO AI</span>
             </Link>
             {user?.role === 'admin' && (
               <Link to="/AdminPanel"

@@ -154,6 +154,12 @@ Deno.serve(async (req) => {
       return Response.json({ success: true });
     }
 
+    if (action === 'force_verify_user') {
+      const { user_id } = body;
+      await base44.asServiceRole.entities.User.update(user_id, { is_verified: true });
+      return Response.json({ success: true });
+    }
+
     if (action === 'update_user_role') {
       const { user_id, role } = body;
       await base44.asServiceRole.entities.User.update(user_id, { role });

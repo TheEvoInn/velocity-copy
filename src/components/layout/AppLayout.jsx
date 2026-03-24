@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   Zap, LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal, ShoppingCart, Coins,
-  MessageSquare, ChevronRight, X, Menu, Shield, Settings, Target
+  MessageSquare, ChevronRight, X, Menu, Shield, Settings, Target, AlertTriangle
 } from 'lucide-react';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
 import NotificationBell from '../notifications/NotificationBell';

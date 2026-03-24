@@ -197,9 +197,10 @@ export default function OnboardingModal({ onComplete }) {
   const activeColor = STEP_COLORS[step] || '#8b5cf6';
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]" style={{
-        overflow: 'hidden',
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col my-auto" style={{
+        maxHeight: 'calc(100vh - 32px)',
+        overflowY: 'auto',
         boxShadow: `0 0 60px ${activeColor}22, 0 25px 60px rgba(0,0,0,0.5)`
       }}>
 

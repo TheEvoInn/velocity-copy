@@ -281,6 +281,149 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── ROTATE: Rotate API key or password ─────────────────────────────
+    if (action === 'rotate') {
+      const credential = await base44.entities.PlatformCredential.read(credentialId);
+      if (credential.created_by !== user.email) {
+        return Response.json({ error: 'Forbidden: Not your credential' }, { status: 403 });
+      }
+
+      const { new_password, new_api_key, new_api_secret, rotation_reason } = payload;
+      const updates = { last_rotated_at: new Date().toISOString(), rotation_count: (credential.rotation_count || 0) + 1 };
+
+      if (new_password) {
+        const enc = await encryptField(new_password, encryptionKey);
+        updates.password_encrypted = enc.encrypted;
+        updates.encryption_iv = enc.iv;
+      }
+      if (new_api_key) {
+        const enc = await encryptField(new_api_key, encryptionKey);
+        updates.api_key_encrypted = enc.encrypted;
+      }
+      if (new_api_secret) {
+        const enc = await encryptField(new_api_secret, encryptionKey);
+        updates.api_secret_encrypted = enc.encrypted;
+      }
+
+      // Store rotation history entry (non-sensitive)
+      const rotationEntry = { timestamp: new Date().toISOString(), reason: rotation_reason || 'manual_rotation', fields_rotated: [new_password && 'password', new_api_key && 'api_key', new_api_secret && 'api_secret'].filter(Boolean) };
+      updates.rotation_history = [...(credential.rotation_history || []).slice(-9), rotationEntry];
+
+      // Set next rotation reminder
+      const nextRotation = new Date();
+      nextRotation.setDate(nextRotation.getDate() + (credential.rotation_interval_days || 90));
+      updates.next_rotation_due = nextRotation.toISOString();
+
+      await base44.entities.PlatformCredential.update(credentialId, updates);
+
+      await base44.asServiceRole.entities.ActivityLog.create({
+        action_type: 'user_action',
+        message: `🔄 Credential rotated: ${credential.platform} — ${credential.account_label}`,
+        severity: 'success',
+        metadata: { credentialId, reason: rotation_reason },
+      });
+
+      return Response.json({ success: true, next_rotation_due: updates.next_rotation_due });
+    }
+
+    // ─── HEALTH CHECK: Test if credential is ready + overdue for rotation ─
+    if (action === 'health_check') {
+      const credential = await base44.entities.PlatformCredential.read(credentialId);
+      if (credential.created_by !== user.email) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
+      const issues = [];
+      const now = new Date();
+
+      if (!credential.is_active) issues.push({ severity: 'critical', msg: 'Credential is disabled' });
+      if (!credential.user_consent_acknowledged) issues.push({ severity: 'high', msg: 'Missing user consent' });
+      if (!credential.username_email) issues.push({ severity: 'high', msg: 'No username/email set' });
+      if (!credential.password_encrypted && !credential.api_key_encrypted) issues.push({ severity: 'high', msg: 'No password or API key stored' });
+      if (credential.two_factor_method !== 'none' && !credential.two_factor_secret_encrypted) issues.push({ severity: 'medium', msg: '2FA enabled but no backup code stored' });
+
+      // Rotation overdue check
+      if (credential.next_rotation_due && new Date(credential.next_rotation_due) < now) {
+        issues.push({ severity: 'medium', msg: `Rotation overdue since ${new Date(credential.next_rotation_due).toLocaleDateString()}` });
+      } else if (!credential.last_rotated_at) {
+        issues.push({ severity: 'low', msg: 'Never rotated — consider rotating soon' });
+      }
+
+      const health = issues.length === 0 ? 'healthy' : issues.some(i => i.severity === 'critical' || i.severity === 'high') ? 'critical' : issues.some(i => i.severity === 'medium') ? 'warning' : 'notice';
+
+      return Response.json({ success: true, health, issues, autopilot_ready: health !== 'critical' });
+    }
+
+    // ─── GET_FOR_PLATFORM: Autopilot looks up best cred for a platform ────
+    if (action === 'get_for_platform') {
+      const { platform, required_action } = payload;
+
+      const credentials = await base44.entities.PlatformCredential.filter(
+        { platform, is_active: true },
+        '-access_count',
+        10
+      );
+
+      if (!credentials.length) {
+        return Response.json({ success: false, error: `No active credentials for ${platform}` });
+      }
+
+      // Filter to ones that allow the required action
+      const eligible = credentials.filter(c => isActionAllowed(c, required_action || 'login'));
+      if (!eligible.length) {
+        return Response.json({ success: false, error: `No credentials with permission for: ${required_action}` });
+      }
+
+      // Pick best: prefer full_automation + highest access_count (most reliable)
+      const best = eligible.sort((a, b) => {
+        const scoreA = (a.permission_level === 'full_automation' ? 100 : 50) + (a.access_count || 0);
+        const scoreB = (b.permission_level === 'full_automation' ? 100 : 50) + (b.access_count || 0);
+        return scoreB - scoreA;
+      })[0];
+
+      // Decrypt for Autopilot
+      const [password, twoFaSecret, apiKey, apiSecret] = await Promise.all([
+        decryptField(best.password_encrypted, best.encryption_iv, encryptionKey),
+        decryptField(best.two_factor_secret_encrypted, best.encryption_iv, encryptionKey),
+        decryptField(best.api_key_encrypted, best.encryption_iv, encryptionKey),
+        decryptField(best.api_secret_encrypted, best.encryption_iv, encryptionKey),
+      ]);
+
+      await logAccess(base44, best.id, required_action || 'login', payload.task_id, true);
+
+      return Response.json({
+        success: true,
+        credential_id: best.id,
+        data: {
+          platform: best.platform,
+          login_url: best.login_url,
+          username_email: best.username_email,
+          password, two_factor_method: best.two_factor_method,
+          two_factor_secret: twoFaSecret,
+          api_key: apiKey, api_secret: apiSecret,
+          special_instructions: best.special_instructions,
+          permission_level: best.permission_level,
+          fully_auto_enabled: best.fully_auto_enabled,
+        },
+      });
+    }
+
+    // ─── SET_ROTATION_SCHEDULE: Configure auto-rotation interval ──────────
+    if (action === 'set_rotation_schedule') {
+      const credential = await base44.entities.PlatformCredential.read(credentialId);
+      if (credential.created_by !== user.email) return Response.json({ error: 'Forbidden' }, { status: 403 });
+
+      const { rotation_interval_days } = payload;
+      const next = new Date();
+      next.setDate(next.getDate() + rotation_interval_days);
+
+      await base44.entities.PlatformCredential.update(credentialId, {
+        rotation_interval_days,
+        next_rotation_due: next.toISOString(),
+      });
+      return Response.json({ success: true, next_rotation_due: next.toISOString() });
+    }
+
     // ─── DELETE: Remove credential ────────────────────────────────────────
     if (action === 'delete') {
       const credential = await base44.entities.PlatformCredential.read(credentialId);

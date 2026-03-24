@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, Pencil, Trash2, Copy } from 'lucide-react';
+import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, Pencil, Trash2, Copy, RefreshCw, ShieldCheck, ShieldAlert, Clock } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
 const PERMISSION_LEVELS = {
@@ -8,19 +10,29 @@ const PERMISSION_LEVELS = {
   full_automation: { label: 'Full Automation', color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: '🤖' },
 };
 
-export default function CredentialVaultCard({ credential, onEdit, onDelete, onToggleFullAuto }) {
+export default function CredentialVaultCard({ credential, onEdit, onDelete, onToggleFullAuto, onRefresh }) {
   const [showPassword, setShowPassword] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
-  
-  const perm = PERMISSION_LEVELS[credential.permission_level] || PERMISSION_LEVELS.view_only;
-
-  const copyToClipboard = (text, field) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
+  const [health, setHealth] = useState(null);
+  const [checking, setChecking] = useState(false);
 
   const lastUsed = credential.last_used_at ? new Date(credential.last_used_at).toLocaleDateString() : 'Never';
+
+  const rotationOverdue = credential.next_rotation_due && new Date(credential.next_rotation_due) < new Date();
+  const daysSinceRotation = credential.last_rotated_at
+    ? Math.floor((Date.now() - new Date(credential.last_rotated_at)) / 86400000)
+    : null;
+
+  async function runHealthCheck() {
+    setChecking(true);
+    try {
+      const res = await base44.functions.invoke('credentialVaultManager', {
+        action: 'health_check', credentialId: credential.id, payload: {}
+      });
+      setHealth(res.data);
+    } catch (e) { toast.error(e.message); }
+    setChecking(false);
+  }
 
   return (
     <div className="rounded-xl bg-slate-900/60 border border-slate-800 p-4 space-y-3">
@@ -175,6 +187,46 @@ export default function CredentialVaultCard({ credential, onEdit, onDelete, onTo
         </button>
       </div>
 
+      {/* Rotation Status */}
+      <div className={`flex items-center justify-between p-2.5 rounded-lg border ${
+        rotationOverdue ? 'bg-red-500/10 border-red-500/25' : 'bg-slate-800/30 border-slate-700'
+      }`}>
+        <div className="flex items-center gap-2">
+          <Clock className={`w-3.5 h-3.5 ${rotationOverdue ? 'text-red-400' : 'text-slate-500'}`} />
+          <div>
+            <p className="text-[9px] text-slate-500 uppercase tracking-wider">Credential Rotation</p>
+            {rotationOverdue ? (
+              <p className="text-[10px] text-red-400 font-semibold">Overdue — rotate now</p>
+            ) : credential.next_rotation_due ? (
+              <p className="text-[10px] text-slate-400">Due {new Date(credential.next_rotation_due).toLocaleDateString()}</p>
+            ) : daysSinceRotation !== null ? (
+              <p className="text-[10px] text-slate-400">Last rotated {daysSinceRotation}d ago</p>
+            ) : (
+              <p className="text-[10px] text-slate-500">Never rotated</p>
+            )}
+          </div>
+        </div>
+        <div className="text-[9px] text-slate-600">{credential.rotation_count || 0} rotations</div>
+      </div>
+
+      {/* Health Check Result */}
+      {health && (
+        <div className={`p-2.5 rounded-lg border space-y-1 ${
+          health.health === 'healthy' ? 'bg-emerald-500/10 border-emerald-500/25' :
+          health.health === 'critical' ? 'bg-red-500/10 border-red-500/25' : 'bg-amber-500/10 border-amber-500/25'
+        }`}>
+          <div className="flex items-center gap-1.5">
+            {health.health === 'healthy' ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> : <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />}
+            <span className={`text-[10px] font-bold capitalize ${
+              health.health === 'healthy' ? 'text-emerald-400' : health.health === 'critical' ? 'text-red-400' : 'text-amber-400'
+            }`}>{health.health} {health.autopilot_ready ? '· Autopilot Ready' : '· Not Autopilot Ready'}</span>
+          </div>
+          {(health.issues || []).map((iss, i) => (
+            <p key={i} className="text-[10px] text-slate-400">• {iss.msg}</p>
+          ))}
+        </div>
+      )}
+
       {/* Access Stats */}
       <div className="grid grid-cols-2 gap-2 p-2 rounded-lg bg-slate-800/30">
         <div className="text-center">
@@ -190,21 +242,25 @@ export default function CredentialVaultCard({ credential, onEdit, onDelete, onTo
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2 pt-2 border-t border-slate-800">
+      <div className="flex gap-2 pt-2 border-t border-slate-800 flex-wrap">
         <Button
           onClick={() => onEdit(credential)}
-          size="sm"
-          variant="outline"
-          className="flex-1 border-slate-700 text-slate-400 text-xs h-8 gap-1"
-        >
+          size="sm" variant="outline"
+          className="flex-1 border-slate-700 text-slate-400 text-xs h-8 gap-1">
           <Pencil className="w-3 h-3" /> Edit
         </Button>
         <Button
+          onClick={runHealthCheck}
+          disabled={checking}
+          size="sm" variant="outline"
+          className="flex-1 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 text-xs h-8 gap-1">
+          {checking ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
+          {checking ? 'Checking…' : 'Health'}
+        </Button>
+        <Button
           onClick={() => onDelete(credential.id)}
-          size="sm"
-          variant="outline"
-          className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs h-8 gap-1"
-        >
+          size="sm" variant="outline"
+          className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs h-8 gap-1">
           <Trash2 className="w-3 h-3" /> Delete
         </Button>
       </div>

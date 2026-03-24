@@ -12,7 +12,6 @@ import StepKYC from './steps/StepKYC';
 import StepPreferences from './steps/StepPreferences';
 import StepBanking from './steps/StepBanking';
 import StepWorkflows from './steps/StepWorkflows';
-import { TEMPLATE_LIBRARY } from './steps/StepWorkflows';
 import StepLaunch from './steps/StepLaunch';
 
 const STEP_LABELS = ['Welcome', 'Identity', 'KYC', 'Preferences', 'Banking', 'Workflows', 'Launch'];

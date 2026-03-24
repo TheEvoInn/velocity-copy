@@ -201,65 +201,66 @@ export default function OnboardingModal({ onComplete }) {
       {/* Background overlay */}
       <div className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm" />
       
-      {/* Modal container */}
-      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
-        <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col pointer-events-auto" style={{
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          boxShadow: `0 0 60px ${activeColor}22, 0 25px 60px rgba(0,0,0,0.5)`
-        }}>
+      {/* Modal - scrollable container */}
+      <div className="fixed inset-0 z-[70] overflow-y-auto p-4">
+        <div className="flex justify-center py-8">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl" style={{
+            boxShadow: `0 0 60px ${activeColor}22, 0 25px 60px rgba(0,0,0,0.5)`
+          }}>
+            
+            {/* Progress header */}
+            {step > 0 && (
+              <div className="px-6 pt-5 pb-4 border-b border-slate-800">
+                <div className="flex items-center justify-between">
+                  {STEP_LABELS.slice(1).map((label, i) => {
+                    const idx = i + 1;
+                    const isActive = idx === step;
+                    const isDone = idx < step;
+                    return (
+                      <div key={label} className="flex items-center gap-1 flex-1">
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all ${
+                          isDone ? 'bg-emerald-500 text-white' : 'text-white'
+                        }`} style={isActive ? { background: activeColor } : isDone ? {} : { background: '#1e293b' }}>
+                          {isDone ? '✓' : idx}
+                        </div>
+                        <span className={`text-[9px] hidden sm:block ${isActive ? 'text-white' : isDone ? 'text-emerald-400' : 'text-slate-600'}`}>
+                          {label}
+                        </span>
+                        {i < STEP_LABELS.length - 2 && (
+                          <div className={`flex-1 h-0.5 mx-1 rounded-full ${isDone ? 'bg-emerald-500' : 'bg-slate-800'}`} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-          {/* Progress header */}
-        {step > 0 && (
-          <div className="px-6 pt-5 pb-4 border-b border-slate-800">
-            <div className="flex items-center justify-between">
-              {STEP_LABELS.slice(1).map((label, i) => {
-                const idx = i + 1;
-                const isActive = idx === step;
-                const isDone = idx < step;
-                return (
-                  <div key={label} className="flex items-center gap-1 flex-1">
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all ${
-                      isDone ? 'bg-emerald-500 text-white' : 'text-white'
-                    }`} style={isActive ? { background: activeColor } : isDone ? {} : { background: '#1e293b' }}>
-                      {isDone ? '✓' : idx}
-                    </div>
-                    <span className={`text-[9px] hidden sm:block ${isActive ? 'text-white' : isDone ? 'text-emerald-400' : 'text-slate-600'}`}>
-                      {label}
-                    </span>
-                    {i < STEP_LABELS.length - 2 && (
-                      <div className={`flex-1 h-0.5 mx-1 rounded-full ${isDone ? 'bg-emerald-500' : 'bg-slate-800'}`} />
-                    )}
-                  </div>
-                );
-              })}
+            {/* Content */}
+            <div className="p-6">
+              {step === 0 && <StepWelcome onNext={() => setStep(1)} />}
+              {step === 1 && <StepIdentity data={identityData} onChange={setIdentityData} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
+              {step === 2 && <StepKYC data={kycData} onChange={setKycData} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
+              {step === 3 && <StepPreferences data={prefData} onChange={setPrefData} onNext={() => setStep(4)} onBack={() => setStep(2)} />}
+              {step === 4 && <StepBanking data={bankingData} onChange={setBankingData} onNext={() => setStep(5)} onBack={() => setStep(3)} />}
+              {step === 5 && (
+                <StepWorkflows
+                  data={workflowData} onChange={setWorkflowData}
+                  identityData={identityData} prefData={prefData}
+                  onNext={() => setStep(6)} onBack={() => setStep(4)}
+                />
+              )}
+              {step === 6 && (
+                <StepLaunch
+                  identityData={identityData} kycData={kycData}
+                  prefData={prefData} bankingData={bankingData}
+                  workflowData={workflowData}
+                  onLaunch={handleLaunch} onBack={() => setStep(5)}
+                  isLaunching={isLaunching}
+                />
+              )}
             </div>
           </div>
-        )}
-
-        <div className="p-6 overflow-y-auto flex-1">
-          {step === 0 && <StepWelcome onNext={() => setStep(1)} />}
-          {step === 1 && <StepIdentity data={identityData} onChange={setIdentityData} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-          {step === 2 && <StepKYC data={kycData} onChange={setKycData} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-          {step === 3 && <StepPreferences data={prefData} onChange={setPrefData} onNext={() => setStep(4)} onBack={() => setStep(2)} />}
-          {step === 4 && <StepBanking data={bankingData} onChange={setBankingData} onNext={() => setStep(5)} onBack={() => setStep(3)} />}
-          {step === 5 && (
-            <StepWorkflows
-              data={workflowData} onChange={setWorkflowData}
-              identityData={identityData} prefData={prefData}
-              onNext={() => setStep(6)} onBack={() => setStep(4)}
-            />
-          )}
-          {step === 6 && (
-            <StepLaunch
-              identityData={identityData} kycData={kycData}
-              prefData={prefData} bankingData={bankingData}
-              workflowData={workflowData}
-              onLaunch={handleLaunch} onBack={() => setStep(5)}
-              isLaunching={isLaunching}
-            />
-          )}
-        </div>
         </div>
       </div>
     </>

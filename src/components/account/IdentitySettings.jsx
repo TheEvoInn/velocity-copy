@@ -4,11 +4,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Zap, Settings, ChevronRight } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Zap, Settings, ChevronRight, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function IdentitySettings() {
   const [activeIdentity, setActiveIdentity] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
   const queryClient = useQueryClient();
 
   // Fetch all identities (filtered to current user only)
@@ -46,6 +48,21 @@ export default function IdentitySettings() {
     },
     onError: (error) => {
       toast.error(`Failed to switch identity: ${error.message}`);
+    }
+  });
+
+  // Delete identity mutation
+  const deleteIdentityMutation = useMutation({
+    mutationFn: async (identityId) => {
+      return await base44.entities.AIIdentity.delete(identityId);
+    },
+    onSuccess: () => {
+      toast.success('Identity deleted successfully');
+      setDeleteId(null);
+      queryClient.invalidateQueries({ queryKey: ['identities'] });
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete identity: ${error.message}`);
     }
   });
 
@@ -126,17 +143,34 @@ export default function IdentitySettings() {
                       ))}
                     </div>
                   </div>
-                  <button
-                    onClick={() => switchIdentityMutation.mutate(identity.id)}
-                    disabled={identity.id === activeIdentity || switchIdentityMutation.isPending}
-                    className={`ml-4 p-2 rounded transition-colors ${
-                      identity.id === activeIdentity
-                        ? 'bg-purple-500/30 text-purple-300 cursor-default'
-                        : 'hover:bg-slate-700 text-slate-400'
-                    }`}
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
+                  <div className="ml-4 flex items-center gap-1">
+                   <button
+                     onClick={() => window.location.href = `/AIIdentityStudio?id=${identity.id}`}
+                     title="Edit identity"
+                     className="p-2 rounded hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
+                   >
+                     <Edit2 className="w-4 h-4" />
+                   </button>
+                   <button
+                     onClick={() => setDeleteId(identity.id)}
+                     disabled={identity.id === activeIdentity}
+                     title="Delete identity"
+                     className="p-2 rounded hover:bg-red-900/30 text-slate-400 hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                   >
+                     <Trash2 className="w-4 h-4" />
+                   </button>
+                   <button
+                     onClick={() => switchIdentityMutation.mutate(identity.id)}
+                     disabled={identity.id === activeIdentity || switchIdentityMutation.isPending}
+                     className={`ml-2 p-2 rounded transition-colors ${
+                       identity.id === activeIdentity
+                         ? 'bg-purple-500/30 text-purple-300 cursor-default'
+                         : 'hover:bg-slate-700 text-slate-400'
+                     }`}
+                   >
+                     <ChevronRight className="w-5 h-5" />
+                   </button>
+                  </div>
                 </CardContent>
               </Card>
             ))
@@ -152,6 +186,28 @@ export default function IdentitySettings() {
       >
         Create New Identity
       </Button>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Identity</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this identity? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteId && deleteIdentityMutation.mutate(deleteId)}
+              disabled={deleteIdentityMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

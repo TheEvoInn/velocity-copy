@@ -2,8 +2,8 @@
  * CONTROL — Workflows & Strategies Hub
  * Unified command surface for all user workflows, strategies, and automation templates.
  */
-import React, { useState } from 'react';
-import { useWorkflows, useAIIdentities } from '@/hooks/useQueryHooks';
+import React, { useState, useEffect } from 'react';
+import { useWorkflows, useUserWorkflows, useWorkflowTemplatesSaved, useAIIdentities } from '@/hooks/useQueryHooks';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
@@ -39,7 +39,26 @@ export default function Control() {
   const [tab, setTab] = useState('strategies');
 
   const { data: workflows = [], isLoading: wfLoading } = useWorkflows();
+  const { data: userWorkflows = [], isLoading: uwLoading } = useUserWorkflows();
+  const { data: savedTemplates = [], isLoading: stLoading } = useWorkflowTemplatesSaved();
   const { data: identities = [] } = useAIIdentities();
+
+  // Real-time subscriptions — instantly sync when builder or library saves
+  useEffect(() => {
+    const unsubs = [
+      base44.entities.Workflow.subscribe(() => qc.invalidateQueries(['data', 'workflows'])),
+      base44.entities.UserWorkflow?.subscribe?.(() => qc.invalidateQueries(['data', 'userWorkflows'])),
+      base44.entities.WorkflowTemplate?.subscribe?.(() => qc.invalidateQueries(['data', 'workflowTemplatesSaved'])),
+      base44.entities.Strategy.subscribe(() => qc.invalidateQueries(['strategies'])),
+    ];
+    return () => unsubs.forEach(u => u?.());
+  }, [qc]);
+
+  // Merge all workflow sources
+  const allWorkflows = [
+    ...workflows.map(w => ({ ...w, _source: 'Workflow' })),
+    ...userWorkflows.map(w => ({ ...w, _source: 'UserWorkflow', name: w.name || w.workflow_name || w.title })),
+  ];
 
   const { data: strategies = [], isLoading: stratLoading } = useQuery({
     queryKey: ['strategies'],
@@ -66,7 +85,7 @@ export default function Control() {
   });
 
   const activeStrategies = strategies.filter(s => s.status === 'active').length;
-  const activeWorkflows  = workflows.filter(w => w.status === 'active').length;
+  const activeWorkflows  = allWorkflows.filter(w => w.status === 'active').length;
   const appliedTemplate  = store?.autopilot_preferences?.active_template_name;
   const isLoading = wfLoading || stratLoading;
 
@@ -121,8 +140,8 @@ export default function Control() {
           {[
             { label: 'ACTIVE STRATEGIES', value: activeStrategies, color: '#a855f7', icon: Target },
             { label: 'ACTIVE WORKFLOWS',  value: activeWorkflows,  color: '#06b6d4', icon: GitBranch },
-            { label: 'TOTAL STRATEGIES',  value: strategies.length, color: '#f9d65c', icon: TrendingUp },
-            { label: 'AI IDENTITIES',     value: identities.filter(i => i.is_active).length, color: '#10b981', icon: Zap },
+            { label: 'TOTAL WORKFLOWS',   value: allWorkflows.length, color: '#f9d65c', icon: TrendingUp },
+            { label: 'SAVED TEMPLATES',   value: savedTemplates.length, color: '#10b981', icon: Layers },
           ].map(m => (
             <div key={m.label} className="relative rounded-2xl p-4 overflow-hidden"
               style={{ background: 'rgba(10,15,42,0.7)', border: `1px solid ${m.color}25`, backdropFilter: 'blur(20px)' }}>
@@ -251,16 +270,16 @@ export default function Control() {
         {tab === 'workflows' && (
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-slate-500">{workflows.length} workflows total</p>
+              <p className="text-xs text-slate-500">{allWorkflows.length} workflows total ({userWorkflows.length} from builder)</p>
               <Link to="/WorkflowBuilder" className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
                 <Plus className="w-3 h-3" /> Build Workflow
               </Link>
             </div>
-            {wfLoading ? (
+            {(wfLoading || uwLoading) ? (
               <div className="flex justify-center py-12">
                 <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : workflows.length === 0 ? (
+            ) : allWorkflows.length === 0 ? (
               <Card className="glass-card p-12 text-center">
                 <GitBranch className="w-10 h-10 text-slate-600 mx-auto mb-3" />
                 <p className="text-slate-400 text-sm mb-2">No workflows yet</p>
@@ -273,22 +292,27 @@ export default function Control() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {workflows.map(wf => (
-                  <Card key={wf.id} className="glass-card p-4">
+                {allWorkflows.map(wf => (
+                  <Card key={`${wf._source}-${wf.id}`} className="glass-card p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-semibold text-white truncate">{wf.name}</span>
+                          <span className="text-sm font-semibold text-white truncate">{wf.name || wf.workflow_name || wf.title || 'Untitled Workflow'}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-orbitron"
+                            style={{ background: wf._source === 'UserWorkflow' ? 'rgba(6,182,212,0.15)' : 'rgba(168,85,247,0.15)', color: wf._source === 'UserWorkflow' ? '#06b6d4' : '#a855f7', border: `1px solid ${wf._source === 'UserWorkflow' ? '#06b6d440' : '#a855f740'}` }}>
+                            {wf._source === 'UserWorkflow' ? 'Builder' : 'System'}
+                          </span>
                         </div>
                         {wf.description && (
                           <p className="text-xs text-slate-500 mb-2 line-clamp-1">{wf.description}</p>
                         )}
                         <div className="flex items-center gap-3 text-xs text-slate-600">
-                          <span>{wf.execution_stats?.total_runs || 0} runs</span>
+                          <span>{wf.execution_stats?.total_runs || wf.executions_count || 0} runs</span>
                           {wf.execution_stats?.success_rate != null && (
                             <span className="text-emerald-400/80">{wf.execution_stats.success_rate}% success</span>
                           )}
                           {wf.trigger_type && <span className="capitalize">Trigger: {wf.trigger_type}</span>}
+                          {wf.updated_date && <span>Updated {new Date(wf.updated_date).toLocaleDateString()}</span>}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
@@ -313,37 +337,44 @@ export default function Control() {
 
         {/* ── Templates Tab ── */}
         {tab === 'templates' && (
-          <div className="space-y-3">
-            {/* Quick nav cards to template-related tools */}
+          <div className="space-y-4">
+
+            {/* Saved templates from library */}
+            {savedTemplates.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-orbitron text-slate-500 tracking-widest">SAVED TEMPLATES ({savedTemplates.length})</p>
+                </div>
+                <div className="space-y-2 mb-4">
+                  {savedTemplates.map(t => (
+                    <Card key={t.id} className="glass-card p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-white truncate">{t.name || t.template_name || t.title}</span>
+                            {t.category && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400 border border-violet-500/30 font-orbitron capitalize">{t.category}</span>
+                            )}
+                          </div>
+                          {t.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{t.description}</p>}
+                        </div>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-orbitron border shrink-0 ${STATUS_COLOR[t.status] || STATUS_COLOR.draft}`}>
+                          {t.status || 'saved'}
+                        </span>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quick nav to tools */}
+            <p className="text-xs font-orbitron text-slate-500 tracking-widest">TOOLS</p>
             {[
-              {
-                to: '/TemplatesLibrary',
-                icon: BookOpen,
-                color: '#a855f7',
-                title: 'Templates Library',
-                desc: 'Browse and apply pre-built profit strategies and automation templates',
-              },
-              {
-                to: '/WorkflowBuilder',
-                icon: GitBranch,
-                color: '#06b6d4',
-                title: 'Workflow Builder',
-                desc: 'Build custom multi-step automation workflows with triggers and conditions',
-              },
-              {
-                to: '/AutomationManager',
-                icon: RefreshCw,
-                color: '#10b981',
-                title: 'Automation Manager',
-                desc: 'Manage all active automations, schedules, and trigger configurations',
-              },
-              {
-                to: '/IdentityManager',
-                icon: Zap,
-                color: '#f9d65c',
-                title: 'Identity Manager',
-                desc: 'Assign AI identities to strategies and workflows for autonomous execution',
-              },
+              { to: '/TemplatesLibrary', icon: BookOpen, color: '#a855f7', title: 'Templates Library', desc: 'Browse and apply pre-built profit strategies and automation templates' },
+              { to: '/WorkflowBuilder',  icon: GitBranch, color: '#06b6d4', title: 'Workflow Builder', desc: 'Build custom multi-step automation workflows with triggers and conditions' },
+              { to: '/AutomationManager', icon: RefreshCw, color: '#10b981', title: 'Automation Manager', desc: 'Manage all active automations, schedules, and trigger configurations' },
+              { to: '/IdentityManager',  icon: Zap, color: '#f9d65c', title: 'Identity Manager', desc: 'Assign AI identities to strategies and workflows for autonomous execution' },
             ].map(item => (
               <Link key={item.to} to={item.to}>
                 <Card className="glass-card p-4 hover:border-opacity-80 transition-all duration-200 cursor-pointer group"

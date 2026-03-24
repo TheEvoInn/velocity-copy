@@ -172,13 +172,45 @@ export function useWorkflows() {
     queryKey: queryKeys.workflows(),
     queryFn: async () => {
       try {
-        return await base44.entities.Workflow?.list?.() || [];
+        return await base44.entities.Workflow?.list?.('-updated_date', 100) || [];
       } catch (error) {
         console.error('Failed to fetch workflows:', error);
         return [];
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 60 * 1000, // 1 minute — fresher for sync
+    retry: 2,
+  });
+}
+
+export function useUserWorkflows() {
+  return useQuery({
+    queryKey: [...queryKeys.all, 'userWorkflows'],
+    queryFn: async () => {
+      try {
+        return await base44.entities.UserWorkflow?.list?.('-updated_date', 100) || [];
+      } catch (error) {
+        console.error('Failed to fetch user workflows:', error);
+        return [];
+      }
+    },
+    staleTime: 60 * 1000,
+    retry: 2,
+  });
+}
+
+export function useWorkflowTemplatesSaved() {
+  return useQuery({
+    queryKey: [...queryKeys.all, 'workflowTemplatesSaved'],
+    queryFn: async () => {
+      try {
+        return await base44.entities.WorkflowTemplate?.list?.('-updated_date', 100) || [];
+      } catch (error) {
+        console.error('Failed to fetch workflow templates:', error);
+        return [];
+      }
+    },
+    staleTime: 60 * 1000,
     retry: 2,
   });
 }

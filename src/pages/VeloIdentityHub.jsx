@@ -16,6 +16,7 @@ export default function VeloIdentityHub() {
   const [selectedIdentity, setSelectedIdentity] = useState(null);
   const [showCreator, setShowCreator] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
 
   // Fetch all identities
   const { data: identities = [], isLoading: loadingIdentities } = useQuery({
@@ -269,7 +270,11 @@ export default function VeloIdentityHub() {
                     )}
                   </div>
 
-                  <Button className="w-full" style={{ background: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}>
+                  <Button 
+                    onClick={() => setShowProfileEditor(true)}
+                    className="w-full" 
+                    style={{ background: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}
+                  >
                     <Edit className="w-4 h-4 mr-2" />
                     Edit Profile
                   </Button>
@@ -342,6 +347,75 @@ export default function VeloIdentityHub() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Profile Editor Modal */}
+        {showProfileEditor && activeIdentity && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <Card className="glass-card w-full max-w-2xl mx-4">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Edit Identity Profile</CardTitle>
+                <button 
+                  onClick={() => setShowProfileEditor(false)}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-semibold text-white block mb-2">Name</label>
+                  <input 
+                    type="text" 
+                    defaultValue={activeIdentity.name}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/60 text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-white block mb-2">Email</label>
+                  <input 
+                    type="email" 
+                    defaultValue={activeIdentity.email}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/60 text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-white block mb-2">Bio</label>
+                  <textarea 
+                    defaultValue={activeIdentity.bio}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/60 text-white text-sm h-24 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-white block mb-2">Role Label</label>
+                  <input 
+                    type="text" 
+                    defaultValue={activeIdentity.role_label}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/60 text-white text-sm"
+                  />
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button 
+                    onClick={() => setShowProfileEditor(false)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      // TODO: Add mutation to save profile changes
+                      setShowProfileEditor(false);
+                    }}
+                    className="flex-1"
+                    style={{ background: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}
+                  >
+                    Save Changes
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

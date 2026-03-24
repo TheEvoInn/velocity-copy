@@ -33,6 +33,8 @@ import WorkflowBuilder from './pages/WorkflowBuilder';
 import BankSettings from './pages/BankSettings';
 import AutomationManager from './pages/AutomationManager';
 import APIManagement from './pages/APIManagement';
+import APIDiscoveryDashboard from './pages/APIDiscoveryDashboard';
+import APIDetailPage from './pages/APIDetailPage';
 import ComplianceDashboard from './pages/ComplianceDashboard';
 import OptimizationDashboard from './pages/OptimizationDashboard';
 import PendingInterventions from './pages/PendingInterventions';
@@ -91,6 +93,8 @@ const AuthenticatedApp = () => {
         <Route path="/BankSettings" element={<BankSettings />} />
         <Route path="/AutomationManager" element={<AutomationManager />} />
         <Route path="/APIManagement" element={<APIManagement />} />
+        <Route path="/APIDiscoveryDashboard" element={<APIDiscoveryDashboard />} />
+        <Route path="/APIDetailPage" element={<APIDetailPage />} />
         <Route path="/ComplianceDashboard" element={<ComplianceDashboard />} />
         <Route path="/OptimizationDashboard" element={<OptimizationDashboard />} />
         <Route path="/PendingInterventions" element={<PendingInterventions />} />

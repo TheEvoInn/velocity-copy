@@ -16,7 +16,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { action, source, query } = await req.json();
+    const body = await req.json();
+    const { action, source, query, url } = body;
 
     // Only admins can trigger discovery
     if (user.role !== 'admin') {
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
     } else if (action === 'scan_openapi_registry') {
       return await scanOpenAPIRegistry(base44, query);
     } else if (action === 'extract_from_url') {
-      return await extractFromURL(base44, query);
+      return await extractFromURL(base44, { url: url || query?.url });
     } else {
       return Response.json({ error: 'Unknown action' }, { status: 400 });
     }

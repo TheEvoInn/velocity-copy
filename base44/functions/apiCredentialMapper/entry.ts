@@ -43,14 +43,8 @@ async function getInjectionHeaders(base44, api_id, credential_id) {
     return Response.json({ error: 'Missing api_id' }, { status: 400 });
   }
 
-  // Fetch API metadata to determine auth type (gracefully handle missing)
-  let api;
-  try {
-    api = await base44.entities.APIMetadata.get(api_id);
-  } catch (e) {
-    // Return error response instead of throwing
-    return Response.json({ error: 'API not found' }, { status: 404 });
-  }
+  // Fetch API metadata to determine auth type
+  const api = await base44.entities.APIMetadata.get(api_id);
   if (!api) {
     return Response.json({ error: 'API not found' }, { status: 404 });
   }

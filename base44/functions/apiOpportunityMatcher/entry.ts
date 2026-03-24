@@ -41,8 +41,8 @@ async function matchOpportunities(base44, api_id, api_metadata, opportunities) {
     return Response.json({ error: 'Missing api_id or api_metadata' }, { status: 400 });
   }
 
-  // Use provided metadata or fetch API
-  const api = api_metadata || (api_id ? (await base44.entities.APIMetadata.get(api_id)) : null);
+  // Fetch API if only ID provided
+  const api = api_metadata || (await base44.entities.APIMetadata.get(api_id));
   if (!api) {
     return Response.json({ error: 'API not found' }, { status: 404 });
   }

@@ -66,6 +66,18 @@ export default function AdminUserManagement() {
     },
   });
 
+  const verifyMutation = useMutation({
+    mutationFn: async (user_id) => {
+      const res = await base44.functions.invoke('adminService', { action: 'force_verify_user', user_id });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast({ title: 'User Verified', description: 'User can now log in.' });
+    },
+    onError: (e) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   const users = usersData?.users || [];
   const kycs = kycsData?.kycs || [];
 
@@ -168,6 +180,16 @@ export default function AdminUserManagement() {
                         <p>Verified: <span className={u.is_verified ? 'text-emerald-400' : 'text-red-400'}>{u.is_verified ? 'Yes' : 'No'}</span></p>
                       </div>
                       <div className="flex gap-2 pt-2">
+                        {!u.is_verified && (
+                          <Button
+                            size="sm"
+                            onClick={() => verifyMutation.mutate(u.id)}
+                            disabled={verifyMutation.isPending}
+                            className="text-xs bg-emerald-700 hover:bg-emerald-600 text-white gap-1"
+                          >
+                            <CheckCircle2 className="w-3 h-3" /> Force Verify
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"

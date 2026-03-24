@@ -76,7 +76,7 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
     </button>
   );
 
-  const isValid = data.name?.trim();
+  const isValid = (data.first_name?.trim() && data.last_name?.trim()) || data.name?.trim();
 
   return (
     <div>
@@ -89,17 +89,22 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
       <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
 
         {/* Name + Role */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Full / Persona Name *</label>
-            <Input value={data.name || ''} onChange={e => set('name', e.target.value)}
-              placeholder="Alex Mercer" className="bg-slate-800 border-slate-700 text-white text-xs h-8" />
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">First Name *</label>
+            <Input value={data.first_name || ''} onChange={e => set('first_name', e.target.value)}
+              placeholder="Alex" className="bg-slate-800 border-slate-700 text-white text-xs h-8" />
           </div>
           <div>
-            <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Professional Title</label>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {ROLE_LABELS.slice(0,4).map(r => <Tag key={r} label={r} active={data.role_label === r} onClick={() => set('role_label', r)} />)}
-            </div>
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Last Name *</label>
+            <Input value={data.last_name || ''} onChange={e => set('last_name', e.target.value)}
+              placeholder="Mercer" className="bg-slate-800 border-slate-700 text-white text-xs h-8" />
+          </div>
+        </div>
+        <div>
+          <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Professional Title</label>
+          <div className="flex flex-wrap gap-1.5">
+            {ROLE_LABELS.slice(0,4).map(r => <Tag key={r} label={r} active={data.role_label === r} onClick={() => set('role_label', r)} />)}
           </div>
         </div>
 

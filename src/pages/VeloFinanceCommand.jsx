@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
@@ -49,6 +50,28 @@ export default function VeloFinanceCommand() {
     : transactions.filter(t => t.type === filterType);
 
   const currentGoal = earningGoals.find(g => g.status === 'active');
+
+  // REAL-TIME SUBSCRIPTIONS: Listen for admin approvals and financial updates
+  useEffect(() => {
+    if (!user?.email) return;
+    const unsubscribeTransaction = base44.entities.Transaction.subscribe((event) => {
+      console.log('[VeloFinanceCommand] Transaction update:', event.type);
+      qc.invalidateQueries({ queryKey: ['transactions', user?.email] });
+    });
+    const unsubscribeGoals = base44.entities.UserGoals.subscribe((event) => {
+      console.log('[VeloFinanceCommand] UserGoals update:', event.type);
+      qc.invalidateQueries({ queryKey: ['userGoals', user?.email] });
+    });
+    const unsubscribeEarningGoals = base44.entities.EarningGoal.subscribe((event) => {
+      console.log('[VeloFinanceCommand] EarningGoal update:', event.type);
+      qc.invalidateQueries({ queryKey: ['earningGoals', user?.email] });
+    });
+    return () => {
+      unsubscribeTransaction();
+      unsubscribeGoals();
+      unsubscribeEarningGoals();
+    };
+  }, [user?.email, qc]);
 
   return (
     <div className="min-h-screen pt-20 pb-8 px-4 md:px-8">

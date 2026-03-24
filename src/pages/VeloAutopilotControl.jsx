@@ -55,7 +55,28 @@ export default function VeloAutopilotControl() {
     }
   }, [goals?.autopilot_enabled]);
 
-  const getTaskStatusColor = (status) => {
+  // REAL-TIME SUBSCRIPTIONS: Listen for admin approvals and task updates
+  useEffect(() => {
+    if (!user?.email) return;
+    const unsubscribeAITask = base44.entities.AITask.subscribe((event) => {
+      console.log('[VeloAutopilotControl] AITask update:', event.type);
+      qc.invalidateQueries({ queryKey: ['aiTasks', user?.email] });
+    });
+    const unsubscribeAudit = base44.entities.EngineAuditLog.subscribe((event) => {
+      console.log('[VeloAutopilotControl] Audit log update:', event.type);
+      qc.invalidateQueries({ queryKey: ['taskExecutionLogs', user?.email] });
+    });
+    const unsubscribeGoals = base44.entities.UserGoals.subscribe((event) => {
+      console.log('[VeloAutopilotControl] UserGoals update:', event.type);
+      qc.invalidateQueries({ queryKey: ['userGoals', user?.email] });
+    });
+    return () => {
+      unsubscribeAITask();
+      unsubscribeAudit();
+      unsubscribeGoals();
+    };
+  }, [user?.email, qc]);
+
     switch (status) {
       case 'completed': return 'text-emerald-400';
       case 'executing': return 'text-cyan-400';

@@ -38,14 +38,18 @@ export default function VeloIdentityHub() {
     enabled: !!user?.email,
   });
 
-  // Delete identity mutation
-  const deleteMutation = useMutation({
-    mutationFn: (identityId) => base44.entities.AIIdentity.delete(identityId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['aiIdentities'] });
-      setSelectedIdentity(null);
-    },
-  });
+  // REAL-TIME KYC SUBSCRIPTION: Listen for admin approvals and all KYC updates
+  useEffect(() => {
+    if (!user?.email) return;
+    const unsubscribe = base44.entities.KYCVerification.subscribe((event) => {
+      console.log('[VeloIdentityHub] KYC update event:', event.type, event.data?.kyc_tier, event.data?.verification_status);
+      // Invalidate ALL related queries to broadcast change across dashboard
+      qc.invalidateQueries({ queryKey: ['kycVerification', user?.email] });
+      qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
+      qc.invalidateQueries({ queryKey: ['userGoals'] });
+    });
+    return unsubscribe;
+  }, [user?.email, qc]);
 
   // Switch active identity
   const switchIdentityMutation = useMutation({

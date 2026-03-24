@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePersistentUserData } from '@/hooks/usePersistentUserData';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
+import { X } from 'lucide-react';
 
 import StepWelcome from './steps/StepWelcome';
 import StepIdentity from './steps/StepIdentity';
@@ -62,7 +63,6 @@ export default function OnboardingModal({ onComplete }) {
   const handleLaunch = async (doNotShowAgain) => {
     setIsLaunching(true);
     try {
-      // 1. Create AI Identity
       const identity = await base44.entities.AIIdentity.create({
         ...identityData,
         skills: Array.isArray(identityData.skills)
@@ -76,7 +76,6 @@ export default function OnboardingModal({ onComplete }) {
         total_earned: 0,
       });
 
-      // 2. Submit KYC if filled
       if (kycData.full_legal_name) {
         await base44.entities.KYCVerification.create({
           ...kycData,
@@ -85,7 +84,6 @@ export default function OnboardingModal({ onComplete }) {
         });
       }
 
-      // 3. Save user goals / preferences
       const existingGoals = await base44.entities.UserGoals.list('-created_date', 1);
       const goalsData = {
         daily_target: prefData.daily_target,
@@ -109,7 +107,6 @@ export default function OnboardingModal({ onComplete }) {
         await base44.entities.UserGoals.create(goalsData);
       }
 
-      // 4. Save banking / withdrawal policy
       const hasBanking = bankingData.bank_name || bankingData.paypal_email || bankingData.wise_email;
       if (hasBanking) {
         const existingPolicies = await base44.entities.WithdrawalPolicy.list('-created_date', 1);
@@ -133,7 +130,6 @@ export default function OnboardingModal({ onComplete }) {
         }
       }
 
-      // 5. Save onboarding completion
       await updateField('onboarding_completed', doNotShowAgain);
       await updateField('autopilot_preferences', {
         enabled: prefData.autopilot_enabled,
@@ -148,7 +144,6 @@ export default function OnboardingModal({ onComplete }) {
         },
       });
 
-      // 6. Apply selected (or auto-matched) workflow & strategy templates
       const templatesToApply = workflowData.selected_templates || [];
       if (templatesToApply.length) {
         const matchedTemplates = TEMPLATE_LIBRARY.filter(t => templatesToApply.includes(t.id));
@@ -167,7 +162,6 @@ export default function OnboardingModal({ onComplete }) {
         }
       }
 
-      // 7. Trigger Autopilot scan immediately
       if (prefData.autopilot_enabled) {
         base44.functions.invoke('unifiedOrchestrator', {
           action: 'run_cycle',
@@ -175,7 +169,6 @@ export default function OnboardingModal({ onComplete }) {
         }).catch(() => {});
       }
 
-      // 8. Activity log
       await base44.entities.ActivityLog.create({
         action_type: 'system',
         message: `🚀 Onboarding complete — VELOCITY activated for ${identityData.name || user?.email}`,
@@ -197,70 +190,67 @@ export default function OnboardingModal({ onComplete }) {
   const activeColor = STEP_COLORS[step] || '#8b5cf6';
 
   return (
-    <>
-      {/* Background overlay */}
-      <div className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm" />
-      
-      {/* Modal - CENTERED */}
-      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl overflow-y-auto" style={{
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col p-4 sm:p-8 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen py-8">
+        {/* Modal Card */}
+        <div className="w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl" style={{
           boxShadow: `0 0 60px ${activeColor}22, 0 25px 60px rgba(0,0,0,0.5)`
         }}>
-            
-            {/* Progress header */}
-            {step > 0 && (
-              <div className="px-6 pt-5 pb-4 border-b border-slate-800">
-                <div className="flex items-center justify-between">
-                  {STEP_LABELS.slice(1).map((label, i) => {
-                    const idx = i + 1;
-                    const isActive = idx === step;
-                    const isDone = idx < step;
-                    return (
-                      <div key={label} className="flex items-center gap-1 flex-1">
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all ${
-                          isDone ? 'bg-emerald-500 text-white' : 'text-white'
-                        }`} style={isActive ? { background: activeColor } : isDone ? {} : { background: '#1e293b' }}>
-                          {isDone ? '✓' : idx}
-                        </div>
-                        <span className={`text-[9px] hidden sm:block ${isActive ? 'text-white' : isDone ? 'text-emerald-400' : 'text-slate-600'}`}>
-                          {label}
-                        </span>
-                        {i < STEP_LABELS.length - 2 && (
-                          <div className={`flex-1 h-0.5 mx-1 rounded-full ${isDone ? 'bg-emerald-500' : 'bg-slate-800'}`} />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
-            {/* Content */}
-            <div className="p-6">
-              {step === 0 && <StepWelcome onNext={() => setStep(1)} />}
-              {step === 1 && <StepIdentity data={identityData} onChange={setIdentityData} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-              {step === 2 && <StepKYC data={kycData} onChange={setKycData} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-              {step === 3 && <StepPreferences data={prefData} onChange={setPrefData} onNext={() => setStep(4)} onBack={() => setStep(2)} />}
-              {step === 4 && <StepBanking data={bankingData} onChange={setBankingData} onNext={() => setStep(5)} onBack={() => setStep(3)} />}
-              {step === 5 && (
-                <StepWorkflows
-                  data={workflowData} onChange={setWorkflowData}
-                  identityData={identityData} prefData={prefData}
-                  onNext={() => setStep(6)} onBack={() => setStep(4)}
-                />
-              )}
-              {step === 6 && (
-                <StepLaunch
-                  identityData={identityData} kycData={kycData}
-                  prefData={prefData} bankingData={bankingData}
-                  workflowData={workflowData}
-                  onLaunch={handleLaunch} onBack={() => setStep(5)}
-                  isLaunching={isLaunching}
-                />
-              )}
+          {/* Progress header */}
+          {step > 0 && (
+            <div className="px-4 sm:px-6 pt-5 pb-4 border-b border-slate-800 sticky top-0 bg-slate-900">
+              <div className="flex items-center justify-between gap-1">
+                {STEP_LABELS.slice(1).map((label, i) => {
+                  const idx = i + 1;
+                  const isActive = idx === step;
+                  const isDone = idx < step;
+                  return (
+                    <div key={label} className="flex items-center gap-1 flex-1">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all shrink-0 ${
+                        isDone ? 'bg-emerald-500 text-white' : 'text-white'
+                      }`} style={isActive ? { background: activeColor } : isDone ? {} : { background: '#1e293b' }}>
+                        {isDone ? '✓' : idx}
+                      </div>
+                      <span className={`text-[9px] hidden sm:block ${isActive ? 'text-white' : isDone ? 'text-emerald-400' : 'text-slate-600'}`}>
+                        {label}
+                      </span>
+                      {i < STEP_LABELS.length - 2 && (
+                        <div className={`flex-1 h-0.5 mx-1 rounded-full ${isDone ? 'bg-emerald-500' : 'bg-slate-800'}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+          )}
+
+          {/* Content - directly in modal with natural scrolling */}
+          <div className="p-4 sm:p-6">
+            {step === 0 && <StepWelcome onNext={() => setStep(1)} />}
+            {step === 1 && <StepIdentity data={identityData} onChange={setIdentityData} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
+            {step === 2 && <StepKYC data={kycData} onChange={setKycData} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
+            {step === 3 && <StepPreferences data={prefData} onChange={setPrefData} onNext={() => setStep(4)} onBack={() => setStep(2)} />}
+            {step === 4 && <StepBanking data={bankingData} onChange={setBankingData} onNext={() => setStep(5)} onBack={() => setStep(3)} />}
+            {step === 5 && (
+              <StepWorkflows
+                data={workflowData} onChange={setWorkflowData}
+                identityData={identityData} prefData={prefData}
+                onNext={() => setStep(6)} onBack={() => setStep(4)}
+              />
+            )}
+            {step === 6 && (
+              <StepLaunch
+                identityData={identityData} kycData={kycData}
+                prefData={prefData} bankingData={bankingData}
+                workflowData={workflowData}
+                onLaunch={handleLaunch} onBack={() => setStep(5)}
+                isLaunching={isLaunching}
+              />
+            )}
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

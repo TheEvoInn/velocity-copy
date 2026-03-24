@@ -62,95 +62,142 @@ export default function OnboardingWizard({ onComplete }) {
   const handleLaunch = async (doNotShowAgain) => {
     setIsLaunching(true);
     try {
-      const identity = await base44.entities.AIIdentity.create({
-        ...identityData,
-        name: `${identityData.first_name} ${identityData.last_name}`.trim() || identityData.name,
-        role_labels: identityData.role_labels || [],
-        skills: Array.isArray(identityData.skills) ? identityData.skills : [],
-        preferred_categories: prefData.preferred_categories || [],
-        preferred_platforms: [],
-        is_active: true,
-        spending_limit_per_task: prefData.max_daily_spend || 500,
-        tasks_executed: 0,
-        total_earned: 0,
-      });
-
-      if (kycData.full_legal_name) {
-        await base44.entities.KYCVerification.create({
-          ...kycData,
-          status: 'submitted',
-          admin_status: 'submitted',
+      // 1. Create AI Identity (required)
+      let identity;
+      try {
+        identity = await base44.entities.AIIdentity.create({
+          ...identityData,
+          name: `${identityData.first_name} ${identityData.last_name}`.trim() || identityData.name,
+          user_email: user?.email,
+          role_labels: identityData.role_labels || [],
+          skills: Array.isArray(identityData.skills) ? identityData.skills : [],
+          preferred_categories: prefData.preferred_categories || [],
+          preferred_platforms: [],
+          is_active: true,
+          onboarding_complete: true,
+          spending_limit_per_task: prefData.max_daily_spend || 500,
+          tasks_executed: 0,
+          total_earned: 0,
         });
+        console.log('[Onboarding] AIIdentity created:', identity.id);
+      } catch (err) {
+        console.error('[Onboarding] AIIdentity creation failed:', err);
+        throw new Error(`Failed to create identity: ${err.message}`);
       }
 
-      const existingGoals = await base44.entities.UserGoals.list('-created_date', 1);
-      const goalsData = {
-        daily_target: prefData.daily_target,
-        available_capital: prefData.available_capital,
-        risk_tolerance: prefData.risk_tolerance,
-        preferred_categories: prefData.preferred_categories,
-        skills: Array.isArray(identityData.skills) ? identityData.skills : [],
-        hours_per_day: prefData.hours_per_day,
-        autopilot_enabled: prefData.autopilot_enabled,
-        ai_daily_target: Math.round((prefData.daily_target || 1000) * 0.6),
-        user_daily_target: Math.round((prefData.daily_target || 1000) * 0.4),
-        ai_preferred_categories: prefData.preferred_categories,
-        ai_instructions: prefData.ai_instructions || '',
-        onboarded: true,
-        wallet_balance: 0,
-        total_earned: 0,
-      };
-      if (existingGoals.length > 0) {
-        await base44.entities.UserGoals.update(existingGoals[0].id, goalsData);
-      } else {
-        await base44.entities.UserGoals.create(goalsData);
-      }
-
-      const hasBanking = bankingData.bank_name || bankingData.paypal_email || bankingData.wise_email;
-      if (hasBanking) {
-        const existingPolicies = await base44.entities.WithdrawalPolicy.list('-created_date', 1);
-        const policyData = {
-          label: 'Primary',
-          engine_enabled: true,
-          min_withdrawal_threshold: bankingData.min_payout || 100,
-          auto_transfer_frequency: bankingData.payout_frequency || 'weekly',
-          bank_accounts: [{
-            bank_name: bankingData.bank_name || bankingData.paypal_email || bankingData.wise_email,
-            account_type: bankingData.account_type || 'checking',
-            label: bankingData.payout_method === 'paypal' ? 'PayPal' : 'Primary Bank',
-            allocation_pct: 100,
-            is_primary: true,
-          }],
-        };
-        if (existingPolicies.length > 0) {
-          await base44.entities.WithdrawalPolicy.update(existingPolicies[0].id, policyData);
-        } else {
-          await base44.entities.WithdrawalPolicy.create(policyData);
+      // 2. Submit KYC if provided
+      let kycRecord;
+      if (kycData.full_legal_name) {
+        try {
+          kycRecord = await base44.entities.KYCVerification.create({
+            ...kycData,
+            user_email: user?.email,
+            status: 'submitted',
+            verification_type: 'standard',
+            identity_id: identity.id,
+          });
+          console.log('[Onboarding] KYC submitted:', kycRecord.id);
+        } catch (err) {
+          console.warn('[Onboarding] KYC submission failed (non-fatal):', err);
         }
       }
 
-      await updateField('onboarding_completed', doNotShowAgain);
-      await updateField('autopilot_preferences', {
-        enabled: prefData.autopilot_enabled,
-        mode: 'continuous',
-        max_daily_spend: prefData.max_daily_spend,
-        preferred_categories: prefData.preferred_categories,
-      });
+      // 3. Create or update UserGoals (required)
+      try {
+        const existingGoals = await base44.entities.UserGoals.list('-created_date', 1);
+        const goalsData = {
+          daily_target: prefData.daily_target,
+          available_capital: prefData.available_capital,
+          risk_tolerance: prefData.risk_tolerance,
+          preferred_categories: prefData.preferred_categories,
+          skills: Array.isArray(identityData.skills) ? identityData.skills : [],
+          hours_per_day: prefData.hours_per_day,
+          autopilot_enabled: prefData.autopilot_enabled,
+          ai_daily_target: Math.round((prefData.daily_target || 1000) * 0.6),
+          user_daily_target: Math.round((prefData.daily_target || 1000) * 0.4),
+          ai_preferred_categories: prefData.preferred_categories,
+          ai_instructions: prefData.ai_instructions || '',
+          onboarded: true,
+          wallet_balance: 0,
+          total_earned: 0,
+        };
+        if (existingGoals.length > 0) {
+          await base44.entities.UserGoals.update(existingGoals[0].id, goalsData);
+          console.log('[Onboarding] UserGoals updated:', existingGoals[0].id);
+        } else {
+          await base44.entities.UserGoals.create(goalsData);
+          console.log('[Onboarding] UserGoals created');
+        }
+      } catch (err) {
+        console.error('[Onboarding] UserGoals save failed:', err);
+        throw new Error(`Failed to save preferences: ${err.message}`);
+      }
 
-      await base44.entities.ActivityLog.create({
-        action_type: 'system',
-        message: `🚀 Onboarding complete — VELOCITY activated for ${identityData.name || user?.email}`,
-        severity: 'success',
-        metadata: { identity_id: identity?.id, kyc_submitted: !!kycData.full_legal_name },
-      }).catch(() => {});
+      // 4. Configure withdrawal policy if banking info provided
+      if (bankingData.bank_name || bankingData.paypal_email || bankingData.wise_email) {
+        try {
+          const existingPolicies = await base44.entities.WithdrawalPolicy.list('-created_date', 1);
+          const policyData = {
+            label: 'Primary',
+            engine_enabled: true,
+            min_withdrawal_threshold: bankingData.min_payout || 100,
+            auto_transfer_frequency: bankingData.payout_frequency || 'weekly',
+            bank_accounts: [{
+              bank_name: bankingData.bank_name || bankingData.paypal_email || bankingData.wise_email,
+              account_type: bankingData.account_type || 'checking',
+              label: bankingData.payout_method === 'paypal' ? 'PayPal' : 'Primary Bank',
+              allocation_pct: 100,
+              is_primary: true,
+            }],
+          };
+          if (existingPolicies.length > 0) {
+            await base44.entities.WithdrawalPolicy.update(existingPolicies[0].id, policyData);
+            console.log('[Onboarding] WithdrawalPolicy updated');
+          } else {
+            await base44.entities.WithdrawalPolicy.create(policyData);
+            console.log('[Onboarding] WithdrawalPolicy created');
+          }
+        } catch (err) {
+          console.warn('[Onboarding] WithdrawalPolicy save failed (non-fatal):', err);
+        }
+      }
 
-      queryClient.invalidateQueries({ queryKey: ['aiIdentities'] });
+      // 5. Persist user preferences
+      try {
+        await updateField('onboarding_completed', doNotShowAgain);
+        await updateField('autopilot_preferences', {
+          enabled: prefData.autopilot_enabled,
+          mode: 'continuous',
+          max_daily_spend: prefData.max_daily_spend,
+          preferred_categories: prefData.preferred_categories,
+        });
+        console.log('[Onboarding] User preferences persisted');
+      } catch (err) {
+        console.warn('[Onboarding] Preference persistence failed (non-fatal):', err);
+      }
+
+      // 6. Log completion
+      try {
+        await base44.entities.ActivityLog.create({
+          action_type: 'system',
+          message: `🚀 Onboarding complete — VELOCITY activated for ${identityData.name || user?.email}`,
+          severity: 'success',
+          metadata: { identity_id: identity?.id, kyc_submitted: !!kycRecord, goals_saved: true },
+        });
+      } catch (err) {
+        console.warn('[Onboarding] Activity log failed:', err);
+      }
+
+      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });
+      queryClient.invalidateQueries({ queryKey: ['aiIdentities'] });
+      queryClient.invalidateQueries({ queryKey: ['userGoals', user?.email] });
 
       toast.success('🚀 VELOCITY activated! Autopilot is now running.');
       onComplete();
     } catch (err) {
-      toast.error(`Launch failed: ${err.message}`);
+      console.error('[Onboarding] Launch failed:', err);
+      toast.error(`❌ ${err.message}`);
       setIsLaunching(false);
     }
   };

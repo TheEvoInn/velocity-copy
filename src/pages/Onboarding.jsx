@@ -31,12 +31,27 @@ export default function Onboarding() {
   const [showWizard, setShowWizard] = useState(false);
 
   // Check if already onboarded
-  const { data: goalsList = [], isLoading } = useQuery({
-    queryKey: ['userGoals'],
-    queryFn: () => base44.entities.UserGoals.list(),
+  const { data: goalsList = [], isLoading, refetch } = useQuery({
+    queryKey: ['userGoals', user?.email],
+    queryFn: async () => {
+      try {
+        const result = await base44.entities.UserGoals.list('-created_date', 1);
+        console.log('[Onboarding] UserGoals fetched:', result);
+        return result;
+      } catch (err) {
+        console.error('[Onboarding] Error fetching UserGoals:', err);
+        return [];
+      }
+    },
+    enabled: !!user,
   });
   const goals = goalsList[0] || {};
   const alreadyOnboarded = goals.onboarded === true;
+
+  // Auto-refetch on mount to check latest status
+  React.useEffect(() => {
+    if (user) refetch();
+  }, [user, refetch]);
 
   const handleComplete = () => {
     navigate('/Dashboard');

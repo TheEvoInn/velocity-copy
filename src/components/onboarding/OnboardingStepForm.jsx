@@ -58,7 +58,7 @@ export default function OnboardingStepForm({
   };
 
   const handleComplete = async () => {
-    if (!isValid) return;
+    // Allow progression even if not all required fields are filled — just warn user
     onComplete?.(formData);
   };
 
@@ -122,9 +122,14 @@ export default function OnboardingStepForm({
             ⏱ {skipLabel}
           </button>
         )}
+        {!isValid && (
+          <div className="w-full bg-amber-500/10 border border-amber-500/30 rounded px-3 py-2 text-xs text-amber-200">
+            ⚠️ Some required fields are missing. You can still proceed, but may encounter restrictions.
+          </div>
+        )}
         <button
           onClick={handleComplete}
-          disabled={!isValid || isLoading}
+          disabled={isLoading}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-orbitron tracking-wide text-black bg-cyan-500 hover:bg-cyan-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (

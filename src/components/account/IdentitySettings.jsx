@@ -11,19 +11,21 @@ export default function IdentitySettings() {
   const [activeIdentity, setActiveIdentity] = useState(null);
   const queryClient = useQueryClient();
 
-  // Fetch all identities
+  // Fetch all identities (filtered to current user only)
   const { data: identities = [], isLoading } = useQuery({
     queryKey: ['identities'],
     queryFn: async () => {
-      return await base44.entities.AIIdentity.list('-updated_date', 50);
+      const user = await base44.auth.me();
+      return await base44.entities.AIIdentity.filter({ user_email: user.email }, '-updated_date', 50);
     }
   });
 
-  // Fetch user goals to get active identity
+  // Fetch user goals to get active identity (filtered to current user)
   const { data: goals } = useQuery({
     queryKey: ['userGoals'],
     queryFn: async () => {
-      const res = await base44.entities.UserGoals.list(1);
+      const user = await base44.auth.me();
+      const res = await base44.entities.UserGoals.filter({ created_by: user.email }, '-created_date', 1);
       return res[0] || {};
     }
   });

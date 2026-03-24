@@ -62,10 +62,32 @@ export default function OnboardingWizard({ onComplete }) {
   const handleLaunch = async (doNotShowAgain) => {
     setIsLaunching(true);
     try {
-      // 1. Create AI Identity (required)
+      // 1. Create or update AI Identity (dedup check)
       let identity;
       try {
-        identity = await base44.entities.AIIdentity.create({
+        // Check for existing identity by user email
+        const existingIdentities = await base44.entities.AIIdentity.filter(
+          { user_email: user?.email },
+          '-created_date',
+          1
+        );
+        
+        if (existingIdentities.length > 0) {
+          // Update existing instead of creating duplicate
+          const existingId = existingIdentities[0].id;
+          await base44.entities.AIIdentity.update(existingId, {
+            name: `${identityData.first_name} ${identityData.last_name}`.trim() || identityData.name,
+            role_labels: identityData.role_labels || [],
+            skills: Array.isArray(identityData.skills) ? identityData.skills : [],
+            preferred_categories: prefData.preferred_categories || [],
+            communication_tone: identityData.communication_tone,
+            is_active: true,
+            onboarding_complete: true,
+          });
+          identity = existingIdentities[0];
+          console.log('[Onboarding] AIIdentity updated (dedup):', identity.id);
+        } else {
+          identity = await base44.entities.AIIdentity.create({
           ...identityData,
           name: `${identityData.first_name} ${identityData.last_name}`.trim() || identityData.name,
           user_email: user?.email,
@@ -78,10 +100,11 @@ export default function OnboardingWizard({ onComplete }) {
           spending_limit_per_task: prefData.max_daily_spend || 500,
           tasks_executed: 0,
           total_earned: 0,
-        });
-        console.log('[Onboarding] AIIdentity created:', identity.id);
+          });
+          console.log('[Onboarding] AIIdentity created:', identity.id);
+        }
       } catch (err) {
-        console.error('[Onboarding] AIIdentity creation failed:', err);
+        console.error('[Onboarding] AIIdentity creation/update failed:', err);
         throw new Error(`Failed to create identity: ${err.message}`);
       }
 
@@ -104,7 +127,11 @@ export default function OnboardingWizard({ onComplete }) {
 
       // 3. Create or update UserGoals (required)
       try {
-        const existingGoals = await base44.entities.UserGoals.list('-created_date', 1);
+        const existingGoals = await base44.entities.UserGoals.filter(
+          { created_by: user?.email },
+          '-created_date',
+          1
+        );
         const goalsData = {
           daily_target: prefData.daily_target,
           available_capital: prefData.available_capital,
@@ -136,7 +163,11 @@ export default function OnboardingWizard({ onComplete }) {
       // 4. Configure withdrawal policy if banking info provided
       if (bankingData.bank_name || bankingData.paypal_email || bankingData.wise_email) {
         try {
-          const existingPolicies = await base44.entities.WithdrawalPolicy.list('-created_date', 1);
+          const existingPolicies = await base44.entities.WithdrawalPolicy.filter(
+            { created_by: user?.email },
+            '-created_date',
+            1
+          );
           const policyData = {
             label: 'Primary',
             engine_enabled: true,

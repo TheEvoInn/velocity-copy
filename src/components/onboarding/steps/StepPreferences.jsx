@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowRight, ArrowLeft, Sliders } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Sliders, Sparkles, Loader2 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 const CATEGORIES = ['freelance', 'service', 'arbitrage', 'lead_gen', 'digital_flip', 'auction', 'resale', 'contest', 'giveaway', 'grant'];
 const TIMEZONES = ['America/Los_Angeles', 'America/Chicago', 'America/New_York', 'America/Denver', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo', 'Asia/Singapore', 'Australia/Sydney'];
@@ -32,10 +33,37 @@ function CheckToggle({ label, checked, onChange }) {
 }
 
 export default function StepPreferences({ data, onChange, onNext, onBack }) {
+  const [generating, setGenerating] = useState(null);
   const set = (k, v) => onChange({ ...data, [k]: v });
   const toggleCat = (cat) => {
     const cats = data.preferred_categories || [];
     set('preferred_categories', cats.includes(cat) ? cats.filter(c => c !== cat) : [...cats, cat]);
+  };
+
+  const suggestCategories = async () => {
+    setGenerating('categories');
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Given a user with daily earning target $${data.daily_target || 1000}, risk tolerance "${data.risk_tolerance || 'moderate'}", and ${data.hours_per_day || 8} hours/day available, recommend the best 4-5 opportunity categories from this list: freelance, service, arbitrage, lead_gen, digital_flip, auction, resale, contest, giveaway, grant. Return ONLY a JSON object with a "categories" array of strings.`,
+        response_json_schema: { type: 'object', properties: { categories: { type: 'array', items: { type: 'string' } } } },
+      });
+      if (result?.categories) set('preferred_categories', result.categories);
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  const generateInstructions = async () => {
+    setGenerating('instructions');
+    try {
+      const cats = (data.preferred_categories || []).join(', ') || 'freelance, service';
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Write 3-4 concise, specific Autopilot AI instructions for a user targeting $${data.daily_target || 1000}/day, focusing on: ${cats}, with ${data.risk_tolerance || 'moderate'} risk. These tell the AI how to prioritize and execute tasks. Return ONLY the plain text instructions (no JSON, no bullet points header).`,
+      });
+      if (result) set('ai_instructions', result.trim());
+    } finally {
+      setGenerating(null);
+    }
   };
 
   return (
@@ -85,7 +113,15 @@ export default function StepPreferences({ data, onChange, onNext, onBack }) {
 
         {/* Preferred categories */}
         <div>
-          <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Preferred Opportunity Categories</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider">Preferred Opportunity Categories</label>
+            <button type="button" onClick={suggestCategories} disabled={!!generating}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border transition-all disabled:opacity-40"
+              style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', color: '#67e8f9' }}>
+              {generating === 'categories' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              Get Suggestions
+            </button>
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {CATEGORIES.map(c => (
               <button key={c} type="button" onClick={() => toggleCat(c)}
@@ -140,7 +176,15 @@ export default function StepPreferences({ data, onChange, onNext, onBack }) {
 
         {/* AI instructions */}
         <div>
-          <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Custom AI Instructions (optional)</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider">Custom AI Instructions (optional)</label>
+            <button type="button" onClick={generateInstructions} disabled={!!generating}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border transition-all disabled:opacity-40"
+              style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.35)', color: '#a78bfa' }}>
+              {generating === 'instructions' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              Write with AI
+            </button>
+          </div>
           <textarea value={data.ai_instructions || ''} onChange={e => set('ai_instructions', e.target.value)} rows={2}
             placeholder="e.g. Prioritize writing gigs. Avoid anything related to crypto or gambling..."
             className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/50 resize-none" />

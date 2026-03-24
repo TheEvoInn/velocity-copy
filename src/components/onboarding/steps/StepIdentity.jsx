@@ -43,12 +43,36 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
     }
   };
 
-  const MissionBtn = ({ field }) => (
+  const suggestSkills = async () => {
+    setGenerating('skills');
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `List the top 8 most in-demand and high-earning skills for a ${data.role_label || 'Freelancer'} on freelance platforms. Return ONLY a JSON array of skill name strings, no explanation. Example: ["Writing","SEO","Research"]`,
+        response_json_schema: { type: 'object', properties: { skills: { type: 'array', items: { type: 'string' } } } },
+      });
+      const suggested = result?.skills || [];
+      const merged = [...new Set([...(data.skills || []), ...suggested])];
+      set('skills', merged);
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  const AIWriteBtn = ({ field }) => (
     <button type="button" onClick={() => aiGenerate(field)} disabled={!!generating}
       className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border transition-all disabled:opacity-40"
       style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.35)', color: '#a78bfa' }}>
       {generating === field ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-      Write with MISSION
+      Write with AI
+    </button>
+  );
+
+  const SuggestBtn = ({ onClick, field }) => (
+    <button type="button" onClick={onClick} disabled={!!generating}
+      className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border transition-all disabled:opacity-40"
+      style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', color: '#67e8f9' }}>
+      {generating === field ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+      Get Suggestions
     </button>
   );
 
@@ -81,7 +105,10 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
 
         {/* Skills */}
         <div>
-          <label className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Skills & Expertise</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider">Skills & Expertise</label>
+            <SuggestBtn onClick={suggestSkills} field="skills" />
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {SKILLS_LIST.map(s => <Tag key={s} label={s} active={(data.skills || []).includes(s)} onClick={() => toggleArr('skills', s)} />)}
           </div>
@@ -99,7 +126,7 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-[10px] text-slate-500 uppercase tracking-wider">Tagline / Headline</label>
-            <MissionBtn field="tagline" />
+            <AIWriteBtn field="tagline" />
           </div>
           <Input value={data.tagline || ''} onChange={e => set('tagline', e.target.value)}
             placeholder="Expert freelancer delivering quality results"
@@ -110,7 +137,7 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-[10px] text-slate-500 uppercase tracking-wider">Professional Bio</label>
-            <MissionBtn field="bio" />
+            <AIWriteBtn field="bio" />
           </div>
           <textarea value={data.bio || ''} onChange={e => set('bio', e.target.value)} rows={3}
             placeholder="Detailed bio used in proposals and profiles..."
@@ -121,7 +148,7 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-[10px] text-slate-500 uppercase tracking-wider">Proposal Writing Instructions</label>
-            <MissionBtn field="proposal_style" />
+            <AIWriteBtn field="proposal_style" />
           </div>
           <textarea value={data.proposal_style || ''} onChange={e => set('proposal_style', e.target.value)} rows={2}
             placeholder="How the AI should write proposals for this identity..."

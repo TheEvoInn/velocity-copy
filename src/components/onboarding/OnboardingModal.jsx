@@ -10,10 +10,12 @@ import StepIdentity from './steps/StepIdentity';
 import StepKYC from './steps/StepKYC';
 import StepPreferences from './steps/StepPreferences';
 import StepBanking from './steps/StepBanking';
+import StepWorkflows from './steps/StepWorkflows';
+import { TEMPLATE_LIBRARY } from './steps/StepWorkflows';
 import StepLaunch from './steps/StepLaunch';
 
-const STEP_LABELS = ['Welcome', 'Identity', 'KYC', 'Preferences', 'Banking', 'Launch'];
-const STEP_COLORS = ['#8b5cf6', '#7c3aed', '#f59e0b', '#06b6d4', '#10b981', '#7c3aed'];
+const STEP_LABELS = ['Welcome', 'Identity', 'KYC', 'Preferences', 'Banking', 'Workflows', 'Launch'];
+const STEP_COLORS = ['#8b5cf6', '#7c3aed', '#f59e0b', '#06b6d4', '#10b981', '#8b5cf6', '#7c3aed'];
 
 const DEFAULT_IDENTITY = {
   name: '', role_label: 'Freelancer', skills: [], communication_tone: 'professional',
@@ -50,6 +52,7 @@ export default function OnboardingModal({ onComplete }) {
   const [kycData, setKycData] = useState(DEFAULT_KYC);
   const [prefData, setPrefData] = useState(DEFAULT_PREFS);
   const [bankingData, setBankingData] = useState(DEFAULT_BANKING);
+  const [workflowData, setWorkflowData] = useState({ selected_templates: [], auto_matched: false });
   const [isLaunching, setIsLaunching] = useState(false);
 
   const { user } = useAuth();
@@ -145,7 +148,26 @@ export default function OnboardingModal({ onComplete }) {
         },
       });
 
-      // 6. Trigger Autopilot scan immediately
+      // 6. Apply selected (or auto-matched) workflow & strategy templates
+      const templatesToApply = workflowData.selected_templates || [];
+      if (templatesToApply.length) {
+        const matchedTemplates = TEMPLATE_LIBRARY.filter(t => templatesToApply.includes(t.id));
+        for (const tmpl of matchedTemplates) {
+          await base44.entities.Strategy.create({
+            title: tmpl.title,
+            description: tmpl.description,
+            variant: tmpl.strategy.variant,
+            starting_capital: tmpl.strategy.starting_capital,
+            target_daily_profit: tmpl.strategy.target_daily_profit,
+            categories: tmpl.categories_match,
+            status: 'active',
+            steps: [],
+            performance_notes: workflowData.auto_matched ? 'Auto-matched by onboarding AI' : 'Selected during onboarding',
+          }).catch(() => {});
+        }
+      }
+
+      // 7. Trigger Autopilot scan immediately
       if (prefData.autopilot_enabled) {
         base44.functions.invoke('unifiedOrchestrator', {
           action: 'run_cycle',
@@ -153,7 +175,7 @@ export default function OnboardingModal({ onComplete }) {
         }).catch(() => {});
       }
 
-      // 7. Activity log
+      // 8. Activity log
       await base44.entities.ActivityLog.create({
         action_type: 'system',
         message: `🚀 Onboarding complete — VELOCITY activated for ${identityData.name || user?.email}`,
@@ -214,10 +236,18 @@ export default function OnboardingModal({ onComplete }) {
           {step === 3 && <StepPreferences data={prefData} onChange={setPrefData} onNext={() => setStep(4)} onBack={() => setStep(2)} />}
           {step === 4 && <StepBanking data={bankingData} onChange={setBankingData} onNext={() => setStep(5)} onBack={() => setStep(3)} />}
           {step === 5 && (
+            <StepWorkflows
+              data={workflowData} onChange={setWorkflowData}
+              identityData={identityData} prefData={prefData}
+              onNext={() => setStep(6)} onBack={() => setStep(4)}
+            />
+          )}
+          {step === 6 && (
             <StepLaunch
               identityData={identityData} kycData={kycData}
               prefData={prefData} bankingData={bankingData}
-              onLaunch={handleLaunch} onBack={() => setStep(4)}
+              workflowData={workflowData}
+              onLaunch={handleLaunch} onBack={() => setStep(5)}
               isLaunching={isLaunching}
             />
           )}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Zap, ArrowRight, Bot, Shield, DollarSign, Rocket } from 'lucide-react';
+import { Zap, ArrowRight, Bot, Shield, DollarSign, Rocket, Workflow } from 'lucide-react';
 
 export default function StepWelcome({ onNext }) {
   return (
@@ -27,6 +27,7 @@ export default function StepWelcome({ onNext }) {
           { icon: Shield, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', label: 'KYC Compliance', desc: 'Verify for high-value tasks' },
           { icon: Zap, color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20', label: 'Autopilot Config', desc: 'Set risk & earning targets' },
           { icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', label: 'Banking Setup', desc: 'Link your payout account' },
+          { icon: Workflow, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20', label: 'Workflows', desc: 'AI-matched strategy templates' },
         ].map(({ icon: Icon, color, bg, label, desc }) => (
           <div key={label} className={`rounded-xl border p-3 ${bg}`}>
             <Icon className={`w-4 h-4 ${color} mb-1.5`} />

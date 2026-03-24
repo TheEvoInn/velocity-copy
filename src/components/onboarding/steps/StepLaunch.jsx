@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Rocket, CheckCircle, User, Shield, Sliders, DollarSign, Zap, Loader2 } from 'lucide-react';
+import { ArrowLeft, Rocket, CheckCircle, User, Shield, Sliders, DollarSign, Zap, Loader2, Workflow } from 'lucide-react';
 
-export default function StepLaunch({ identityData, kycData, prefData, bankingData, onLaunch, onBack, isLaunching }) {
+export default function StepLaunch({ identityData, kycData, prefData, bankingData, workflowData, onLaunch, onBack, isLaunching }) {
   const [doNotShowAgain, setDoNotShowAgain] = useState(true);
 
   const summaryItems = [
@@ -30,6 +30,14 @@ export default function StepLaunch({ identityData, kycData, prefData, bankingDat
       value: bankingData.bank_name || bankingData.paypal_email || bankingData.wise_email ? 'Payout account configured' : 'Skipped — add later in Withdrawal Engine',
       ok: !!(bankingData.bank_name || bankingData.paypal_email),
     },
+    {
+      icon: Workflow, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20',
+      label: 'Workflows & Strategies',
+      value: (workflowData?.selected_templates?.length)
+        ? `${workflowData.selected_templates.length} template${workflowData.selected_templates.length !== 1 ? 's' : ''} selected${workflowData.auto_matched ? ' (auto-matched)' : ''}`
+        : 'Top 3 AI-matched templates will be auto-applied',
+      ok: true,
+    },
   ];
 
   const activationSteps = [
@@ -37,6 +45,7 @@ export default function StepLaunch({ identityData, kycData, prefData, bankingDat
     'Saving preferences & permissions',
     'Submitting KYC for review',
     'Configuring withdrawal policy',
+    'Applying workflow & strategy templates',
     'Triggering opportunity scanning',
     'Activating Autopilot engine',
   ];

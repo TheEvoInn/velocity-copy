@@ -9,7 +9,7 @@
  *   - Settings page "Start/Resume Onboarding" link
  *   - Mobile drawer "Setup" link
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -41,6 +41,11 @@ export default function Onboarding() {
   const handleComplete = () => {
     navigate('/Dashboard');
   };
+
+  // Scroll to top when wizard opens
+  useEffect(() => {
+    if (showWizard) window.scrollTo(0, 0);
+  }, [showWizard]);
 
   if (isLoading) {
     return (

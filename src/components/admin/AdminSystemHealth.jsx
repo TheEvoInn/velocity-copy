@@ -4,8 +4,9 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, CheckCircle2, AlertTriangle, Zap, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle2, AlertTriangle, Zap, RefreshCw, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import VaultHealthIndicator from './VaultHealthIndicator';
 
 export default function AdminSystemHealth() {
   const [lastCheck, setLastCheck] = useState(null);
@@ -229,6 +230,15 @@ export default function AdminSystemHealth() {
           </CardContent>
         </Card>
       )}
+
+      {/* Vault Health Indicator */}
+      <div className="mt-8 pt-8 border-t border-slate-700">
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <Lock className="w-5 h-5 text-blue-400" />
+          Credential Vault Health
+        </h2>
+        <VaultHealthIndicator />
+      </div>
     </div>
   );
 }

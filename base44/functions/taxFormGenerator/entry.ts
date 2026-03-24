@@ -40,6 +40,7 @@ async function generateForm(base44, userEmail, formType, quarter, year, taxRecor
   try {
     // Fetch tax record from vault
     let taxData = null;
+    let recordId = taxRecordId;
     
     if (taxRecordId) {
       const record = await base44.asServiceRole.entities.CredentialVault.filter(
@@ -50,6 +51,7 @@ async function generateForm(base44, userEmail, formType, quarter, year, taxRecor
       
       if (record?.encrypted_payload) {
         taxData = JSON.parse(record.encrypted_payload);
+        recordId = record.id;
       }
     } else if (quarter && year) {
       const record = await base44.asServiceRole.entities.CredentialVault.filter({
@@ -59,6 +61,7 @@ async function generateForm(base44, userEmail, formType, quarter, year, taxRecor
       
       if (record?.encrypted_payload) {
         taxData = JSON.parse(record.encrypted_payload);
+        recordId = record.id;
       }
     }
 

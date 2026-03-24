@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
   try {
@@ -157,12 +157,6 @@ Deno.serve(async (req) => {
     if (action === 'update_user_role') {
       const { user_id, role } = body;
       await base44.asServiceRole.entities.User.update(user_id, { role });
-      return Response.json({ success: true });
-    }
-
-    if (action === 'force_verify_user') {
-      const { user_id } = body;
-      await base44.asServiceRole.entities.User.update(user_id, { is_verified: true });
       return Response.json({ success: true });
     }
 

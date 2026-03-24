@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       const namePart = (identity?.name || 'user').toLowerCase()
         .replace(/\s+/g, '').replace(/[^a-z0-9]/g, '').substring(0, 12);
       const uniqueSuffix = Math.random().toString(36).substring(2, 8);
-      const emailAddress = `${namePart}_${uniqueSuffix}@velocity.mail`;
+      const emailAddress = `${namePart}_${uniqueSuffix}@vel.ai`;
 
       const emailRecord = await base44.asServiceRole.entities.InPlatformEmail.create({
         email_address: emailAddress,
@@ -221,6 +221,74 @@ Return JSON with:
       });
 
       return Response.json({ success: true, status: 'verified' });
+    }
+
+    // ── assign_to_linked_account ───────────────────────────────────────────────
+    // Auto-assigns a @vel.ai email to a LinkedAccount (idempotent)
+    if (action === 'assign_to_linked_account') {
+      const { linked_account_id, identity_id, platform } = body;
+      if (!linked_account_id) return Response.json({ error: 'linked_account_id required' }, { status: 400 });
+
+      // Idempotency: check if already assigned
+      const existing = await base44.asServiceRole.entities.InPlatformEmail.filter(
+        { linked_account_id, is_active: true }, null, 1
+      ).catch(() => []);
+
+      if (existing.length > 0) {
+        return Response.json({ success: true, already_exists: true, email: existing[0], email_address: existing[0].email_address });
+      }
+
+      // Resolve identity if not provided
+      let resolvedIdentityId = identity_id;
+      let resolvedIdentityName = 'account';
+      if (!resolvedIdentityId) {
+        const accounts = await base44.asServiceRole.entities.LinkedAccount.filter(
+          { id: linked_account_id }, null, 1
+        ).catch(() => []);
+        const acct = accounts[0];
+        if (acct) {
+          resolvedIdentityName = acct.username || acct.label || acct.platform || 'account';
+        }
+      } else {
+        const identities = await base44.asServiceRole.entities.AIIdentity.filter(
+          { id: resolvedIdentityId }, null, 1
+        ).catch(() => []);
+        if (identities[0]) resolvedIdentityName = identities[0].name || 'account';
+      }
+
+      const namePart = resolvedIdentityName.toLowerCase()
+        .replace(/\s+/g, '').replace(/[^a-z0-9]/g, '').substring(0, 12);
+      const suffix = Math.random().toString(36).substring(2, 8);
+      const emailAddress = `${namePart}_${suffix}@vel.ai`;
+
+      const emailRecord = await base44.asServiceRole.entities.InPlatformEmail.create({
+        email_address: emailAddress,
+        identity_id: resolvedIdentityId || '',
+        identity_name: resolvedIdentityName,
+        is_active: true,
+        purpose: 'account_verification',
+        linked_platform: platform || '',
+        linked_account_id,
+        messages: [],
+        total_messages: 0,
+        unread_count: 0,
+        verification_status: 'pending',
+        created_by: user.email
+      });
+
+      // Back-link on the LinkedAccount
+      await base44.asServiceRole.entities.LinkedAccount.update(linked_account_id, {
+        inplatform_email: emailAddress
+      }).catch(() => null);
+
+      await base44.asServiceRole.entities.ActivityLog.create({
+        action_type: 'system',
+        message: `📧 @vel.ai address assigned: ${emailAddress} → LinkedAccount ${linked_account_id}`,
+        severity: 'info',
+        metadata: { linked_account_id, platform, email_address: emailAddress }
+      }).catch(() => null);
+
+      return Response.json({ success: true, email: emailRecord, email_address: emailAddress });
     }
 
     // ── get_all_emails ─────────────────────────────────────────────────────────

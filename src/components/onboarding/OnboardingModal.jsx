@@ -197,14 +197,19 @@ export default function OnboardingModal({ onComplete }) {
   const activeColor = STEP_COLORS[step] || '#8b5cf6';
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col" style={{
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        boxShadow: `0 0 60px ${activeColor}22, 0 25px 60px rgba(0,0,0,0.5)`
-      }}>
+    <>
+      {/* Background overlay */}
+      <div className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm" />
+      
+      {/* Modal container */}
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
+        <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col pointer-events-auto" style={{
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxShadow: `0 0 60px ${activeColor}22, 0 25px 60px rgba(0,0,0,0.5)`
+        }}>
 
-        {/* Progress header */}
+          {/* Progress header */}
         {step > 0 && (
           <div className="px-6 pt-5 pb-4 border-b border-slate-800">
             <div className="flex items-center justify-between">
@@ -255,7 +260,8 @@ export default function OnboardingModal({ onComplete }) {
             />
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -11,6 +11,7 @@ import GalaxyOrbs from './GalaxyOrbs';
 import CyberpunkCommandCenter from './CyberpunkCommandCenter';
 import { useAuth } from '@/lib/AuthContext';
 import { useRealtimeEventBus } from '@/lib/realtimeEventBus';
+import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
 
 const DEPARTMENTS = [
   {
@@ -371,6 +372,8 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
 export default function AppLayout() {
   // ACTUAL FIX: Global real-time event subscription (runs on all pages)
   useRealtimeEventBus();
+  // Sync identity, KYC, preferences across all modules
+  useIdentitySyncAcrossApp();
   
   const location = useLocation();
   const { user } = useAuth();

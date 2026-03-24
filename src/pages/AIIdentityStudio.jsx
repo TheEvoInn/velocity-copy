@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
@@ -25,8 +25,19 @@ export default function AIIdentityStudio() {
     queryKey: ['identities', user?.email],
     queryFn: () => base44.entities.AIIdentity.filter({ created_by: user?.email }, '-created_date', 100),
     enabled: !!user?.email,
-    refetchInterval: 30000
   });
+
+  // Subscribe to real-time identity changes
+  useEffect(() => {
+    const unsubscribe = base44.entities.AIIdentity.subscribe((event) => {
+      if (event.type === 'create' || event.type === 'update') {
+        queryClient.invalidateQueries({ queryKey: ['identities', user?.email] });
+      } else if (event.type === 'delete') {
+        queryClient.invalidateQueries({ queryKey: ['identities', user?.email] });
+      }
+    });
+    return unsubscribe;
+  }, [user?.email, queryClient]);
 
   // Fetch credential vault entries for this identity
   const { data: credentials = [] } = useQuery({
@@ -35,8 +46,16 @@ export default function AIIdentityStudio() {
       linked_account_id: { $exists: true }
     }, '-created_date', 100),
     enabled: !!selectedIdentity?.id,
-    refetchInterval: 60000
   });
+
+  // Subscribe to credential changes
+  useEffect(() => {
+    if (!selectedIdentity?.id) return;
+    const unsubscribe = base44.entities.CredentialVault.subscribe((event) => {
+      queryClient.invalidateQueries({ queryKey: ['identityCredentials', selectedIdentity?.id] });
+    });
+    return unsubscribe;
+  }, [selectedIdentity?.id, queryClient]);
 
   const filteredIdentities = identities.filter(id => 
     id.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -46,6 +65,10 @@ export default function AIIdentityStudio() {
   const handleIdentityCreated = () => {
     setShowNewIdentityForm(false);
     queryClient.invalidateQueries({ queryKey: ['identities', user?.email] });
+    // Also sync KYC, goals, and withdrawal policies
+    queryClient.invalidateQueries({ queryKey: ['kycVerification'] });
+    queryClient.invalidateQueries({ queryKey: ['userGoals'] });
+    queryClient.invalidateQueries({ queryKey: ['withdrawalPolicy'] });
   };
 
   return (

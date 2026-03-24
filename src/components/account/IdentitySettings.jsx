@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +21,14 @@ export default function IdentitySettings() {
       return await base44.entities.AIIdentity.filter({ user_email: user.email }, '-updated_date', 50);
     }
   });
+
+  // Subscribe to real-time identity changes
+  useEffect(() => {
+    const unsubscribe = base44.entities.AIIdentity.subscribe((event) => {
+      queryClient.invalidateQueries({ queryKey: ['identities'] });
+    });
+    return unsubscribe;
+  }, [queryClient]);
 
   // Fetch user goals to get active identity (filtered to current user)
   const { data: goals } = useQuery({
@@ -45,6 +53,9 @@ export default function IdentitySettings() {
       toast.success(`Switched to ${identity.name}`);
       setActiveIdentity(identityId);
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });
+      queryClient.invalidateQueries({ queryKey: ['identities'] });
+      queryClient.invalidateQueries({ queryKey: ['kycVerification'] });
+      queryClient.invalidateQueries({ queryKey: ['withdrawalPolicy'] });
     },
     onError: (error) => {
       toast.error(`Failed to switch identity: ${error.message}`);
@@ -60,6 +71,10 @@ export default function IdentitySettings() {
       toast.success('Identity deleted successfully');
       setDeleteId(null);
       queryClient.invalidateQueries({ queryKey: ['identities'] });
+      // Sync KYC and preferences when identity deleted
+      queryClient.invalidateQueries({ queryKey: ['kycVerification'] });
+      queryClient.invalidateQueries({ queryKey: ['userGoals'] });
+      queryClient.invalidateQueries({ queryKey: ['withdrawalPolicy'] });
     },
     onError: (error) => {
       toast.error(`Failed to delete identity: ${error.message}`);

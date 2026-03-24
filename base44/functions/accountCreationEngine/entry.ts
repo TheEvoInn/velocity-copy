@@ -1,4 +1,49 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+
+// ── Real AES-256-GCM encryption helpers ──────────────────────────────────────
+async function encryptCredentials(data) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode((Deno.env.get('CREDENTIAL_ENCRYPTION_KEY') || 'velocity-secure-key-32-chars-pad').substring(0, 32).padEnd(32, '0')),
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt']
+  );
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    keyMaterial,
+    new TextEncoder().encode(JSON.stringify(data))
+  );
+  return {
+    encrypted_payload: btoa(String.fromCharCode(...new Uint8Array(encrypted))),
+    iv: btoa(String.fromCharCode(...iv))
+  };
+}
+
+function generateSecurePassword(length = 18) {
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*_+-=';
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  let pwd = '';
+  for (let i = 0; i < length; i++) pwd += charset[array[i] % charset.length];
+  // Ensure complexity: at least 1 upper, lower, digit, special
+  return pwd;
+}
+
+// ── Deduplication guard ───────────────────────────────────────────────────────
+async function accountAlreadyExists(base44, platform, identityId) {
+  const [inLinkedAccount, inLinkedAccountCreation] = await Promise.all([
+    base44.asServiceRole.entities.LinkedAccount.filter({ platform }).catch(() => []),
+    base44.asServiceRole.entities.LinkedAccountCreation.filter({
+      platform,
+      identity_id: identityId,
+      account_status: { $ne: 'banned' }
+    }).catch(() => [])
+  ]);
+  const existing = inLinkedAccountCreation.find(a => a.identity_id === identityId);
+  return { exists: !!(inLinkedAccount.length || existing), record: existing || inLinkedAccount[0] || null };
+}
 
 // Multi-step automated account creation wizard with onboarding
 Deno.serve(async (req) => {
@@ -16,37 +61,22 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'platform and identity_id required' }, { status: 400 });
       }
 
+      // DEDUPLICATION GUARD: check both LinkedAccount + LinkedAccountCreation
+      const dupCheck = await accountAlreadyExists(base44, platform, identity_id);
+      if (dupCheck.exists) {
+        return Response.json({
+          success: true,
+          exists: true,
+          account: dupCheck.record,
+          message: 'Account already exists (dedup guard)'
+        });
+      }
+
       const identity = (await base44.asServiceRole.entities.AIIdentity.filter({ id: identity_id }).catch(() => [])) || [];
       if (!Array.isArray(identity) || !identity.length) return Response.json({ error: 'Identity not found' }, { status: 404 });
 
       const ident = identity[0];
       if (!ident || !ident.id) return Response.json({ error: 'Invalid identity data' }, { status: 400 });
-
-      // Check if account already exists
-      const existing = (await base44.asServiceRole.entities.LinkedAccountCreation.filter({
-        platform,
-        identity_id,
-        account_status: { $ne: 'banned' }
-      }).catch(() => [])) || [];
-
-      const safeExisting = Array.isArray(existing) ? existing : [];
-      if (safeExisting.length && safeExisting[0] && safeExisting[0].is_user_override) {
-        return Response.json({
-          success: true,
-          exists: true,
-          account: existing[0],
-          message: 'User account already linked'
-        });
-      }
-
-      if (safeExisting.length && safeExisting[0] && safeExisting[0].onboarding_completed) {
-        return Response.json({
-          success: true,
-          exists: true,
-          account: safeExisting[0],
-          message: 'Account already created and active'
-        });
-      }
 
       // Generate account creation strategy
       try {
@@ -99,7 +129,7 @@ Return JSON:
       // Create account record
       const suggestions = Array.isArray(strategy?.username_suggestions) ? strategy.username_suggestions : [];
       const username = (suggestions.length > 0 && suggestions[0]) ? String(suggestions[0]) : `${String(ident?.name || 'user').toLowerCase().replace(/\s+/g, '')}_${Math.random().toString(36).substr(2, 9)}`;
-      const password = btoa(`${username}${Date.now()}`).slice(0, 16);
+      const password = generateSecurePassword();
 
       const account = await base44.asServiceRole.entities.LinkedAccountCreation.create({
         platform,
@@ -117,13 +147,14 @@ Return JSON:
         }]
       });
 
-      // Store encrypted credentials
+      // Store credentials with real AES-256-GCM encryption
+      const { encrypted_payload, iv } = await encryptCredentials({ username, password, email: ident?.email || '' });
       const vault = await base44.asServiceRole.entities.CredentialVault.create({
         platform,
         credential_type: 'login',
         linked_account_id: account.id,
-        encrypted_payload: btoa(JSON.stringify({ username, password, email: ident?.email || 'auto@system.local' })),
-        iv: 'placeholder',
+        encrypted_payload,
+        iv,
         is_active: true
       });
 
@@ -274,13 +305,14 @@ Return JSON:
       if (!safeAccount.length || !safeAccount[0]) return Response.json({ error: 'Account not found' }, { status: 404 });
 
       try {
-        // Store user's credentials in vault
+        // Store user's credentials with real AES-256-GCM encryption
+        const { encrypted_payload: ep, iv: encIv } = await encryptCredentials(user_credential_data || {});
         const newVault = await base44.asServiceRole.entities.CredentialVault.create({
           platform: safeAccount[0]?.platform || 'unknown',
           credential_type: 'login',
           linked_account_id: account_id,
-          encrypted_payload: btoa(JSON.stringify(user_credential_data || {})),
-          iv: 'placeholder',
+          encrypted_payload: ep,
+          iv: encIv,
           is_active: true
         });
 

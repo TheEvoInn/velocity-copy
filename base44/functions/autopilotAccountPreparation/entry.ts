@@ -134,8 +134,12 @@ async function prepareBatchAccounts(base44, userEmail, identityId, opportunities
     preparations: []
   };
 
-  for (const opp of opportunities) {
-    const prepResult = await prepareAccountsForTask(base44, userEmail, identityId, opp);
+  // Run all preparations in PARALLEL for speed
+  const prepResults = await Promise.all(
+    opportunities.map(opp => prepareAccountsForTask(base44, userEmail, identityId, opp))
+  );
+
+  for (const prepResult of prepResults) {
 
     if (prepResult.success && prepResult.result.account_prepared) {
       results.prepared++;
@@ -146,11 +150,11 @@ async function prepareBatchAccounts(base44, userEmail, identityId, opportunities
     }
 
     results.preparations.push({
-      opportunity_id: opp.id,
-      platform: opp.platform,
-      prepared: prepResult.result.account_prepared,
+      opportunity_id: prepResult.result?.opportunity_id,
+      platform: prepResult.result?.platform,
+      prepared: prepResult.result?.account_prepared,
       intervention_triggered: prepResult.intervention_triggered || false,
-      steps: prepResult.result.steps
+      steps: prepResult.result?.steps
     });
   }
 

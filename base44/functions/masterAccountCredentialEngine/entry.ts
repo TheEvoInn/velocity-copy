@@ -195,6 +195,68 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── update_credentials ────────────────────────────────────────────────────
+    if (action === 'update_credentials') {
+      const { identity_id, field_updates } = body;
+      if (!identity_id || !field_updates) {
+        return Response.json({ error: 'identity_id and field_updates required' }, { status: 400 });
+      }
+
+      const identities = await base44.asServiceRole.entities.AIIdentity.filter(
+        { id: identity_id }, null, 1
+      ).catch(() => []);
+
+      if (!identities.length) return Response.json({ error: 'Identity not found' }, { status: 404 });
+
+      const identity = identities[0];
+      const existingKyc = identity.kyc_verified_data || {};
+
+      // Merge field updates into kyc_verified_data
+      await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
+        kyc_verified_data: { ...existingKyc, ...field_updates, updated_at: new Date().toISOString() }
+      });
+
+      await base44.asServiceRole.entities.ActivityLog.create({
+        action_type: 'system',
+        message: `🔄 Master credentials updated for identity "${identity.name}"`,
+        severity: 'info',
+        metadata: { identity_id, fields_updated: Object.keys(field_updates) }
+      }).catch(() => null);
+
+      return Response.json({ success: true, fields_updated: Object.keys(field_updates) });
+    }
+
+    // ── get_all_accounts_status ───────────────────────────────────────────────
+    if (action === 'get_all_accounts_status') {
+      const [identities, linkedAccounts, linkedCreations] = await Promise.all([
+        base44.asServiceRole.entities.AIIdentity.filter({ user_email: user.email }).catch(() => []),
+        base44.asServiceRole.entities.LinkedAccount.filter({}).catch(() => []),
+        base44.asServiceRole.entities.LinkedAccountCreation.filter({}).catch(() => [])
+      ]);
+
+      const report = identities.map(identity => {
+        const accounts = linkedAccounts.filter(a => (identity.linked_account_ids || []).includes(a.id));
+        const creations = linkedCreations.filter(a => a.identity_id === identity.id);
+        return {
+          identity_id: identity.id,
+          identity_name: identity.name,
+          kyc_tier: identity.kyc_verified_data?.kyc_tier || 'none',
+          linked_accounts: accounts.map(a => ({ id: a.id, platform: a.platform, health: a.health_status })),
+          auto_created_accounts: creations.map(a => ({ id: a.id, platform: a.platform, status: a.account_status, completeness: a.profile_completeness })),
+          total_accounts: accounts.length + creations.length,
+          platforms_covered: [...new Set([...accounts.map(a => a.platform), ...creations.map(a => a.platform)])]
+        };
+      });
+
+      return Response.json({
+        success: true,
+        total_identities: identities.length,
+        total_linked_accounts: linkedAccounts.length,
+        total_auto_created: linkedCreations.length,
+        report
+      });
+    }
+
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {

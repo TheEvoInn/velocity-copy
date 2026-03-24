@@ -145,21 +145,16 @@ export default function OnboardingModal({ onComplete }) {
       });
 
       const templatesToApply = workflowData.selected_templates || [];
-      if (templatesToApply.length) {
-        const matchedTemplates = TEMPLATE_LIBRARY.filter(t => templatesToApply.includes(t.id));
-        for (const tmpl of matchedTemplates) {
-          await base44.entities.Strategy.create({
-            title: tmpl.title,
-            description: tmpl.description,
-            variant: tmpl.strategy.variant,
-            starting_capital: tmpl.strategy.starting_capital,
-            target_daily_profit: tmpl.strategy.target_daily_profit,
-            categories: tmpl.categories_match,
+      if (templatesToApply.length > 0) {
+        templatesToApply.forEach(tmplId => {
+          base44.entities.Strategy.create({
+            title: `Strategy: ${tmplId}`,
+            variant: 'fastest',
             status: 'active',
             steps: [],
-            performance_notes: workflowData.auto_matched ? 'Auto-matched by onboarding AI' : 'Selected during onboarding',
+            performance_notes: 'Applied during onboarding',
           }).catch(() => {});
-        }
+        });
       }
 
       if (prefData.autopilot_enabled) {

@@ -175,6 +175,8 @@ const ONBOARDING_STEPS = [
     number: 3,
     title: 'Platform Credentials',
     description: 'Configure external platform access',
+    skippable: true,
+    skipLabel: 'Create Later via Autopilot',
     fields: [
       {
         id: 'platform_name',
@@ -443,6 +445,29 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
 
   const step = ONBOARDING_STEPS[currentStep];
 
+  const handleSkipWithAutopilot = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const user = await base44.auth.me();
+      await base44.entities.UserIntervention.create({
+        type: 'account_creation_queued',
+        status: 'pending',
+        title: 'Platform Account Creation Queued',
+        message: 'You chose to create platform accounts later. The Autopilot Account Creator will prompt you when execution requires a platform account.',
+        user_email: user?.email,
+        priority: 'low',
+        context: JSON.stringify({ source: 'onboarding_skip', step: 'credentials', queued_at: new Date().toISOString() }),
+      });
+      setCompletedSteps((prev) => new Set([...prev, step.id]));
+      setCurrentStep((prev) => prev + 1);
+    } catch (err) {
+      setError(err.message || 'Failed to queue. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleStepComplete = async (formData) => {
     setIsLoading(true);
     setError('');
@@ -591,6 +616,8 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
         onComplete={handleStepComplete}
         onPrevious={currentStep > 0 ? handlePrevious : null}
         isLoading={isLoading}
+        onSkip={step.skippable ? handleSkipWithAutopilot : null}
+        skipLabel={step.skipLabel}
       />
     </div>
   );

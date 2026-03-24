@@ -11,10 +11,12 @@ export default function OnboardingStepForm({
   stepNumber,
   stepTitle,
   stepDescription,
-  fields = [], // Array of field configs
+  fields = [],
   onComplete,
   onPrevious,
   isLoading = false,
+  onSkip = null,
+  skipLabel = 'Create Later',
 }) {
   const [formData, setFormData] = useState({});
   const [isValid, setIsValid] = useState(false);
@@ -100,7 +102,7 @@ export default function OnboardingStepForm({
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
         {onPrevious && (
           <button
             onClick={onPrevious}
@@ -108,6 +110,16 @@ export default function OnboardingStepForm({
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-orbitron tracking-wide text-slate-400 hover:text-slate-300 border border-slate-700 hover:border-slate-600 transition-all disabled:opacity-50"
           >
             <ChevronLeft className="w-4 h-4" /> Previous
+          </button>
+        )}
+        {onSkip && (
+          <button
+            onClick={onSkip}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-orbitron tracking-wide text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-400/50 bg-amber-500/5 hover:bg-amber-500/10 transition-all disabled:opacity-50"
+            title="Skip now — Autopilot will prompt you to create platform accounts when needed"
+          >
+            ⏱ {skipLabel}
           </button>
         )}
         <button

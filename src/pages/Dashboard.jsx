@@ -109,19 +109,26 @@ export default function Dashboard() {
 
   // Real-time intervention subscription
   useEffect(() => {
-    const unsubscribe = base44.entities.UserIntervention.subscribe((event) => {
-      if (event.type === 'create' || event.type === 'update' || event.type === 'delete') {
-        base44.entities.UserIntervention.filter(
+    if (!user?.email) return;
+    const loadInterventions = async () => {
+      try {
+        const all = await base44.entities.UserIntervention.filter(
           { status: { $in: ['pending', 'in_progress'] } },
           '-created_date',
           100
-        ).then(res => {
-          setInterventionCount(Array.isArray(res) ? res.length : 0);
-        }).catch(() => null);
+        );
+        const userInterventions = (all || []).filter(i => i.user_email === user.email);
+        setInterventionCount(userInterventions.length);
+      } catch (err) {
+        console.error('Failed to load interventions:', err);
       }
+    };
+    loadInterventions();
+    const unsubscribe = base44.entities.UserIntervention.subscribe(() => {
+      loadInterventions();
     });
     return () => unsubscribe?.();
-  }, []);
+  }, [user?.email]);
 
   const activeTasks = tasks.filter(t => t.status === 'executing' || t.status === 'running').length;
   const isOnboarded = goals?.onboarded === true;

@@ -21,31 +21,38 @@ export default function PendingInterventions() {
       }
     });
     return () => unsubscribe?.();
-  }, []);
+  }, [user?.email]);
 
   const fetchInterventions = async () => {
+    if (!user?.email) return;
     try {
-      // Query UserIntervention directly — no function call needed
-      const pending = await base44.entities.UserIntervention.filter(
+      // Fetch all interventions, then filter client-side for this user
+      const allPending = await base44.entities.UserIntervention.filter(
         { status: { $in: ['pending', 'in_progress'] } },
         '-priority',
-        50
+        100
       );
-      setInterventions(Array.isArray(pending) ? pending : []);
+      const userInterventions = (allPending || []).filter(i => i.user_email === user.email);
+      setInterventions(userInterventions);
     } catch (err) {
       console.error('Failed to fetch interventions:', err);
+      setInterventions([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleReject = async (id) => {
-    await base44.functions.invoke('userInterventionManager', {
-      action: 'reject_intervention',
-      intervention_id: id,
-      reason: 'User rejected'
-    });
-    fetchInterventions();
+    if (!user?.email) return;
+    try {
+      await base44.entities.UserIntervention.update(id, {
+        status: 'rejected',
+        resolved_at: new Date().toISOString(),
+      });
+      fetchInterventions();
+    } catch (err) {
+      console.error('Failed to reject intervention:', err);
+    }
   };
 
   const filtered = interventions.filter(i => {

@@ -79,6 +79,17 @@ async function handleAutomationTrigger(base44, body) {
     return Response.json({ skipped: true, reason: `Already in status: ${opp.status}` });
   }
 
+  // Dedup check: prevent duplicate executions of same opportunity
+  const existingTasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+    { opportunity_id: opp.id, status: { $in: ['queued', 'processing', 'completed'] } },
+    '-created_date',
+    1
+  ).catch(() => []);
+
+  if (existingTasks && existingTasks.length > 0) {
+    return Response.json({ skipped: true, reason: `Duplicate: task ${existingTasks[0].id} already exists` });
+  }
+
   console.log(`Auto-executing opportunity: ${opp.title} (score: ${opp.overall_score})`);
 
   // Determine identity to use
@@ -113,11 +124,19 @@ async function handleAutomationTrigger(base44, body) {
     queue_timestamp: new Date().toISOString(),
   });
 
-  // Update opportunity status to queued
+  // Update opportunity status to queued + sync wallet reconciliation
   await base44.asServiceRole.entities.Opportunity.update(opp.id, {
     status: 'queued',
     task_execution_id: task.id,
   });
+
+  // Queue wallet reconciliation for this earning
+  await base44.asServiceRole.entities.ActivityLog.create({
+    action_type: 'wallet_update',
+    message: `Pending earning: ${opp.platform} - $${opp.profit_estimate_high} (task ${task.id})`,
+    severity: 'info',
+    metadata: { task_id: task.id, opportunity_id: opp.id, estimated_value: opp.profit_estimate_high }
+  }).catch(() => null);
 
   // Log the auto-execution
   await base44.asServiceRole.entities.ActivityLog.create({

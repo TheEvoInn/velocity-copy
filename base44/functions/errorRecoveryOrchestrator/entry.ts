@@ -11,6 +11,11 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
 
     const { task_id, automation_id, error_type, attempt = 1, max_retries = 3, should_preserve_state = true } = body;
+    
+    // Detect rate-limit vs transient errors for smarter retry logic
+    const isRateLimit = ['rate_limit', 'throttled', 'blocked', '429'].some(t => error_type?.includes(t));
+    const isTransient = ['timeout', 'network', 'temporary', '5xx'].some(t => error_type?.includes(t));
+    const isAuth = ['authentication', 'unauthorized', 'credentials', '401', '403'].some(t => error_type?.includes(t));
 
     if (!task_id && !automation_id) {
       return Response.json({ error: 'No task_id or automation_id provided' }, { status: 400 });
@@ -37,7 +42,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 30000); // Exponential backoff, max 30s
+    // Differentiated backoff: rate-limits get longer backoff, transient errors shorter
+    let backoffMs = 1000 * Math.pow(2, attempt - 1);
+    if (isRateLimit) backoffMs = Math.min(300000 * attempt, 3600000); // 5m to 1h per attempt
+    else if (isTransient) backoffMs = Math.min(1000 * Math.pow(1.5, attempt), 30000); // Slower growth
+    else if (isAuth) backoffMs = 60000; // 1m fixed for auth issues
     const timestamp = new Date().toISOString();
 
     // Record retry attempt
@@ -51,16 +60,21 @@ Deno.serve(async (req) => {
       status: 'pending'
     }).catch(() => {});
 
-    // Check if should retry
-    if (attempt >= max_retries) {
-      // Max retries exceeded — escalate to manual review
+    // Rate-limits may need extended retries; auth errors should fail faster
+    const effectiveMaxRetries = isRateLimit ? Math.max(max_retries, 5) : (isAuth ? 1 : max_retries);
+
+    if (attempt >= effectiveMaxRetries) {
+      // Create intervention with error-type-specific guidance
+      const interventionType = isRateLimit ? 'rate_limit_detected' : isAuth ? 'credential_update_required' : 'manual_review_required';
+      const priority = isAuth ? 'critical' : 'high';
+
       await base44.asServiceRole.entities.UserIntervention.create({
-        type: 'manual_review_required',
-        priority: 'high',
-        title: `Task/Automation Failed After ${max_retries} Retries`,
-        description: `${task_id ? 'Task' : 'Automation'} failed with error: ${error_type}. Max retries (${max_retries}) exceeded.`,
-        required_action: 'Review and manually resolve',
-        data: { task_id, automation_id, error_type, attempts: attempt }
+        type: interventionType,
+        priority,
+        title: `${isAuth ? 'Auth Error' : isRateLimit ? 'Rate Limited' : 'Task Failed'} — ${effectiveMaxRetries} Attempts`,
+        description: `${task_id ? 'Task' : 'Automation'}: ${error_type}. ${isRateLimit ? 'Platform throttled. Try again later.' : isAuth ? 'Credentials invalid or expired.' : 'Max retries exceeded.'}`,
+        required_action: isAuth ? 'Update credentials' : isRateLimit ? 'Wait and retry' : 'Review and resolve',
+        data: { task_id, automation_id, error_type, attempts: attempt, is_rate_limit: isRateLimit }
       }).catch(() => {});
 
       await base44.asServiceRole.entities.ActivityLog.create({
@@ -72,8 +86,11 @@ Deno.serve(async (req) => {
 
       return Response.json({
         success: false,
-        message: 'Max retries exceeded, escalated to manual review',
+        message: `Max retries exceeded (${effectiveMaxRetries}), escalated to ${interventionType}`,
         attempt,
+        error_type,
+        is_rate_limit: isRateLimit,
+        is_auth_error: isAuth,
         task_id,
         automation_id
       });

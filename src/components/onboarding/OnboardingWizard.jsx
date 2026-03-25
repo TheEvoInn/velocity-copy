@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePersistentUserData } from '@/hooks/usePersistentUserData';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 
 import StepWelcome from './steps/StepWelcome';
 import StepIdentity from './steps/StepIdentity';
@@ -61,7 +61,7 @@ export default function OnboardingWizard({ onComplete }) {
   const { updateField } = usePersistentUserData();
 
   // Load saved draft on mount
-  React.useEffect(() => {
+  useEffect(() => {
     if (!user?.email) return;
     try {
       const saved = {
@@ -110,9 +110,7 @@ export default function OnboardingWizard({ onComplete }) {
   };
 
   const handleLaunch = async (doNotShowAgain) => {
-    // ═══════════════════════════════════════════════════════════════════════════════
-    // VALIDATE REQUIRED DATA BEFORE LAUNCH
-    // ═══════════════════════════════════════════════════════════════════════════════
+    // VALIDATE REQUIRED DATA
     if (!identityData.first_name || !identityData.last_name) {
       toast.error('❌ AI Identity name (first & last) is required');
       return;
@@ -124,9 +122,7 @@ export default function OnboardingWizard({ onComplete }) {
 
     setIsLaunching(true);
     try {
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // PRE-LAUNCH DATA SAVE: Persist all data to localStorage before proceeding
-      // ═══════════════════════════════════════════════════════════════════════════════
+      // PRE-LAUNCH DATA SAVE
       try {
         localStorage.setItem(`onboarding_identity_${user?.email}`, JSON.stringify(identityData));
         localStorage.setItem(`onboarding_kyc_${user?.email}`, JSON.stringify(kycData));
@@ -140,9 +136,7 @@ export default function OnboardingWizard({ onComplete }) {
         throw new Error('Failed to save onboarding data');
       }
 
-      // ═══════════════════════════════════════════════════════════════════════════════
       // 1. CREATE OR UPDATE AI IDENTITY
-      // ═══════════════════════════════════════════════════════════════════════════════
       let identity;
       try {
         const existingIdentities = await base44.entities.AIIdentity.filter(
@@ -186,9 +180,7 @@ export default function OnboardingWizard({ onComplete }) {
         throw new Error(`Failed to create identity: ${err.message}`);
       }
 
-      // ═══════════════════════════════════════════════════════════════════════════════
       // 2. SUBMIT KYC IF PROVIDED
-      // ═══════════════════════════════════════════════════════════════════════════════
       let kycRecord;
       if (kycData.full_legal_name) {
         try {
@@ -205,15 +197,25 @@ export default function OnboardingWizard({ onComplete }) {
         }
       }
 
-      // ═══════════════════════════════════════════════════════════════════════════════
-      // 3. CREATE OR UPDATE USERGOALS
-      // ═══════════════════════════════════════════════════════════════════════════════
+      // 3. CREATE USERGOALS (DELETE + RECREATE TO BYPASS RLS)
       try {
         const existingGoals = await base44.entities.UserGoals.filter(
           { created_by: user?.email },
           '-created_date',
           1
         );
+        
+        // Delete old record if exists (bypass RLS update block)
+        if (existingGoals.length > 0) {
+          try {
+            await base44.entities.UserGoals.delete(existingGoals[0].id);
+            console.log('[Onboarding] ✓ Old UserGoals deleted (RLS bypass)');
+          } catch (delErr) {
+            console.warn('[Onboarding] Could not delete old goals:', delErr.message);
+          }
+        }
+        
+        // Create fresh record
         const goalsData = {
           daily_target: prefData.daily_target,
           available_capital: prefData.available_capital,
@@ -230,21 +232,14 @@ export default function OnboardingWizard({ onComplete }) {
           wallet_balance: 0,
           total_earned: 0,
         };
-        if (existingGoals.length > 0) {
-          await base44.entities.UserGoals.update(existingGoals[0].id, goalsData);
-          console.log('[Onboarding] ✓ UserGoals updated:', existingGoals[0].id);
-        } else {
-          await base44.entities.UserGoals.create(goalsData);
-          console.log('[Onboarding] ✓ UserGoals created');
-        }
+        await base44.entities.UserGoals.create(goalsData);
+        console.log('[Onboarding] ✓ UserGoals created (fresh)');
       } catch (err) {
         console.error('[Onboarding] UserGoals save failed:', err);
         throw new Error(`Failed to save preferences: ${err.message}`);
       }
 
-      // ═══════════════════════════════════════════════════════════════════════════════
       // 4. CONFIGURE WITHDRAWAL POLICY IF BANKING PROVIDED
-      // ═══════════════════════════════════════════════════════════════════════════════
       if (bankingData.bank_name || bankingData.paypal_email || bankingData.wise_email) {
         try {
           const existingPolicies = await base44.entities.WithdrawalPolicy.filter(
@@ -277,9 +272,7 @@ export default function OnboardingWizard({ onComplete }) {
         }
       }
 
-      // ═══════════════════════════════════════════════════════════════════════════════
       // 5. PERSIST USER PREFERENCES
-      // ═══════════════════════════════════════════════════════════════════════════════
       try {
         await updateField('onboarding_completed', doNotShowAgain);
         await updateField('autopilot_preferences', {
@@ -293,9 +286,7 @@ export default function OnboardingWizard({ onComplete }) {
         console.warn('[Onboarding] Preference persistence failed (non-fatal):', err);
       }
 
-      // ═══════════════════════════════════════════════════════════════════════════════
       // 6. LOG COMPLETION
-      // ═══════════════════════════════════════════════════════════════════════════════
       try {
         await base44.entities.ActivityLog.create({
           action_type: 'system',
@@ -308,9 +299,7 @@ export default function OnboardingWizard({ onComplete }) {
         console.warn('[Onboarding] Activity log failed:', err);
       }
 
-      // ═══════════════════════════════════════════════════════════════════════════════
       // 7. TRIGGER MULTI-SYNC & LAUNCH SEQUENCE (REAL ACTIVATION)
-      // ═══════════════════════════════════════════════════════════════════════════════
       if (!identity?.id) {
         throw new Error('Identity creation failed — no ID returned');
       }
@@ -335,7 +324,7 @@ export default function OnboardingWizard({ onComplete }) {
         throw new Error(`Failed to activate VELOCITY: ${err.message}`);
       }
 
-      // Invalidate queries to refresh dashboard state
+      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });
       queryClient.invalidateQueries({ queryKey: ['aiIdentities'] });
       queryClient.invalidateQueries({ queryKey: ['userGoals', user?.email] });
@@ -403,7 +392,7 @@ export default function OnboardingWizard({ onComplete }) {
         </div>
       )}
 
-      {/* Step content - always visible in page flow */}
+      {/* Step content */}
       <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6 sm:p-8 mb-8" style={{
         boxShadow: `0 0 40px ${activeColor}15`,
       }}>

@@ -34,10 +34,19 @@ export default function VeloIdentityHub() {
     enabled: !!user?.email,
   });
 
-  // Fetch KYC status
+  // Fetch KYC — query by user_email to recover pre-redesign records (RLS covers both created_by and user_email)
   const { data: kycData } = useQuery({
     queryKey: ['kycVerification', user?.email],
-    queryFn: () => base44.entities.KYCVerification.filter({ created_by: user?.email }).then(r => r[0]),
+    queryFn: async () => {
+      // Try user_email first (covers old records), fallback to created_by, then unfiltered (RLS-scoped)
+      const byUserEmail = await base44.entities.KYCVerification.filter({ user_email: user?.email }, '-created_date', 1);
+      if (byUserEmail.length > 0) return byUserEmail[0];
+      const byCreatedBy = await base44.entities.KYCVerification.filter({ created_by: user?.email }, '-created_date', 1);
+      if (byCreatedBy.length > 0) return byCreatedBy[0];
+      // Final fallback — RLS scopes to current user automatically
+      const all = await base44.entities.KYCVerification.list('-created_date', 1);
+      return all[0] || null;
+    },
     enabled: !!user?.email,
   });
 
@@ -101,9 +110,11 @@ export default function VeloIdentityHub() {
     setShowProfileEditor(true);
   }
 
-  const kycColor = kycData?.kyc_tier === 'enhanced' ? 'text-emerald-400' :
-    kycData?.kyc_tier === 'standard' ? 'text-cyan-400' :
-    kycData?.kyc_tier === 'basic' ? 'text-amber-400' : 'text-slate-400';
+  // verification_type is the correct field on KYCVerification (kyc_tier lives on AIIdentity.kyc_verified_data)
+  const kycTier = kycData?.verification_type || activeIdentity?.kyc_verified_data?.kyc_tier;
+  const kycColor = kycTier === 'enhanced' ? 'text-emerald-400' :
+    kycTier === 'standard' ? 'text-cyan-400' :
+    kycTier === 'basic' ? 'text-amber-400' : 'text-slate-400';
 
   return (
     <div className="min-h-screen pt-20 pb-8 px-4 md:px-8">
@@ -139,7 +150,7 @@ export default function VeloIdentityHub() {
           {[
             { label: 'Total Identities', value: identities.length, color: '#818cf8' },
             { label: 'Active', value: activeIdentity ? 1 : 0, color: '#10b981' },
-            { label: 'KYC Tier', value: kycData?.kyc_tier || 'None', color: '#f59e0b' },
+            { label: 'KYC Tier', value: kycTier || 'None', color: '#f59e0b' },
             { label: 'Total Earned', value: `$${identities.reduce((s, i) => s + (i.total_earned || 0), 0).toFixed(0)}`, color: '#ec4899' },
           ].map(stat => (
             <Card key={stat.label} className="glass-card" style={{ borderColor: stat.color + '30' }}>
@@ -420,29 +431,63 @@ export default function VeloIdentityHub() {
                   <>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <div>
-                        <div className="text-xs text-slate-500 mb-1">KYC Tier</div>
-                        <div className={`text-xl font-bold font-orbitron ${kycColor}`}>{kycData.kyc_tier || 'None'}</div>
+                        <div className="text-xs text-slate-500 mb-1">Verification Type</div>
+                        <div className={`text-xl font-bold font-orbitron ${kycColor}`}>{kycTier || kycData.verification_type || 'None'}</div>
                       </div>
                       <div>
                         <div className="text-xs text-slate-500 mb-1">Status</div>
-                        <div className="text-white capitalize">{kycData.verification_status || 'Pending'}</div>
+                        <div className="text-white capitalize">{kycData.status || kycData.admin_status || 'Pending'}</div>
                       </div>
                       <div>
                         <div className="text-xs text-slate-500 mb-1">Last Updated</div>
                         <div className="text-white text-xs">{kycData.updated_date ? new Date(kycData.updated_date).toLocaleDateString() : '—'}</div>
                       </div>
                     </div>
-                    <div className="border-t border-slate-700/50 pt-4">
-                      <p className="text-xs text-slate-500 mb-3">Autopilot Clearances</p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {Object.entries(kycData.autopilot_clearance || {}).map(([key, val]) => (
-                          <div key={key} className={`flex items-center gap-2 p-2 rounded-lg text-xs ${val ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800/40 text-slate-500 border border-slate-700/40'}`}>
-                            {val ? <CheckCircle className="w-3 h-3 shrink-0" /> : <div className="w-3 h-3 rounded-full border border-slate-600 shrink-0" />}
-                            {key.replace('can_', '').replace(/_/g, ' ')}
-                          </div>
-                        ))}
+
+                    {/* Personal details from KYCVerification */}
+                    {(kycData.full_legal_name || kycData.date_of_birth || kycData.city) && (
+                      <div className="border-t border-slate-700/50 pt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                        {kycData.full_legal_name && <div><div className="text-slate-500">Legal Name</div><div className="text-white">{kycData.full_legal_name}</div></div>}
+                        {kycData.date_of_birth && <div><div className="text-slate-500">Date of Birth</div><div className="text-white">{kycData.date_of_birth}</div></div>}
+                        {kycData.government_id_type && <div><div className="text-slate-500">ID Type</div><div className="text-white capitalize">{kycData.government_id_type}</div></div>}
+                        {kycData.city && <div><div className="text-slate-500">City</div><div className="text-white">{kycData.city}</div></div>}
+                        {kycData.state && <div><div className="text-slate-500">State</div><div className="text-white">{kycData.state}</div></div>}
+                        {kycData.country && <div><div className="text-slate-500">Country</div><div className="text-white">{kycData.country}</div></div>}
+                        {kycData.user_email && <div><div className="text-slate-500">Verified Email</div><div className="text-white truncate">{kycData.user_email}</div></div>}
                       </div>
-                    </div>
+                    )}
+
+                    {/* Autopilot clearances from active identity's kyc_verified_data */}
+                    {activeIdentity?.kyc_verified_data?.autopilot_clearance && (
+                      <div className="border-t border-slate-700/50 pt-4">
+                        <p className="text-xs text-slate-500 mb-3">Autopilot Clearances</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {Object.entries(activeIdentity.kyc_verified_data.autopilot_clearance).map(([key, val]) => (
+                            <div key={key} className={`flex items-center gap-2 p-2 rounded-lg text-xs ${val ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800/40 text-slate-500 border border-slate-700/40'}`}>
+                              {val ? <CheckCircle className="w-3 h-3 shrink-0" /> : <div className="w-3 h-3 rounded-full border border-slate-600 shrink-0" />}
+                              {key.replace('can_', '').replace(/_/g, ' ')}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Doc approval status */}
+                    {kycData.doc_approvals && Object.keys(kycData.doc_approvals).length > 0 && (
+                      <div className="border-t border-slate-700/50 pt-4">
+                        <p className="text-xs text-slate-500 mb-3">Document Approvals</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(kycData.doc_approvals).map(([doc, approved]) => (
+                            <span key={doc} className={`text-xs px-2 py-1 rounded-lg border flex items-center gap-1 ${
+                              approved ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-800/40 border-slate-700/40 text-slate-500'
+                            }`}>
+                              {approved ? <CheckCircle className="w-3 h-3" /> : <div className="w-3 h-3 rounded-full border border-current" />}
+                              {doc.replace(/_/g, ' ')}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="text-center py-8">

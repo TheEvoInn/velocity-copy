@@ -48,24 +48,8 @@ export default function VeloIdentityHub() {
     enabled: !!user?.email,
   });
 
-  // Real-time KYC subscription
-  useEffect(() => {
-    if (!user?.email) return;
-    const unsubscribe = base44.entities.KYCVerification.subscribe(() => {
-      qc.invalidateQueries({ queryKey: ['kycVerification', user?.email] });
-      qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
-    });
-    return unsubscribe;
-  }, [user?.email, qc]);
-
-  // Real-time identity subscription
-  useEffect(() => {
-    if (!user?.email) return;
-    const unsubscribe = base44.entities.AIIdentity.subscribe(() => {
-      qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
-    });
-    return unsubscribe;
-  }, [user?.email, qc]);
+  // Real-time sync is handled by useIdentitySyncAcrossApp (called above).
+  // No duplicate subscriptions needed here.
 
   // Switch active identity
   const switchIdentityMutation = useMutation({

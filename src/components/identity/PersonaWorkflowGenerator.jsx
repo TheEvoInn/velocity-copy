@@ -204,8 +204,8 @@ Return ONLY a JSON object with a "templates" array. Each template object must ha
         }
       }
 
-      // Create a Strategy record for visibility in WorkflowBuilder
-      const existing = await base44.entities.Strategy.filter({ title: template.name });
+      // Create a Strategy record for visibility in WorkflowBuilder (filter by user)
+      const existing = await base44.entities.Strategy.filter({ created_by: me.email, title: template.name });
       const strategyPayload = {
         title: template.name,
         description: template.description,

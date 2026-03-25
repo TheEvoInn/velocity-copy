@@ -61,26 +61,14 @@ export default function VeloFinanceCommand() {
 
   const currentGoal = earningGoals.find(g => g.status === 'active');
 
-  // REAL-TIME SUBSCRIPTIONS: Listen for admin approvals and financial updates
+  // Real-time sync is handled globally by useIdentitySyncAcrossApp in AppLayout.
+  // EarningGoal subscription is not covered there — add it here only.
   useEffect(() => {
     if (!user?.email) return;
-    const unsubscribeTransaction = base44.entities.Transaction.subscribe((event) => {
-      console.log('[VeloFinanceCommand] Transaction update:', event.type);
-      qc.invalidateQueries({ queryKey: ['transactions', user?.email] });
-    });
-    const unsubscribeGoals = base44.entities.UserGoals.subscribe((event) => {
-      console.log('[VeloFinanceCommand] UserGoals update:', event.type);
-      qc.invalidateQueries({ queryKey: ['userGoals', user?.email] });
-    });
-    const unsubscribeEarningGoals = base44.entities.EarningGoal.subscribe((event) => {
-      console.log('[VeloFinanceCommand] EarningGoal update:', event.type);
+    const unsub = base44.entities.EarningGoal.subscribe(() => {
       qc.invalidateQueries({ queryKey: ['earningGoals', user?.email] });
     });
-    return () => {
-      unsubscribeTransaction();
-      unsubscribeGoals();
-      unsubscribeEarningGoals();
-    };
+    return unsub;
   }, [user?.email, qc]);
 
   return (

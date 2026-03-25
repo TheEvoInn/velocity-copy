@@ -45,6 +45,36 @@ async function accountAlreadyExists(base44, platform, identityId) {
   return { exists: !!(inLinkedAccount.length || existing), record: existing || inLinkedAccount[0] || null };
 }
 
+// ── Get or create default Autopilot identity ────────────────────────────────
+async function getOrCreateAutopilotIdentity(base44, userEmail) {
+  try {
+    const existing = await base44.asServiceRole.entities.AIIdentity.filter(
+      { user_email: userEmail, name: 'Autopilot Default' },
+      '-created_date',
+      1
+    ).catch(() => []);
+    
+    if (existing && existing.length > 0) return existing[0];
+    
+    // Create default Autopilot identity
+    const newIdentity = await base44.asServiceRole.entities.AIIdentity.create({
+      user_email: userEmail,
+      name: 'Autopilot Default',
+      role_label: 'Autonomous Agent',
+      is_active: true,
+      onboarding_complete: false,
+      email: userEmail,
+      communication_tone: 'professional',
+      skills: ['general', 'automation', 'account_creation'],
+      preferred_platforms: ['upwork', 'fiverr', 'generic']
+    });
+    return newIdentity;
+  } catch (e) {
+    console.error('getOrCreateAutopilotIdentity error:', e.message);
+    return null;
+  }
+}
+
 // Multi-step automated account creation wizard with onboarding
 Deno.serve(async (req) => {
   try {
@@ -53,7 +83,16 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const { action, platform, identity_id, on_demand } = body;
+    let { action, platform, identity_id, on_demand } = body;
+    
+    // AUTO-RESOLVE: If identity_id is missing or invalid, use/create default Autopilot identity
+    if (!identity_id || identity_id === 'autopilot-default') {
+      const autopilotIdentity = await getOrCreateAutopilotIdentity(base44, user.email);
+      if (!autopilotIdentity) {
+        return Response.json({ error: 'Failed to resolve or create Autopilot identity' }, { status: 500 });
+      }
+      identity_id = autopilotIdentity.id;
+    }
 
     // ── check_and_create_account ────────────────────────────────────────────────
     if (action === 'check_and_create_account') {

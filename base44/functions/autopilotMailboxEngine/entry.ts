@@ -1,5 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+// Helper: Extract verification code from message
+async function getExtractedCode(base44, emailId, messageId) {
+  const emailRecord = await base44.asServiceRole.entities.InPlatformEmail.get(emailId).catch(() => null);
+  if (!emailRecord) return null;
+  const messages = Array.isArray(emailRecord.messages) ? emailRecord.messages : [];
+  const msg = messages.find(m => m.message_id === messageId);
+  return msg?.verification_code || null;
+}
+
+// Helper: Extract confirmation link from message
+async function getExtractedLink(base44, emailId, messageId) {
+  const emailRecord = await base44.asServiceRole.entities.InPlatformEmail.get(emailId).catch(() => null);
+  if (!emailRecord) return null;
+  const messages = Array.isArray(emailRecord.messages) ? emailRecord.messages : [];
+  const msg = messages.find(m => m.message_id === messageId);
+  return msg?.confirmation_link || null;
+}
+
 /**
  * AUTOPILOT MAILBOX ENGINE v1.0
  * Autonomously receives, parses, and extracts verification codes/links from incoming emails.
@@ -205,12 +223,20 @@ Only return valid, complete information. If no code or link found, return null f
                     verification_date: new Date().toISOString()
                   });
 
-                  // Trigger next step: complete account creation
+                  // Trigger next step: complete account creation with actual extracted values
+                  const extractedCode = results.processed_messages
+                    .find(m => m.code_extracted)?.message_id || null;
+                  const extractedLink = results.processed_messages
+                    .find(m => m.link_extracted)?.message_id || null;
+
                   await base44.asServiceRole.functions.invoke('accountCreationEmailWorkflow', {
                     action: 'verify_account',
                     account_id: emailRecord.linked_account_id,
-                    verification_code: results.codes_extracted > 0 ? 'auto_extracted' : null,
-                    confirmation_link: results.links_extracted > 0 ? 'auto_extracted' : null
+                    identity_id: emailRecord.identity_id,
+                    email_address: emailRecord.email_address,
+                    verification_code: extractedCode ? await getExtractedCode(base44, emailRecord.id, extractedCode) : null,
+                    confirmation_link: extractedLink ? await getExtractedLink(base44, emailRecord.id, extractedLink) : null,
+                    inbox_message_id: extractedCode || extractedLink
                   }).catch(e => console.error('Verification trigger failed:', e.message));
                 }
               }

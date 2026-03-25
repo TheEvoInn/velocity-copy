@@ -19,11 +19,16 @@ export default function InterventionForm({ intervention, onSubmit, onClose }) {
     setError(null);
 
     try {
-      await base44.functions.invoke('userInterventionManager', {
+      const res = await base44.functions.invoke('userInterventionManager', {
         action: 'provide_missing_data',
         intervention_id: intervention.id,
         data: formData
       });
+
+      if (!res.data?.data_received) {
+        setError(res.data?.error || 'Submission failed');
+        return;
+      }
 
       setSuccess(true);
       setTimeout(() => {

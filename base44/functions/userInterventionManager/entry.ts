@@ -1,9 +1,8 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 /**
- * USER INTERVENTION MANAGER
- * Phase 11: Complete handler for user intervention lifecycle
- * Collects missing data, syncs back to Autopilot, persists credentials
+ * USER INTERVENTION MANAGER - Phase 12
+ * Complete handler for user intervention lifecycle with proper status sync
  */
 
 Deno.serve(async (req) => {
@@ -93,7 +92,7 @@ async function getPendingInterventions(base44, user) {
 }
 
 /**
- * Provide missing data for intervention
+ * Provide missing data for intervention — THIS MARKS AS RESOLVED AND RESUMES TASK
  */
 async function provideMissingData(base44, user, interventionId, data) {
   if (!interventionId || !data) {
@@ -117,13 +116,13 @@ async function provideMissingData(base44, user, interventionId, data) {
       rotateIdentity = true;
     }
 
-    // Update intervention with provided data
+    // Update intervention: mark as RESOLVED with user data
     await base44.asServiceRole.entities.UserIntervention?.update?.(interventionId, {
-      status: 'data_received',
+      status: 'resolved',
       user_response: data,
       resolved_at: new Date().toISOString(),
       requires_identity_rotation: rotateIdentity
-    }).catch(() => {});
+    }).catch(() => null);
 
     // If rate-limited, trigger identity rotation
     if (rotateIdentity) {
@@ -135,7 +134,6 @@ async function provideMissingData(base44, user, interventionId, data) {
         ).catch(() => []);
 
         if (identities && identities.length > 1) {
-          // Mark current as used, activate next
           const currentIdentity = identities[0];
           const nextIdentity = identities[1];
 
@@ -173,19 +171,45 @@ async function provideMissingData(base44, user, interventionId, data) {
       },
       severity: 'info',
       timestamp: new Date().toISOString()
-    }).catch(() => {});
-
-    // Trigger task resumption (async)
-    base44.asServiceRole.functions.invoke('resumeTaskAfterIntervention', {
-      intervention_id: interventionId
     }).catch(() => null);
+
+    // CRITICAL: Resume task immediately (inject data + mark task as queued)
+    let taskResumed = false;
+    try {
+      const relatedTask = await base44.asServiceRole.entities.TaskExecutionQueue?.get?.(intervention.task_id).catch(() => null);
+      if (relatedTask) {
+        await base44.asServiceRole.entities.TaskExecutionQueue?.update?.(intervention.task_id, {
+          status: 'queued',
+          intervention_data: data,
+          resumed_after_intervention: true,
+          resumed_at: new Date().toISOString()
+        }).catch(() => null);
+        taskResumed = true;
+      }
+    } catch (e) {
+      console.error('Task resumption error:', e.message);
+    }
+
+    // Persist credentials if provided
+    if (data && intervention.requirement_type === 'credential') {
+      try {
+        await base44.asServiceRole.functions.invoke('persistInterventionCredentials', {
+          intervention_id: interventionId,
+          data: data,
+          user_email: user.email
+        }).catch(() => null);
+      } catch (e) {
+        console.error('Credential persistence error:', e.message);
+      }
+    }
 
     return jsonResponse({
       intervention_id: interventionId,
       data_received: true,
-      status: 'data_received',
+      status: 'resolved',
+      task_resumed: taskResumed,
       identity_rotated: rotateIdentity,
-      message: rotateIdentity ? 'Data received. Identity rotated. Task resuming...' : 'Data received. Task execution resuming...'
+      message: 'Data submitted. Intervention resolved and task resumed.'
     });
 
   } catch (error) {
@@ -212,11 +236,20 @@ async function approveIntervention(base44, user, interventionId) {
       return jsonResponse({ error: 'Unauthorized access to intervention' }, 403);
     }
 
-    // Update status
+    // Mark as approved and resume task
     await base44.asServiceRole.entities.UserIntervention?.update?.(interventionId, {
-      status: 'approved',
+      status: 'resolved',
       approved_at: new Date().toISOString()
-    }).catch(() => {});
+    }).catch(() => null);
+
+    // Resume related task
+    if (intervention.task_id) {
+      await base44.asServiceRole.entities.TaskExecutionQueue?.update?.(intervention.task_id, {
+        status: 'queued',
+        resumed_after_intervention: true,
+        resumed_at: new Date().toISOString()
+      }).catch(() => null);
+    }
 
     // Log approval
     await base44.asServiceRole.entities.AuditLog?.create?.({
@@ -227,13 +260,13 @@ async function approveIntervention(base44, user, interventionId) {
       details: { intervention_id: interventionId },
       severity: 'info',
       timestamp: new Date().toISOString()
-    }).catch(() => {});
+    }).catch(() => null);
 
     return jsonResponse({
       intervention_id: interventionId,
       approved: true,
-      status: 'approved',
-      message: 'Intervention approved. Task execution will resume.'
+      status: 'resolved',
+      message: 'Intervention approved and task resumed.'
     });
 
   } catch (error) {
@@ -260,12 +293,21 @@ async function rejectIntervention(base44, user, interventionId, reason = '') {
       return jsonResponse({ error: 'Unauthorized access to intervention' }, 403);
     }
 
-    // Update status
+    // Mark as resolved (rejected)
     await base44.asServiceRole.entities.UserIntervention?.update?.(interventionId, {
-      status: 'rejected',
+      status: 'resolved',
       rejection_reason: reason,
       rejected_at: new Date().toISOString()
-    }).catch(() => {});
+    }).catch(() => null);
+
+    // Cancel related task
+    if (intervention.task_id) {
+      await base44.asServiceRole.entities.TaskExecutionQueue?.update?.(intervention.task_id, {
+        status: 'cancelled',
+        cancellation_reason: 'User rejected intervention',
+        cancelled_at: new Date().toISOString()
+      }).catch(() => null);
+    }
 
     // Log rejection
     await base44.asServiceRole.entities.AuditLog?.create?.({
@@ -279,14 +321,14 @@ async function rejectIntervention(base44, user, interventionId, reason = '') {
       },
       severity: 'warning',
       timestamp: new Date().toISOString()
-    }).catch(() => {});
+    }).catch(() => null);
 
     return jsonResponse({
       intervention_id: interventionId,
       rejected: true,
-      status: 'rejected',
+      status: 'resolved',
       reason: reason,
-      message: 'Intervention rejected. Task execution will be cancelled.'
+      message: 'Intervention rejected and task cancelled.'
     });
 
   } catch (error) {
@@ -295,7 +337,7 @@ async function rejectIntervention(base44, user, interventionId, reason = '') {
 }
 
 /**
- * Resume task after intervention is complete
+ * Resume task after intervention (legacy—now integrated into provideMissingData)
  */
 async function resumeAfterIntervention(base44, user, interventionId) {
   if (!interventionId) {
@@ -313,34 +355,19 @@ async function resumeAfterIntervention(base44, user, interventionId) {
       return jsonResponse({ error: 'Unauthorized access to intervention' }, 403);
     }
 
-    // Mark as resolved
-    await base44.asServiceRole.entities.UserIntervention?.update?.(interventionId, {
-      status: 'resolved',
-      resolved_at: new Date().toISOString()
-    }).catch(() => {});
-
-    // Find related task by task_id (direct reference)
-    const relatedTask = await base44.asServiceRole.entities.TaskExecutionQueue?.get?.(intervention.task_id).catch(() => null);
-
+    // Already marked as resolved in provideMissingData, but handle for completeness
     let taskResumed = false;
-    if (relatedTask) {
-      // Inject user-provided data into task context
-      await base44.asServiceRole.entities.TaskExecutionQueue?.update?.(intervention.task_id, {
-        status: 'queued',
-        intervention_data: intervention.user_response,
-        resumed_after_intervention: true,
-        resumed_at: new Date().toISOString()
-      }).catch(() => {});
-      taskResumed = true;
-    }
-
-    // Persist credentials if provided
-    if (intervention.user_response && intervention.requirement_type === 'credential') {
-      await base44.functions.invoke('persistInterventionCredentials', {
-        intervention_id: interventionId,
-        data: intervention.user_response,
-        user_email: user.email
-      }).catch(() => {});
+    if (intervention.task_id) {
+      const relatedTask = await base44.asServiceRole.entities.TaskExecutionQueue?.get?.(intervention.task_id).catch(() => null);
+      if (relatedTask) {
+        await base44.asServiceRole.entities.TaskExecutionQueue?.update?.(intervention.task_id, {
+          status: 'queued',
+          intervention_data: intervention.user_response,
+          resumed_after_intervention: true,
+          resumed_at: new Date().toISOString()
+        }).catch(() => null);
+        taskResumed = true;
+      }
     }
 
     // Log resumption
@@ -356,14 +383,14 @@ async function resumeAfterIntervention(base44, user, interventionId) {
       },
       severity: 'info',
       timestamp: new Date().toISOString()
-    }).catch(() => {});
+    }).catch(() => null);
 
     return jsonResponse({
       intervention_id: interventionId,
       execution_resumed: taskResumed,
       task_id: intervention.task_id,
       status: 'resolved',
-      message: taskResumed ? 'Intervention resolved. Task execution resumed.' : 'Intervention resolved but task not found for resumption.'
+      message: 'Task execution resumed.'
     });
 
   } catch (error) {

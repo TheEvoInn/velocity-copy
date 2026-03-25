@@ -36,15 +36,12 @@ export default function PendingInterventions() {
     try {
       setLoading(true);
       
-      // Fetch all pending/in_progress interventions
-      const allPending = await base44.entities.UserIntervention.filter(
-        { status: { $in: ['pending', 'in_progress'] } },
+      // Fetch all pending/in_progress interventions for this user
+      const userInterventions = await base44.entities.UserIntervention.filter(
+        { status: { $in: ['pending', 'in_progress'] }, user_email: user.email },
         '-priority',
         100
       ).catch(() => []);
-      
-      // Filter for current user
-      const userInterventions = (allPending || []).filter(i => i.created_by === user.email);
       
       setInterventions(userInterventions);
     } catch (err) {

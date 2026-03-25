@@ -54,21 +54,29 @@ export default function OnboardingWizard({ onComplete }) {
   const [bankingData, setBankingData] = useState(DEFAULT_BANKING);
   const [workflowData, setWorkflowData] = useState({ selected_templates: [], auto_matched: false });
   const [isLaunching, setIsLaunching] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { updateField } = usePersistentUserData();
 
-  const saveDraft = () => {
-    if (user?.email) {
+  const saveDraft = async () => {
+    if (!user?.email) return;
+    setIsSavingDraft(true);
+    try {
       localStorage.setItem(`onboarding_identity_${user.email}`, JSON.stringify(identityData));
       localStorage.setItem(`onboarding_kyc_${user.email}`, JSON.stringify(kycData));
       localStorage.setItem(`onboarding_pref_${user.email}`, JSON.stringify(prefData));
       localStorage.setItem(`onboarding_banking_${user.email}`, JSON.stringify(bankingData));
       localStorage.setItem(`onboarding_workflow_${user.email}`, JSON.stringify(workflowData));
       localStorage.setItem(`onboarding_step_${user.email}`, step.toString());
-      toast.success('✅ Draft saved successfully');
+      toast.success('✅ Draft saved');
       console.log('[Onboarding] Draft saved to localStorage');
+    } catch (err) {
+      toast.error('Failed to save draft');
+      console.error('[Onboarding] Save draft failed:', err);
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -298,8 +306,8 @@ export default function OnboardingWizard({ onComplete }) {
     <div className="w-full max-w-3xl mx-auto px-4 py-8">
       {step > 0 && step < 6 && (
         <div className="mb-4 flex justify-end">
-          <button onClick={saveDraft} className="flex items-center gap-2 px-3 py-1.5 text-xs bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 text-slate-300 transition-colors">
-            <Save className="w-3 h-3" /> Save Draft
+          <button onClick={saveDraft} disabled={isSavingDraft} className={`flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition-colors ${isSavingDraft ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300 cursor-not-allowed' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}>
+            <Save className={`w-3 h-3 ${isSavingDraft ? 'animate-pulse' : ''}`} /> {isSavingDraft ? 'Saving...' : 'Save Draft'}
           </button>
         </div>
       )}

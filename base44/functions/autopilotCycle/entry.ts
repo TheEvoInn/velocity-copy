@@ -38,6 +38,7 @@ Deno.serve(async (req) => {
       const cycleRes = await base44.asServiceRole.functions.invoke('unifiedOrchestrator', {
         action: action === 'process_queue' ? 'execute_queued_tasks' : 'full_cycle',
         user_email: userEmail,
+        automation: true
       }).catch(e => ({ data: { success: false, error: e.message } }));
 
       results.push({ user: userEmail, result: cycleRes?.data });

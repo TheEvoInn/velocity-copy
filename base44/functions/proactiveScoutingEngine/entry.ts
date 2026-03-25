@@ -207,7 +207,7 @@ Return JSON:
 
         const genRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
           prompt: strategyPrompt,
-          response_json_schema: { type: 'object', properties: { pre_opportunities: { type: 'array' } } }
+          response_json_schema: { type: 'object', properties: { pre_opportunities: { type: 'array', items: { type: 'object' } } } }
         });
         preOpps = genRes.pre_opportunities || [];
       } catch (e) {

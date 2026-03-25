@@ -9,8 +9,8 @@ export default function StepLaunch({ identityData, kycData, prefData, bankingDat
     {
       icon: User, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20',
       label: 'Identity Created',
-      value: identityData.name ? `${identityData.name} — ${identityData.role_label || 'Freelancer'}` : '⚠️ Not configured',
-      ok: !!identityData.name,
+      value: (identityData.first_name || identityData.last_name) ? `${identityData.first_name || ''} ${identityData.last_name || ''}`.trim() + (identityData.role_labels?.[0] ? ` — ${identityData.role_labels[0]}` : '') : '⚠️ Not configured',
+      ok: !!(identityData.first_name || identityData.last_name),
     },
     {
       icon: Shield, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20',

@@ -79,7 +79,17 @@ export default function AdminUserManagement() {
   });
 
   const users = usersData?.users || [];
-  const kycs = kycsData?.kycs || [];
+  const kycsRaw = kycsData?.kycs || [];
+  
+  // Deduplicate KYCs: keep only latest per user per status
+  const kycs = kycsRaw.reduce((acc, kyc) => {
+    const key = `${kyc.user_email || kyc.created_by}_${kyc.status || 'pending'}`;
+    if (!acc[key] || new Date(kyc.created_date) > new Date(acc[key].created_date)) {
+      acc[key] = kyc;
+    }
+    return acc;
+  }, {});
+  const kycsList = Object.values(kycs);
 
   const filtered = users.filter(u =>
     u.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -104,13 +114,13 @@ export default function AdminUserManagement() {
         </Card>
         <Card className="bg-slate-900 border-slate-800">
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-amber-400">{kycs.filter(k => k.status === 'submitted' || k.status === 'pending').length}</p>
+            <p className="text-2xl font-bold text-amber-400">{kycsList.filter(k => k.status === 'submitted' || k.status === 'pending').length}</p>
             <p className="text-xs text-slate-500">Pending KYC</p>
           </CardContent>
         </Card>
         <Card className="bg-slate-900 border-slate-800">
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-emerald-400">{kycs.filter(k => k.status === 'approved').length}</p>
+            <p className="text-2xl font-bold text-emerald-400">{kycsList.filter(k => k.status === 'approved').length}</p>
             <p className="text-xs text-slate-500">KYC Approved</p>
           </CardContent>
         </Card>
@@ -130,7 +140,7 @@ export default function AdminUserManagement() {
       {/* User Cards */}
       <div className="space-y-2">
         {filtered.map(u => {
-          const userKYC = kycs.find(k => k.user_email === u.email || k.created_by === u.email);
+          const userKYC = kycsList.find(k => (k.user_email === u.email || k.created_by === u.email) && (k.status === 'submitted' || k.status === 'pending'));
           const isExpanded = expandedUser === u.id;
 
           return (

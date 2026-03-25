@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -21,10 +21,11 @@ const PLATFORMS = [
   { value: 'other', label: 'Other' }
 ];
 
-export default function LinkedAccountsManager({ identity }) {
+export default function LinkedAccountsManager({ identity, onAccountsAdded }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
+  const [syncedFromAutopilot, setSyncedFromAutopilot] = useState(new Set());
   const [newAccount, setNewAccount] = useState({
     platform: 'upwork',
     username: '',
@@ -35,12 +36,26 @@ export default function LinkedAccountsManager({ identity }) {
     notes: ''
   });
 
+  // Subscribe to auto-created accounts from Autopilot
+  useEffect(() => {
+    if (!identity?.id) return;
+    const unsubscribe = base44.entities.LinkedAccount.subscribe((event) => {
+      if (event.type === 'create' && event.data?.platform) {
+        // Auto-sync newly created accounts
+        setSyncedFromAutopilot(prev => new Set([...prev, event.id]));
+        queryClient.invalidateQueries({ queryKey: ['linkedAccounts', identity?.id] });
+        toast.success(`✓ Auto-created account synced: ${event.data.platform}`);
+      }
+    });
+    return unsubscribe;
+  }, [identity?.id, queryClient]);
+
   const { data: linkedAccounts = [] } = useQuery({
     queryKey: ['linkedAccounts', identity?.id],
     queryFn: () => base44.entities.LinkedAccount.filter({ 
       _or: [
-        { linked_account_id: identity?.id },
-        { username: { $exists: true } }
+        { id: { $in: identity?.linked_account_ids || [] } },
+        { created_by: identity?.created_by }
       ]
     }, '-created_date', 50),
     enabled: !!identity?.id
@@ -59,15 +74,25 @@ export default function LinkedAccountsManager({ identity }) {
       if (editingAccount?.id) {
         return await base44.entities.LinkedAccount.update(editingAccount.id, accountData);
       } else {
-        return await base44.entities.LinkedAccount.create(accountData);
+        const created = await base44.entities.LinkedAccount.create(accountData);
+        // Multi-sync: Link to AIIdentity immediately
+        if (identity?.id) {
+          await base44.asServiceRole.entities.AIIdentity.update(identity.id, {
+            linked_account_ids: [...(identity.linked_account_ids || []), created.id]
+          }).catch(() => null);
+        }
+        return created;
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['linkedAccounts'] });
+      queryClient.invalidateQueries({ queryKey: ['identities'] });
       setNewAccount({ platform: 'upwork', username: '', profile_url: '', specialization: '', skills: '', hourly_rate: '', notes: '' });
       setEditingAccount(null);
       setShowForm(false);
-      toast.success(editingAccount ? 'Account updated' : 'Account added');
+      toast.success(editingAccount ? 'Account updated' : 'Account added & synced to identity');
+      // Notify parent wizard of new account
+      onAccountsAdded?.([result?.id]);
     },
     onError: (err) => toast.error(`Error: ${err.message}`)
   });
@@ -108,7 +133,13 @@ export default function LinkedAccountsManager({ identity }) {
   return (
     <div className="space-y-6">
       {/* Auto-Account Creation */}
-      <AutoAccountCreationPanel identity={identity} />
+      <AutoAccountCreationPanel
+        identity={identity}
+        onAccountCreated={(accountIds) => {
+          queryClient.invalidateQueries({ queryKey: ['linkedAccounts', identity?.id] });
+          onAccountsAdded?.(accountIds);
+        }}
+      />
 
       <Card className="bg-slate-900 border-slate-800 p-6">
         <div className="flex items-center justify-between mb-6">
@@ -244,7 +275,12 @@ export default function LinkedAccountsManager({ identity }) {
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <p className="font-semibold text-white">{account.username}</p>
-                    <p className="text-xs text-slate-400">{account.platform}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-slate-400">{account.platform}</p>
+                      {syncedFromAutopilot.has(account.id) && (
+                        <span className="text-[10px] bg-emerald-600/30 text-emerald-300 px-2 py-0.5 rounded">auto-synced</span>
+                      )}
+                    </div>
                   </div>
                   <Star className={`w-4 h-4 ${account.ai_can_use ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`} />
                 </div>

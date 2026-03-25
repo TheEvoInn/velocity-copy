@@ -7,17 +7,23 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, AlertCircle, Zap, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function AutoAccountCreationPanel() {
+export default function AutoAccountCreationPanel({ identity, onAccountCreated }) {
   const [expandedPlatform, setExpandedPlatform] = useState(null);
   const queryClient = useQueryClient();
 
-  // Fetch user's linked accounts
+  // Fetch user's linked accounts for this identity
   const { data: linkedAccounts, isLoading: accountsLoading } = useQuery({
-    queryKey: ['linkedAccounts'],
+    queryKey: ['linkedAccounts', identity?.id],
     queryFn: async () => {
-      const result = await base44.entities.LinkedAccount.filter({}, null, 50);
+      if (!identity?.id) return [];
+      const result = await base44.entities.LinkedAccount.filter(
+        { id: { $in: identity.linked_account_ids || [] } },
+        null,
+        50
+      );
       return result || [];
-    }
+    },
+    enabled: !!identity?.id
   });
 
   // Fetch user goals for identity info
@@ -43,19 +49,23 @@ export default function AutoAccountCreationPanel() {
   // Auto-create account
   const autoCreateMutation = useMutation({
     mutationFn: async ({ platform, identityId }) => {
-      const response = await base44.functions.invoke('autonomousAccountCreationEngine', {
-        action: 'auto_create_account',
-        identityId,
-        opportunity: { platform, url: `https://${platform}.com/signup` }
+      const response = await base44.functions.invoke('automatedAccountCreation', {
+        action: 'create_accounts',
+        identity_id: identityId,
+        platforms_to_create: [platform]
       });
       return response.data;
     },
     onSuccess: (data) => {
-      if (data.success) {
-        toast.success(`✅ ${data.account?.platform} account created automatically`);
-        queryClient.invalidateQueries({ queryKey: ['linkedAccounts'] });
+      if (data.success || data.partial_success) {
+        const created = data.created_accounts || [];
+        toast.success(`✅ ${created.length} account(s) auto-created & synced!`);
+        queryClient.invalidateQueries({ queryKey: ['linkedAccounts', identity?.id] });
+        queryClient.invalidateQueries({ queryKey: ['identities'] });
+        // Callback to parent with new account IDs
+        onAccountCreated?.(created.map(a => a.account_id || a.username));
       } else {
-        toast.error(`Failed: ${data.status || 'Account creation failed'}`);
+        toast.error(`Failed: ${data.message || 'Account creation failed'}`);
       }
     },
     onError: (error) => {
@@ -155,17 +165,17 @@ export default function AutoAccountCreationPanel() {
                         <Button
                           onClick={() => autoCreateMutation.mutate({
                             platform,
-                            identityId: userGoals?.id || ''
+                            identityId: identity?.id || ''
                           })}
-                          disabled={autoCreateMutation.isPending || !userGoals?.id}
+                          disabled={autoCreateMutation.isPending || !identity?.id}
                           className="w-full h-8 text-xs gap-2 bg-primary hover:bg-primary/90"
                         >
                           {autoCreateMutation.isPending ? (
-                            <>Creating...</>
+                            <>Creating & Syncing...</>
                           ) : (
                             <>
                               <Zap className="w-3 h-3" />
-                              Create Account
+                              Create & Sync Account
                             </>
                           )}
                         </Button>

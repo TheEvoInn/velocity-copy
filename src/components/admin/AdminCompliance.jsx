@@ -34,6 +34,11 @@ export default function AdminCompliance() {
   const kyc = report.kyc || {};
   const tax = report.tax || {};
   const safeRiskData = Array.isArray(riskData) ? riskData : [];
+  const criticalIssues = Array.isArray(report.critical_issues) ? report.critical_issues : [];
+  const kycAlerts = Array.isArray(kyc.alerts) ? kyc.alerts : [];
+  const kycRecommendations = Array.isArray(kyc.recommendations) ? kyc.recommendations : [];
+  const taxAlerts = Array.isArray(tax.alerts) ? tax.alerts : [];
+  const taxRecommendations = Array.isArray(tax.recommendations) ? tax.recommendations : [];
 
   const getRiskColor = (level) => {
     switch(level) {
@@ -65,16 +70,16 @@ export default function AdminCompliance() {
             <Shield className="w-6 h-6" />
             <div>
               <p className="font-bold uppercase">Overall Risk Level</p>
-              <p className="text-xs opacity-75">{report.critical_issues.length} critical issue{report.critical_issues.length !== 1 ? 's' : ''}</p>
+              <p className="text-xs opacity-75">{criticalIssues.length} critical issue{criticalIssues.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
           <div className={`px-3 py-1 rounded font-bold uppercase text-sm ${getReportColor(report.overall_risk_level)}`}>
             {report.overall_risk_level}
           </div>
         </div>
-        {report.critical_issues.length > 0 && (
+        {criticalIssues.length > 0 && (
           <div className="mt-3 pt-3 border-t border-opacity-30 border-current">
-            {report.critical_issues.map((issue, idx) => (
+            {criticalIssues.map((issue, idx) => (
               <p key={idx} className="text-sm flex items-center gap-2 mb-1">
                 <AlertTriangle className="w-3 h-3" /> {issue}
               </p>
@@ -159,7 +164,7 @@ export default function AdminCompliance() {
       {/* KYC Tab */}
       {activeTab === 'kyc' && (
         <div className="space-y-4">
-          {kyc.alerts && kyc.alerts.map((alert, idx) => (
+          {kycAlerts.map((alert, idx) => (
             <div key={idx} className={`p-3 rounded-lg border flex gap-3 ${
               alert.type === 'critical' ? 'bg-red-950 border-red-700' :
               alert.type === 'warning' ? 'bg-amber-950 border-amber-700' :
@@ -169,7 +174,7 @@ export default function AdminCompliance() {
               <p className="text-sm">{alert.message}</p>
             </div>
           ))}
-          {kyc.recommendations && kyc.recommendations.map((rec, idx) => (
+          {kycRecommendations.map((rec, idx) => (
             <Card key={idx} className="bg-emerald-950/30 border-emerald-700/50">
               <CardContent className="pt-4 flex gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
@@ -195,7 +200,7 @@ export default function AdminCompliance() {
               </div>
             </CardContent>
           </Card>
-          {tax.alerts && tax.alerts.map((alert, idx) => (
+          {taxAlerts.map((alert, idx) => (
             <div key={idx} className={`p-3 rounded-lg border flex gap-3 ${
               alert.type === 'critical' ? 'bg-red-950 border-red-700' :
               alert.type === 'warning' ? 'bg-amber-950 border-amber-700' :
@@ -205,7 +210,7 @@ export default function AdminCompliance() {
               <p className="text-sm">{alert.message}</p>
             </div>
           ))}
-          {tax.recommendations && tax.recommendations.map((rec, idx) => (
+          {taxRecommendations.map((rec, idx) => (
             <Card key={idx} className="bg-emerald-950/30 border-emerald-700/50">
               <CardContent className="pt-4 flex gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />

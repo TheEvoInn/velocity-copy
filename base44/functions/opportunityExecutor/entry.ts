@@ -1,8 +1,9 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 /**
- * Opportunity Executor - Direct execution handler for opportunities
- * Integrates with Agent Worker to navigate, fill, and submit opportunities
+ * Opportunity Executor - Tier 4 Enhanced
+ * Direct execution handler with autonomous spending policy enforcement
+ * Integrates with Agent Worker, reinvestment orchestrator, task queue
  */
 
 Deno.serve(async (req) => {

@@ -46,6 +46,26 @@ async function runFullAutonomousCycle(base44, user) {
   const cycleId = `cycle_${Date.now()}`;
   const steps = [];
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // TIER 5 RISK GATE: Verify safe to proceed before execution
+  // ──────────────────────────────────────────────────────────────────────────
+  const gateResult = await base44.asServiceRole.functions.invoke(
+    'tier5RiskMitigationOrchestrator',
+    { action: 'gate_tier4_execution' }
+  ).catch(e => ({ error: e.message }));
+
+  if (!gateResult.data?.can_execute) {
+    console.log('[Tier4] Tier 5 Risk Gate: Execution blocked');
+    return Response.json({
+      success: false,
+      reason: 'Risk gate blocked execution',
+      blocks: gateResult.data?.blocks || [],
+      message: gateResult.data?.message || 'Tier 5 safety checks failed'
+    });
+  }
+
+  steps.push({ step: 0, name: 'Tier 5 Risk Gate', status: 'passed' });
+
   try {
     // Get user config
     const goals = await base44.asServiceRole.entities.UserGoals.filter(
@@ -194,6 +214,28 @@ async function runFullAutonomousCycle(base44, user) {
       status: 'success',
       message: `Health check complete. In-flight payouts: ${payoutStatusResult.data?.in_flight || 0}`,
       data: { health: healthResult.data, payouts: payoutStatusResult.data }
+    };
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // STEP 5: CREDENTIAL ROTATION & IDENTITY HEALTH
+    // ──────────────────────────────────────────────────────────────────────────
+    steps.push({ step: 5, name: 'Credential & Identity Health', status: 'running' });
+
+    const portfolioResult = await base44.asServiceRole.functions.invoke(
+      'multiIdentityCoordinator',
+      { action: 'get_identity_portfolio' }
+    ).catch(e => ({ error: e.message }));
+
+    const balanceResult = await base44.asServiceRole.functions.invoke(
+      'multiIdentityCoordinator',
+      { action: 'balance_load_across_identities' }
+    ).catch(e => ({ error: e.message }));
+
+    steps[steps.length - 1] = {
+      ...steps[steps.length - 1],
+      status: 'success',
+      message: `Portfolio: ${portfolioResult.data?.summary?.active || 0} active identities. Balance: ${balanceResult.data?.balance_status || 'unknown'}`,
+      data: { portfolio: portfolioResult.data, balance: balanceResult.data }
     };
 
     // ──────────────────────────────────────────────────────────────────────────

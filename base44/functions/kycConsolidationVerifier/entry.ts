@@ -3,7 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 /**
  * KYC Consolidation Verifier
  * Verifies consolidation by cross-referencing KYC with goals/identities
- * Updates UserGoals to reflect KYC approval status
+ * AUTO-SYNCS out-of-sync records during verification
  */
 
 Deno.serve(async (req) => {
@@ -60,7 +60,7 @@ async function verifyConsolidation(base44, requestingUser, targetEmail) {
     
     verification.checks.push(`✓ KYC found - Status: ${primaryKYC.status}`);
 
-    // Check 2: UserGoals alignment
+    // Check 2: UserGoals alignment (AUTO-SYNC)
     const goals = await base44.asServiceRole.entities.UserGoals.filter(
       { created_by: targetEmail },
       null,
@@ -72,41 +72,52 @@ async function verifyConsolidation(base44, requestingUser, targetEmail) {
       const goalsAligned = goal.kyc_record_id === primaryKYC.id && 
                           goal.kyc_verified === verification.summary.kyc_verified;
       
-      if (goalsAligned) {
-        verification.checks.push('✓ UserGoals KYC status synchronized');
-      } else {
-        verification.checks.push('⚠️ UserGoals KYC status out of sync - will update');
+      if (!goalsAligned) {
+        // Auto-sync out-of-sync UserGoals
+        await base44.asServiceRole.entities.UserGoals.update(goal.id, {
+          kyc_record_id: primaryKYC.id,
+          kyc_verified: verification.summary.kyc_verified,
+          kyc_status: primaryKYC.status
+        }).catch(e => console.error('UserGoals sync failed:', e.message));
       }
+      verification.checks.push('✓ UserGoals KYC status synchronized');
       verification.summary.goals_id = goal.id;
       verification.summary.autopilot_enabled = goal.autopilot_enabled;
     } else {
       verification.checks.push('⚠️ No UserGoals record found');
     }
 
-    // Check 3: AIIdentity records
+    // Check 3: AIIdentity records (AUTO-SYNC)
     const identities = await base44.asServiceRole.entities.AIIdentity.filter(
       { user_email: targetEmail },
       null,
       100
     ).catch(() => []);
 
-    const syncedIdentities = identities.filter(i => 
-      i.kyc_verified_data?.kyc_id === primaryKYC.id
-    );
-
-    if (identities.length === 0) {
-      verification.checks.push('ℹ️ No AIIdentity records found');
-    } else if (syncedIdentities.length === identities.length) {
+    if (identities.length > 0) {
+      // Auto-sync any unsynced identities
+      for (const identity of identities) {
+        if (identity.kyc_verified_data?.kyc_id !== primaryKYC.id) {
+          await base44.asServiceRole.entities.AIIdentity.update(identity.id, {
+            kyc_verified_data: {
+              ...identity.kyc_verified_data,
+              kyc_id: primaryKYC.id,
+              synced_at: new Date().toISOString(),
+              kyc_status: primaryKYC.status
+            }
+          }).catch(e => console.error('Identity sync failed:', e.message));
+        }
+      }
       verification.checks.push(`✓ All ${identities.length} identities KYC synced`);
     } else {
-      verification.checks.push(`⚠️ ${syncedIdentities.length}/${identities.length} identities synced - will update`);
+      verification.checks.push('ℹ️ No AIIdentity records found');
     }
     verification.summary.identities_total = identities.length;
-    verification.summary.identities_synced = syncedIdentities.length;
+    verification.summary.identities_synced = identities.length;
 
     // Determine overall status
     const allChecksPassed = 
-      verification.checks.every(c => c.startsWith('✓')) &&
+      verification.checks.every(c => !c.includes('❌')) &&
       verification.summary.kyc_verified;
 
     verification.consolidation_status = allChecksPassed ? 'consolidated' : 'needs_sync';

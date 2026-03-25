@@ -99,11 +99,8 @@ export default function IdentityManager() {
     }
 
     // Refetch all data to reflect sync
-    refetch();
-    qc.invalidateQueries({ queryKey: ['identities'] });
-    } catch (e) {
-    console.error('Sync failed:', e);
-    }
+     refetch();
+     qc.invalidateQueries({ queryKey: ['identities'] });
     }
 
   async function handleDelete(id) {

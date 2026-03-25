@@ -6,6 +6,45 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+/**
+ * SYNC FAILURE RECOVERY ENGINE
+ * Implements exponential backoff retry, cascade safety, and health verification
+ */
+const RETRY_CONFIG = { maxAttempts: 3, baseDelayMs: 500 };
+
+async function withRetry(fn, systemName, platform, maxAttempts = RETRY_CONFIG.maxAttempts) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastError = e;
+      if (attempt < maxAttempts) {
+        const delay = RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt - 1);
+        console.warn(`[Sync] ${systemName} retry ${attempt}/${maxAttempts} after ${delay}ms for ${platform}: ${e.message}`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastError;
+}
+
+async function notifyUserOfSyncFailure(base44, userEmail, platform, failedSystems) {
+  try {
+    await base44.asServiceRole.entities.Notification.create({
+      type: 'warning',
+      severity: 'warning',
+      title: `⚠️ Account Sync Issues for ${platform}`,
+      message: `Account was created but failed to sync to: ${failedSystems.join(', ')}. This may impact Autopilot execution.`,
+      user_email: userEmail,
+      action_type: 'account_sync_failed',
+      is_read: false
+    }).catch(() => null);
+  } catch (e) {
+    console.error('Failed to notify user of sync failure:', e.message);
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -104,80 +143,98 @@ Deno.serve(async (req) => {
           createdAccounts.push(accountData);
           existingPlatforms.add(platform);
 
-          // ── SYNC 1: Register in LinkedAccount ──
+          // ── SYNC 1: Register in LinkedAccount (with retry) ──
           let linkedAccount = null;
           try {
-            linkedAccount = await base44.asServiceRole.entities.LinkedAccount.create({
-              platform,
-              username: accountData.username,
-              profile_url: `https://${platform}.com/user/${accountData.username}`,
-              health_status: 'healthy',
-              ai_can_use: true,
-              performance_score: 50,
-              notes: `Auto-created via Autopilot on ${new Date().toISOString()}`,
-            });
+            linkedAccount = await withRetry(
+              () => base44.asServiceRole.entities.LinkedAccount.create({
+                platform,
+                username: accountData.username,
+                profile_url: `https://${platform}.com/user/${accountData.username}`,
+                health_status: 'healthy',
+                ai_can_use: true,
+                performance_score: 50,
+                notes: `Auto-created via Autopilot on ${new Date().toISOString()}`,
+              }),
+              'LinkedAccount',
+              platform
+            );
             syncResults.push({ system: 'LinkedAccount', platform, status: 'synced', id: linkedAccount.id });
           } catch (e) {
-            console.error(`[AutoAccountCreation] LinkedAccount sync failed for ${platform}:`, e.message);
-            syncResults.push({ system: 'LinkedAccount', platform, status: 'failed', error: e.message });
+            console.error(`[AutoAccountCreation] LinkedAccount sync permanently failed for ${platform}:`, e.message);
+            syncResults.push({ system: 'LinkedAccount', platform, status: 'failed', error: e.message, retries_exhausted: true });
           }
 
-          // ── SYNC 2: Update Identity with linked account ──
+          // ── SYNC 2: Update Identity with linked account (with retry) ──
           if (linkedAccount?.id) {
             try {
-              const identity = await base44.entities.AIIdentity.get(identity_id);
-              const updatedLinkedIds = [...(identity.linked_account_ids || []), linkedAccount.id];
-              await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
-                linked_account_ids: updatedLinkedIds,
-              });
+              await withRetry(
+                async () => {
+                  const identity = await base44.entities.AIIdentity.get(identity_id);
+                  const updatedLinkedIds = [...(identity.linked_account_ids || []), linkedAccount.id];
+                  return base44.asServiceRole.entities.AIIdentity.update(identity_id, {
+                    linked_account_ids: updatedLinkedIds,
+                  });
+                },
+                'AIIdentity',
+                platform
+              );
               syncResults.push({ system: 'AIIdentity', platform, status: 'synced' });
             } catch (e) {
-              console.error(`[AutoAccountCreation] AIIdentity sync failed for ${platform}:`, e.message);
-              syncResults.push({ system: 'AIIdentity', platform, status: 'failed', error: e.message });
+              console.error(`[AutoAccountCreation] AIIdentity sync permanently failed for ${platform}:`, e.message);
+              syncResults.push({ system: 'AIIdentity', platform, status: 'failed', error: e.message, retries_exhausted: true });
             }
           } else {
             syncResults.push({ system: 'AIIdentity', platform, status: 'skipped', reason: 'LinkedAccount creation failed' });
           }
 
-          // ── SYNC 3: Create credential vault entry ──
+          // ── SYNC 3: Create credential vault entry (with retry) ──
           if (linkedAccount?.id) {
             try {
-              await base44.asServiceRole.entities.CredentialVault.create({
-                platform,
-                credential_type: 'login',
-                encrypted_payload: JSON.stringify({ username: accountData.username, email: accountData.email }),
-                iv: 'auto',
-                linked_account_id: linkedAccount.id,
-                is_active: true,
-                access_count: 0,
-              });
+              await withRetry(
+                () => base44.asServiceRole.entities.CredentialVault.create({
+                  platform,
+                  credential_type: 'login',
+                  encrypted_payload: JSON.stringify({ username: accountData.username, email: accountData.email }),
+                  iv: 'auto',
+                  linked_account_id: linkedAccount.id,
+                  is_active: true,
+                  access_count: 0,
+                }),
+                'CredentialVault',
+                platform
+              );
               syncResults.push({ system: 'CredentialVault', platform, status: 'synced' });
             } catch (e) {
-              console.error(`[AutoAccountCreation] CredentialVault sync failed for ${platform}:`, e.message);
-              syncResults.push({ system: 'CredentialVault', platform, status: 'failed', error: e.message });
+              console.error(`[AutoAccountCreation] CredentialVault sync permanently failed for ${platform}:`, e.message);
+              syncResults.push({ system: 'CredentialVault', platform, status: 'failed', error: e.message, retries_exhausted: true });
             }
           } else {
             syncResults.push({ system: 'CredentialVault', platform, status: 'skipped', reason: 'LinkedAccount creation failed' });
           }
 
-          // ── SYNC 4: Log in SecretAuditLog ──
+          // ── SYNC 4: Log in SecretAuditLog (with retry) ──
           try {
-            await base44.asServiceRole.entities.SecretAuditLog.create({
-              event_type: 'secret_created',
-              secret_name: `${platform}_account_${accountData.username}`,
-              secret_type: 'login',
-              platform,
-              identity_id,
-              identity_name: masterCreds.identity_name,
-              module_source: 'account_creation_engine',
-              action_by: user.email,
-              status: 'success',
-              notes: `Account auto-created for identity ${masterCreds.identity_name}`,
-            });
+            await withRetry(
+              () => base44.asServiceRole.entities.SecretAuditLog.create({
+                event_type: 'secret_created',
+                secret_name: `${platform}_account_${accountData.username}`,
+                secret_type: 'login',
+                platform,
+                identity_id,
+                identity_name: masterCreds.identity_name,
+                module_source: 'account_creation_engine',
+                action_by: user.email,
+                status: 'success',
+                notes: `Account auto-created for identity ${masterCreds.identity_name}`,
+              }),
+              'SecretAuditLog',
+              platform
+            );
             syncResults.push({ system: 'SecretAuditLog', platform, status: 'synced' });
           } catch (e) {
-            console.error(`[AutoAccountCreation] SecretAuditLog sync failed for ${platform}:`, e.message);
-            syncResults.push({ system: 'SecretAuditLog', platform, status: 'failed', error: e.message });
+            console.error(`[AutoAccountCreation] SecretAuditLog sync permanently failed for ${platform}:`, e.message);
+            syncResults.push({ system: 'SecretAuditLog', platform, status: 'failed', error: e.message, retries_exhausted: true });
           }
         } else {
           skipped.push({ platform, reason: creationResult.data?.error || 'Creation failed' });
@@ -207,29 +264,57 @@ Deno.serve(async (req) => {
         syncResults.push({ system: 'TaskExecutionQueue', status: 'failed', error: e.message });
       }
 
-      // ── SYNC 6: Log activity ──
+      // ── SYNC 6: Check for sync failures and notify user ──
+      const failedSystems = syncResults
+        .filter(r => r.status === 'failed')
+        .map(r => `${r.system}`);
+
+      if (failedSystems.length > 0) {
+        for (const accountData of createdAccounts) {
+          const accountFailures = syncResults
+            .filter(r => r.status === 'failed' && r.platform === accountData.platform)
+            .map(r => r.system);
+          if (accountFailures.length > 0) {
+            await notifyUserOfSyncFailure(base44, user.email, accountData.platform, accountFailures);
+          }
+        }
+      }
+
+      // ── SYNC 7: Log activity ──
       try {
+        const activitySeverity = failedSystems.length > 0 ? 'warning' : 'success';
+        const activityMessage = failedSystems.length > 0
+          ? `⚠️ Partial sync: Auto-created ${createdAccounts.length} account(s), failed to sync: ${failedSystems.join(', ')}`
+          : `✅ Auto-created ${createdAccounts.length} account(s), synced to all systems, resumed ${tasksResumed} tasks`;
+
         await base44.asServiceRole.entities.ActivityLog.create({
           action_type: 'system',
-          message: `🤖 Auto-created ${createdAccounts.length} account(s) for identity ${masterCreds.identity_name}: ${createdAccounts.map(c => c.platform).join(', ')} | Synced to ${syncResults.length} systems | Resumed ${tasksResumed} tasks`,
-          severity: 'success',
-          metadata: { identity_id, created_count: createdAccounts.length, sync_systems: syncResults.length },
+          message: activityMessage,
+          severity: activitySeverity,
+          metadata: { identity_id, created_count: createdAccounts.length, sync_systems: syncResults.length, failed_systems: failedSystems.length },
         });
       } catch (e) {
         console.error('Failed to log activity:', e.message);
       }
 
+      const syncedSystems = syncResults.filter(r => r.status === 'synced').length;
+      const failedSystemsCount = syncResults.filter(r => r.status === 'failed').length;
+
       return Response.json({
-        success: true,
+        success: failedSystemsCount === 0,
+        partial_success: failedSystemsCount > 0 && createdAccounts.length > 0,
         created_count: createdAccounts.length,
         skipped_count: skipped.length,
         created_accounts: createdAccounts,
         skipped,
-        synced_systems: syncResults.length,
+        synced_systems: syncedSystems,
+        failed_systems: failedSystemsCount,
         tasks_resumed: tasksResumed,
         sync_results: syncResults,
         identity_name: masterCreds.identity_name,
-        message: `Created ${createdAccounts.length} account(s), synced to ${syncResults.length} systems, resumed ${tasksResumed} tasks`
+        message: failedSystemsCount > 0
+          ? `✓ Created ${createdAccounts.length} account(s) but ${failedSystemsCount} sync(s) failed. User notified.`
+          : `✓ Created ${createdAccounts.length} account(s), synced to ${syncedSystems} systems, resumed ${tasksResumed} tasks`
       });
     }
 
@@ -249,12 +334,23 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
     console.error('[AutomatedAccountCreation]', error.message);
-    // Log critical failure
-    await base44.asServiceRole.entities.ActivityLog.create({
-      action_type: 'system',
-      message: `❌ Auto-account creation failed: ${error.message}`,
-      severity: 'critical',
-    }).catch(() => null);
-    return Response.json({ error: error.message }, { status: 500 });
+    // Log critical failure and notify user
+    await Promise.all([
+      base44.asServiceRole.entities.ActivityLog.create({
+        action_type: 'system',
+        message: `❌ Auto-account creation failed: ${error.message}`,
+        severity: 'critical',
+      }).catch(() => null),
+      base44.asServiceRole.entities.Notification.create({
+        type: 'error',
+        severity: 'critical',
+        title: '❌ Account Creation Failed',
+        message: `Auto-account creation encountered a fatal error: ${error.message}. Please try again or contact support.`,
+        user_email: user?.email,
+        action_type: 'account_creation_failed',
+        is_read: false
+      }).catch(() => null)
+    ]);
+    return Response.json({ error: error.message, recoverable: false }, { status: 500 });
   }
 });

@@ -1,7 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
-
 /**
  * Onboarding Launch Sync — Real multi-module synchronization
  * Syncs all onboarding data across the platform and triggers actual execution

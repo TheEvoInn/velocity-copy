@@ -25,6 +25,7 @@ import IdentityManager from './pages/IdentityManager';
 import Chat from './pages/Chat';
 import SystemAuditDashboard from './pages/SystemAuditDashboard';
 import AdminPanel from './pages/AdminPanel';
+import AdminInterventions from './pages/AdminInterventions';
 import AutopilotLogs from './pages/AutopilotLogs';
 import AIIdentityStudio from './pages/AIIdentityStudio';
 import TemplatesLibrary from './pages/TemplatesLibrary';
@@ -91,6 +92,7 @@ const AuthenticatedApp = () => {
         <Route path="/SystemAuditDashboard" element={<SystemAuditDashboard />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/AdminPanel" element={<AdminPanel />} />
+        <Route path="/AdminInterventions" element={<AdminInterventions />} />
         <Route path="/AutopilotLogs" element={<AutopilotLogs />} />
         <Route path="/AIIdentityStudio" element={<AIIdentityStudio />} />
         <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />

@@ -264,18 +264,38 @@ export default function Discovery() {
       setScanProgress(Math.round(((i + 1) / SCAN_STEPS.length) * 100));
       await new Promise(r => setTimeout(r, 450));
     }
-    // Feed user goals/skills/preferences into scan for personalized results
-    const res = await base44.functions.invoke('discoveryEngine', {
-      action: 'full_scan',
-      user_email: user?.email,
-      user_skills: userGoals?.skills || [],
-      preferred_categories: userGoals?.preferred_categories || [],
-      risk_tolerance: userGoals?.risk_tolerance || 'moderate',
-      daily_target: userGoals?.daily_target || 100,
-      hours_per_day: userGoals?.hours_per_day || 8,
-      filters: filtersPayload,
+
+    // Pass ALL 45 categories explicitly for a full deep scan
+    const allCategories = Object.keys(CATEGORIES).filter(k => k !== 'all');
+
+    // Fire discovery engine + proactive scout in parallel for maximum coverage
+    const [discoveryRes, scoutRes] = await Promise.allSettled([
+      base44.functions.invoke('discoveryEngine', {
+        action: 'full_scan',
+        categories: allCategories,
+        user_email: user?.email,
+        user_skills: userGoals?.skills || [],
+        preferred_categories: userGoals?.preferred_categories || [],
+        risk_tolerance: userGoals?.risk_tolerance || 'moderate',
+        daily_target: userGoals?.daily_target || 100,
+        hours_per_day: userGoals?.hours_per_day || 8,
+        filters: filtersPayload,
+      }),
+      base44.functions.invoke('proactiveScoutingEngine', {
+        action: 'run_scout',
+      }),
+    ]);
+
+    const mainResult = discoveryRes.status === 'fulfilled' ? discoveryRes.value?.data : null;
+    const scoutResult = scoutRes.status === 'fulfilled' ? scoutRes.value?.data : null;
+
+    setLastScanResult({
+      ...mainResult,
+      scout_created: scoutResult?.created || 0,
+      scout_signals: scoutResult?.signals_found || 0,
+      scout_auto_queued: scoutResult?.auto_queued || 0,
     });
-    setLastScanResult(res.data);
+
     qc.invalidateQueries({ queryKey: ['opportunities'] });
     refetch();
     setIsScanning(false);

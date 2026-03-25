@@ -59,20 +59,15 @@ async function analyzeUserReadiness(base44, userEmail) {
       report.action_items.push('User must complete onboarding wizard (identity, KYC, banking, preferences)');
     }
 
-    // 2. KYC STATUS — check both KYCVerification and AIIdentity kyc_verified_data
+    // 2. KYC STATUS
     const kycRecords = await base44.asServiceRole.entities.KYCVerification.filter(
       { created_by: userEmail },
       '-created_date',
-      5  // Check multiple records
+      1
     ).catch(() => []);
 
-    // Find verified or synced record
-    let kycStatus = kycRecords.find(k => k.verification_status === 'verified');
-    if (!kycStatus && kycRecords.length > 0) {
-      kycStatus = kycRecords[0];
-    }
-    
-    const kycComplete = kycStatus?.verification_status === 'verified' || kycStatus?.verified_at;
+    const kycStatus = kycRecords[0];
+    const kycComplete = kycStatus?.verification_status === 'verified';
 
     report.sections.kyc = {
       status: kycComplete ? 'VERIFIED' : (kycStatus?.verification_status || 'NOT_STARTED'),
@@ -97,7 +92,7 @@ async function analyzeUserReadiness(base44, userEmail) {
     ).catch(() => []);
 
     const activeIdentity = identities.find(i => i.is_active);
-    const onboardingComplete = activeIdentity?.onboarding_complete || identities.some(i => i.onboarding_complete === true) || (activeIdentity?.kyc_verified_data?.kyc_tier && activeIdentity.kyc_verified_data.kyc_tier !== 'none');
+    const onboardingComplete = identities.some(i => i.onboarding_complete === true);
 
     report.sections.ai_identity = {
       total_identities: identities.length,

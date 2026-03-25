@@ -26,6 +26,7 @@ import DualStreamCard from '../components/autopilot/DualStreamCard';
 import AutopilotActivationDiagnostics from '../components/autopilot/AutopilotActivationDiagnostics';
 import AutoExecuteRuleBuilder from '../components/autopilot/AutoExecuteRuleBuilder';
 import RealtimeCommandHub from '../components/autopilot/RealtimeCommandHub';
+import AgenticBrowserControl from '../components/autopilot/AgenticBrowserControl';
 
 const STATUS_COLORS = {
   queued: '#f9d65c', running: '#00e8ff', completed: '#10b981',
@@ -78,6 +79,7 @@ const TABS = [
   { key: 'risk', label: 'Risk Controls', icon: '🛡️', section: 'autopilot' },
   { key: 'rules', label: 'Auto-Execute Rules', icon: '⚙️', section: 'autopilot' },
   { key: 'feed', label: 'Task Feed', icon: '⚡', section: 'autopilot' },
+  { key: 'browser', label: 'Agentic Browser', icon: '🌐', section: 'execution' },
   { key: 'diagnostics', label: 'System Health', icon: '🔧', section: 'autopilot' },
 ];
 
@@ -447,6 +449,16 @@ export default function UnifiedAutopilot() {
               </Button>
             </div>
             <AITaskFeed tasks={aiTasks} isRunning={isManualRunning} />
+          </div>
+        )}
+
+        {activeTab === 'browser' && (
+          <div>
+            <div className="mb-4">
+              <h2 className="font-orbitron text-sm font-bold text-white tracking-wide">AGENTIC BROWSER AUTOMATION</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Self-hosted browser automation powered by Playwright + LLM intelligence</p>
+            </div>
+            <AgenticBrowserControl task={{ url: 'https://www.upwork.com/signup', credentials: { email: 'test@example.com', password: 'secure', full_name: 'AI Agent' } }} />
           </div>
         )}
 

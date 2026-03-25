@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     // --- Scheduled automation trigger: "Auto-Execute Batch - High Priority Queue" ---
-    // Runs every 15 min; body may be empty {} or { automation: {...} }
+    // Runs every 15 min; enables real browser execution pipeline
     if ((!action || body.automation) && action !== 'autopilot_full_cycle' && action !== 'full_cycle') {
       return await batchExecuteHighPriority(base44);
     }
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 
       const vault_id = credentialRes?.data?.vault_id || null;
 
-      // Queue task in Agent Worker with credential injection
+      // Queue task in Agent Worker with full browser automation support
       const taskRes = await base44.asServiceRole.functions.invoke('agentWorker', {
         action: 'queue_task',
         url: opp.url,
@@ -78,9 +78,11 @@ Deno.serve(async (req) => {
         identity_id: identity.id,
         vault_id: vault_id,
         credential_available: !!vault_id,
+        use_browser_automation: true,
         priority: calculatePriority(opp),
         estimated_value: opp.profit_estimate_high || opp.profit_estimate_low || 0,
-        deadline: opp.deadline
+        deadline: opp.deadline,
+        executor: 'playwrightBrowserAutomation'
       });
 
       // Update opportunity with task ID and status

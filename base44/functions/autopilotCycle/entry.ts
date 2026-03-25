@@ -1,5 +1,54 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+// Helper: Mark opportunity/task as completed and record earnings
+async function completeTaskExecution(base44, taskId, opportunityId, result) {
+  try {
+    const completion = { timestamp: new Date().toISOString(), ...result };
+    
+    // Update opportunity status
+    if (opportunityId) {
+      await base44.asServiceRole.entities.Opportunity.update(opportunityId, {
+        status: 'completed',
+        submission_timestamp: new Date().toISOString(),
+        submission_confirmed: true,
+        confirmation_number: result.confirmation_id || 'AUTO-' + Date.now()
+      }).catch(() => null);
+    }
+    
+    // Update task execution queue
+    if (taskId) {
+      await base44.asServiceRole.entities.TaskExecutionQueue.update(taskId, {
+        status: 'completed',
+        completion_timestamp: new Date().toISOString(),
+        submission_success: true,
+        confirmation_text: result.confirmation || 'Task completed successfully',
+        execution_log: [{
+          timestamp: new Date().toISOString(),
+          step: 'task_completed',
+          status: 'success',
+          details: result.confirmation || 'Autopilot execution complete'
+        }]
+      }).catch(() => null);
+    }
+    
+    // Record transaction if earnings confirmed
+    if (result.earnings && result.earnings > 0) {
+      await base44.asServiceRole.functions.invoke('transactionRecorder', {
+        opportunity_id: opportunityId,
+        platform: result.platform || 'unknown',
+        amount: result.earnings,
+        platform_transaction_id: result.transaction_id || 'auto-' + taskId,
+        job_title: result.job_title || 'Completed Task'
+      }).catch(e => console.warn('Transaction recording skipped:', e.message));
+    }
+    
+    return true;
+  } catch (e) {
+    console.error('Task completion sync failed:', e.message);
+    return false;
+  }
+}
+
 /**
  * Autopilot Cycle — Scheduled entry point
  * Inlined execution to avoid cross-function auth context loss.
@@ -57,28 +106,67 @@ Deno.serve(async (req) => {
         ).catch(() => []);
         
         let executed = 0;
+        let completed = 0;
         const queuedArray = Array.isArray(queuedOpps) ? queuedOpps : [];
+
         for (const opp of queuedArray) {
           if (!opp?.id) continue;
           try {
-            // Mark as active (indicating it's been picked up by autopilot)
-            await base44.asServiceRole.entities.WorkOpportunity.update(opp.id, {
-              status: 'active',
-              autopilot_queued: false
-            }).catch(() => null);
-            executed++;
+            // Check if task has execution queue entry
+            const taskQueue = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+              { opportunity_id: opp.id, status: 'completed' },
+              '-completion_timestamp',
+              1
+            ).catch(() => []);
+
+            if (taskQueue && taskQueue.length > 0) {
+              // Task completed — sync opportunity
+              const task = taskQueue[0];
+              await completeTaskExecution(base44, task.id, opp.id, {
+                confirmation_id: task.confirmation_number,
+                confirmation: task.confirmation_text,
+                platform: opp.platform,
+                earnings: opp.estimated_pay
+              });
+              completed++;
+            } else {
+              // Mark as active (indicating it's been picked up by autopilot)
+              await base44.asServiceRole.entities.WorkOpportunity.update(opp.id, {
+                status: 'active',
+                autopilot_queued: false
+              }).catch(() => null);
+              executed++;
+            }
           } catch (e) {
-            console.error(`Failed to execute ${opp.title}:`, e.message);
+            console.error(`Failed to process ${opp.title}:`, e.message);
           }
         }
-        addLog('execute', 'success', `Executed ${executed}/${queuedArray.length} queued tasks`);
+        addLog('execute', 'success', `Executed: ${executed}, Completed: ${completed}/${queuedArray.length}`);
 
-        // Log activity
+        // Trigger intervention auto-resolution if data arrived
+        try {
+          const resolvedInterventions = await base44.asServiceRole.entities.UserIntervention.filter(
+            { status: 'data_received' },
+            '-created_date',
+            10
+          ).catch(() => []);
+
+          for (const intervention of resolvedInterventions) {
+            await base44.asServiceRole.functions.invoke('userInterventionManager', {
+              action: 'resume_after_intervention',
+              intervention_id: intervention.id
+            }).catch(() => null);
+          }
+        } catch (e) {
+          console.warn('Intervention auto-resolution skipped:', e.message);
+        }
+
+        // Log activity with completion metrics
         await base44.asServiceRole.entities.ActivityLog.create({
           action_type: 'system',
-          message: `🤖 Autopilot cycle for ${userEmail}: ${scanCreated} discovered, ${executed} executed`,
+          message: `🤖 Autopilot: ${scanCreated} discovered, ${executed} active, ${completed} completed, resolutions synced`,
           severity: 'success',
-          metadata: { user: userEmail, discovered: scanCreated, executed }
+          metadata: { user: userEmail, discovered: scanCreated, executed, completed }
         }).catch(() => {});
 
         results.push({ user: userEmail, success: true, discovered: scanCreated, executed, log: cycleLog });

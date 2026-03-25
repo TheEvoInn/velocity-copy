@@ -111,12 +111,54 @@ async function provideMissingData(base44, user, interventionId, data) {
       return jsonResponse({ error: 'Unauthorized access to intervention' }, 403);
     }
 
+    // Check for rate-limit detected and rotate identity if needed
+    let rotateIdentity = false;
+    if (data.error_type === 'rate_limit' || data.error_type === 'blocked') {
+      rotateIdentity = true;
+    }
+
     // Update intervention with provided data
     await base44.asServiceRole.entities.UserIntervention?.update?.(interventionId, {
-      status: 'resolved',
+      status: 'data_received',
       user_response: data,
-      resolved_at: new Date().toISOString()
+      resolved_at: new Date().toISOString(),
+      requires_identity_rotation: rotateIdentity
     }).catch(() => {});
+
+    // If rate-limited, trigger identity rotation
+    if (rotateIdentity) {
+      try {
+        const identities = await base44.asServiceRole.entities.AIIdentity.filter(
+          { is_active: true },
+          'created_date',
+          20
+        ).catch(() => []);
+
+        if (identities && identities.length > 1) {
+          // Mark current as used, activate next
+          const currentIdentity = identities[0];
+          const nextIdentity = identities[1];
+
+          await base44.asServiceRole.entities.AIIdentity.update(currentIdentity.id, {
+            is_active: false,
+            last_rate_limit_at: new Date().toISOString()
+          }).catch(() => null);
+
+          await base44.asServiceRole.entities.AIIdentity.update(nextIdentity.id, {
+            is_active: true
+          }).catch(() => null);
+
+          await base44.asServiceRole.entities.ActivityLog.create({
+            action_type: 'system',
+            message: `🔄 Identity rotated: ${currentIdentity.name} → ${nextIdentity.name} (rate-limit detected)`,
+            severity: 'warning',
+            metadata: { reason: 'rate_limit', old_identity: currentIdentity.id, new_identity: nextIdentity.id }
+          }).catch(() => null);
+        }
+      } catch (e) {
+        console.warn('Identity rotation failed:', e.message);
+      }
+    }
 
     // Log data submission
     await base44.asServiceRole.entities.AuditLog?.create?.({
@@ -133,16 +175,17 @@ async function provideMissingData(base44, user, interventionId, data) {
       timestamp: new Date().toISOString()
     }).catch(() => {});
 
-    // Trigger task resumption
-    await base44.functions.invoke('resumeTaskAfterIntervention', {
+    // Trigger task resumption (async)
+    base44.asServiceRole.functions.invoke('resumeTaskAfterIntervention', {
       intervention_id: interventionId
-    }).catch(() => {});
+    }).catch(() => null);
 
     return jsonResponse({
       intervention_id: interventionId,
       data_received: true,
-      status: 'resolved',
-      message: 'Data received. Task execution resuming...'
+      status: 'data_received',
+      identity_rotated: rotateIdentity,
+      message: rotateIdentity ? 'Data received. Identity rotated. Task resuming...' : 'Data received. Task execution resuming...'
     });
 
   } catch (error) {

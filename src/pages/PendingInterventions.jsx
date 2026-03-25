@@ -81,6 +81,24 @@ export default function PendingInterventions() {
     }, 500);
   };
 
+  const handleResolve = async (interventionId) => {
+    const intervention = interventions.find(i => i.id === interventionId);
+    if (!intervention) return;
+
+    try {
+      const response = await base44.functions.invoke('taskResumeAfterIntervention', {
+        intervention_id: interventionId,
+        user_response: {}
+      });
+
+      if (response.data?.success) {
+        setInterventions(prev => prev.filter(i => i.id !== interventionId));
+      }
+    } catch (err) {
+      console.error('Error resuming task:', err);
+    }
+  };
+
   const filtered = interventions.filter(i => {
     if (filter === 'urgent') return i.priority > 80;
     if (filter === 'expiring') {

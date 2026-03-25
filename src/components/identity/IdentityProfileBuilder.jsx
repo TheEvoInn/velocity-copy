@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
@@ -9,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Save, X, Upload, Palette, Sparkles } from 'lucide-react';
+import { Save, X, Upload, Palette, Sparkles, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ROLES = ['Freelancer', 'Developer', 'Designer', 'Writer', 'Marketer', 'Sales Agent', 'Support Agent', 'Custom'];

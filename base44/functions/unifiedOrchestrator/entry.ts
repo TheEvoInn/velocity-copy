@@ -13,6 +13,7 @@ Deno.serve(async (req) => {
 
     // Resolve user: support service-role calls with user_email in body
     let user = null;
+    const isAutomated = body.automation === true || body.is_automated === true;
     try { user = await base44.auth.me(); } catch (e) {}
 
     // Service role / scheduled trigger: accept user_email from body
@@ -20,10 +21,10 @@ Deno.serve(async (req) => {
       user = { email: body.user_email };
     }
     // Scheduled automation trigger — run full cycle with first enabled user
-    if (!user && body.automation) {
-      const goals = await base44.asServiceRole.entities.UserGoals.list('-created_date', 1).catch(() => []);
-      const g = goals.find(g => g.autopilot_enabled && g.created_by);
-      if (g) user = { email: g.created_by };
+    if (!user && isAutomated) {
+      const goals = await base44.asServiceRole.entities.UserGoals.filter({ autopilot_enabled: true }, '-created_date', 1).catch(() => []);
+      const g = Array.isArray(goals) ? goals[0] : null;
+      if (g && g.created_by) user = { email: g.created_by };
     }
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 

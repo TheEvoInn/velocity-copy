@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { DollarSign, TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownLeft, Zap, Clock } from 'lucide-react';
+import { DollarSign, TrendingUp, Wallet, ArrowUpRight, ArrowDownLeft, Zap, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function VeloFinanceCommand() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  useIdentitySyncAcrossApp(); // Real-time sync
+  // Note: real-time sync handled by useIdentitySyncAcrossApp in AppLayout — no duplicate needed here.
 
   const [filterType, setFilterType] = useState('all');
 
@@ -35,31 +34,35 @@ export default function VeloFinanceCommand() {
     enabled: !!user?.email,
   });
 
-  // Financial metrics from goals (authoritative source) + transactions
-  const totalEarned = goals?.total_earned || 0;
-  const walletBalance = goals?.wallet_balance || 0;
-  const dailyTarget = goals?.daily_target || 0;
-  const aiTotalEarned = goals?.ai_total_earned || 0;
-  const userTotalEarned = goals?.user_total_earned || 0;
-  const incomeTransactions = transactions.filter(t => t.type === 'income');
-  const expenseTransactions = transactions.filter(t => t.type === 'expense');
-  
-  // net_amount preferred (post-fee), fallback to gross
-  const totalIncome = incomeTransactions.reduce((sum, t) => sum + (t.net_amount || t.amount || 0), 0);
-  const totalExpense = expenseTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+  // All derived financial metrics — memoized to avoid recalculating on every render
+  const metrics = useMemo(() => {
+    const income = transactions.filter(t => t.type === 'income');
+    const todayStr = new Date().toDateString();
+    const totalIncome = income.reduce((sum, t) => sum + (t.net_amount || t.amount || 0), 0);
+    const todayEarnings = income
+      .filter(t => new Date(t.created_date).toDateString() === todayStr)
+      .reduce((sum, t) => sum + (t.net_amount || t.amount || 0), 0);
+    const dailyTarget = goals?.daily_target || 0;
+    return {
+      totalEarned: goals?.total_earned || 0,
+      walletBalance: goals?.wallet_balance || 0,
+      dailyTarget,
+      aiTotalEarned: goals?.ai_total_earned || 0,
+      userTotalEarned: goals?.user_total_earned || 0,
+      totalIncome,
+      todayEarnings,
+      dailyProgress: dailyTarget > 0 ? Math.min(100, (todayEarnings / dailyTarget) * 100) : 0,
+    };
+  }, [transactions, goals]);
 
-  // Today's earnings from transactions
-  const todayStr = new Date().toDateString();
-  const todayEarnings = incomeTransactions
-    .filter(t => new Date(t.created_date).toDateString() === todayStr)
-    .reduce((sum, t) => sum + (t.net_amount || t.amount || 0), 0);
-  const dailyProgress = dailyTarget > 0 ? Math.min(100, (todayEarnings / dailyTarget) * 100) : 0;
+  const filteredTransactions = useMemo(() =>
+    filterType === 'all' ? transactions : transactions.filter(t => t.type === filterType),
+    [transactions, filterType]
+  );
 
-  const filteredTransactions = filterType === 'all' 
-    ? transactions 
-    : transactions.filter(t => t.type === filterType);
+  const currentGoal = useMemo(() => earningGoals.find(g => g.status === 'active'), [earningGoals]);
 
-  const currentGoal = earningGoals.find(g => g.status === 'active');
+  const { totalEarned, walletBalance, dailyTarget, aiTotalEarned, userTotalEarned, totalIncome, todayEarnings, dailyProgress } = metrics;
 
   // Real-time sync is handled globally by useIdentitySyncAcrossApp in AppLayout.
   // EarningGoal subscription is not covered there — add it here only.

@@ -3,7 +3,7 @@
  * AI Assistant: SCOUT
  * 30+ categories · LLM internet scan · Keyword expansion · Online-only · AI-ready
  */
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useCurrentUser, useUserOpportunities } from '@/hooks/useUserData';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -253,7 +253,10 @@ export default function Discovery() {
     qc.invalidateQueries({ queryKey: ['opportunities'] });
   }
 
-  const activeCatList = Object.entries(CATEGORIES).filter(([key]) => key === 'all' || (catCounts[key] || 0) > 0);
+  const activeCatList = useMemo(() =>
+    Object.entries(CATEGORIES).filter(([key]) => key === 'all' || (catCounts[key] || 0) > 0),
+    [catCounts]
+  );
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">

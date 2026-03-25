@@ -168,8 +168,8 @@ Return ONLY a JSON object with a "templates" array. Each template object must ha
     try {
       const me = await base44.auth.me();
 
-      // Load or create UserDataStore
-      const stores = await base44.entities.UserDataStore.filter({ user_email: me.email });
+      // Load or create UserDataStore — filter by created_by (RLS-compliant)
+      const stores = await base44.entities.UserDataStore.filter({ created_by: me.email });
       const store = stores[0] || null;
 
       const newAutopilotPrefs = {

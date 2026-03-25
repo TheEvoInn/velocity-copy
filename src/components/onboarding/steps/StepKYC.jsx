@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowRight, ArrowLeft, Shield, Upload, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 
 const ID_TYPES = ['passport', 'drivers_license', 'national_id', 'state_id'];
 const DOC_TYPES = ['utility_bill', 'bank_statement', 'rental_agreement'];
 
 export default function StepKYC({ data, onChange, onNext, onBack }) {
   const [uploading, setUploading] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
+  const { user } = useAuth();
 
   // Check what's missing but don't block progress
   const missing = [];
@@ -19,6 +22,43 @@ export default function StepKYC({ data, onChange, onNext, onBack }) {
   if (!data.id_document_front_url || !data.id_document_back_url || !data.selfie_url) missing.push('ID Documents/Selfie');
 
   const set = (k, v) => onChange({ ...data, [k]: v });
+
+  // Auto-save to entity on submit
+  const handleSubmitKYC = async () => {
+    if (!user?.email) {
+      alert('Not authenticated');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      // Create or update KYCVerification entity
+      await base44.entities.KYCVerification.create({
+        user_email: user.email,
+        full_legal_name: data.full_legal_name,
+        date_of_birth: data.date_of_birth,
+        residential_address: data.residential_address,
+        city: data.city,
+        state: data.state,
+        postal_code: data.postal_code,
+        country: data.country,
+        government_id_type: data.government_id_type,
+        id_document_front_url: data.id_document_front_url,
+        id_document_back_url: data.id_document_back_url,
+        selfie_url: data.selfie_url,
+        verification_type: 'standard',
+        status: 'submitted',
+      });
+      // Clear localStorage
+      Object.keys(data).forEach(key => {
+        localStorage.removeItem(`onboarding_kyc_${key}`);
+      });
+      onNext?.();
+    } catch (err) {
+      alert(`KYC submission failed: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const upload = async (field, file) => {
     if (!file) return;
@@ -151,8 +191,8 @@ export default function StepKYC({ data, onChange, onNext, onBack }) {
           <Button onClick={onNext} variant="ghost" size="sm" className="text-slate-500 h-9 px-4">
             Skip for now
           </Button>
-          <Button onClick={onNext} size="sm" className="flex-1 bg-amber-600 hover:bg-amber-500 text-white h-9">
-            Submit KYC <ArrowRight className="w-3.5 h-3.5 ml-1" />
+          <Button onClick={handleSubmitKYC} disabled={isSaving} size="sm" className="flex-1 bg-amber-600 hover:bg-amber-500 text-white h-9 disabled:opacity-50">
+            {isSaving ? 'Submitting...' : 'Submit KYC'} <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </div>
       </div>

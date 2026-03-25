@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowRight, ArrowLeft, User, Sparkles, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 
 const TONES = ['professional', 'friendly', 'authoritative', 'casual', 'technical', 'persuasive'];
 const TASK_TYPES = ['freelance', 'content', 'service', 'arbitrage', 'lead_gen', 'digital_flip'];
@@ -21,6 +22,59 @@ function Tag({ label, active, onClick }) {
 
 export default function StepIdentity({ data, onChange, onNext, onBack }) {
   const [generating, setGenerating] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const { user } = useAuth();
+
+  const handleNext = async () => {
+    if (!user?.email) {
+      alert('Not authenticated');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      // Create or update AIIdentity entity
+      const identities = await base44.entities.AIIdentity.filter(
+        { user_email: user.email },
+        '-created_date',
+        1
+      );
+      
+      const identityData = {
+        user_email: user.email,
+        name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.name || 'Identity',
+        first_name: data.first_name,
+        last_name: data.last_name,
+        role_labels: data.role_labels || [],
+        skills: data.skills || [],
+        communication_tone: data.communication_tone || 'professional',
+        tagline: data.tagline,
+        bio: data.bio,
+        proposal_style: data.proposal_style,
+        email: data.email,
+        portfolio_url: data.portfolio_url,
+        linkedin: data.linkedin,
+        social_other: data.social_other,
+        auto_select_for_task_types: data.auto_select_for_task_types || [],
+        can_create_accounts: data.can_create_accounts !== false,
+        can_communicate: data.can_communicate !== false,
+        color: data.color || '#10b981',
+        is_active: false,
+        onboarding_complete: false,
+      };
+
+      if (identities.length > 0) {
+        await base44.entities.AIIdentity.update(identities[0].id, identityData);
+      } else {
+        await base44.entities.AIIdentity.create(identityData);
+      }
+      
+      onNext?.();
+    } catch (err) {
+      alert(`Identity save failed: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const set = (k, v) => onChange({ ...data, [k]: v });
   const toggleArr = (key, val) => {
@@ -237,9 +291,9 @@ export default function StepIdentity({ data, onChange, onNext, onBack }) {
           <Button onClick={onBack} variant="outline" size="sm" className="border-slate-700 text-slate-400 h-9 px-4">
             <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back
           </Button>
-          <Button onClick={onNext} size="sm"
-            className="flex-1 bg-violet-600 hover:bg-violet-500 text-white h-9">
-            Next: KYC Setup <ArrowRight className="w-3.5 h-3.5 ml-1" />
+          <Button onClick={handleNext} disabled={isSaving} size="sm"
+           className="flex-1 bg-violet-600 hover:bg-violet-500 text-white h-9 disabled:opacity-50">
+           {isSaving ? 'Saving...' : 'Next: KYC Setup'} <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </div>
       </div>

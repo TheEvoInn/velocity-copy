@@ -1,10 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 /**
- * PLATFORM EARNINGS SYNC ENGINE
+ * PLATFORM EARNINGS SYNC ENGINE — TIER 2
  * Fetches real earnings from Upwork, Fiverr, Freelancer APIs
- * Syncs with local Transaction records for reconciliation
- * Tracks payouts, fees, taxes
+ * Syncs with local Transaction records for financial reconciliation
+ * Tracks payouts, fees, taxes — triggers wallet updates & payout engine
+ * Supports Tier 3 autonomous payout orchestration
  */
 
 const UPWORK_API_BASE = 'https://api.upwork.com/api';
@@ -24,8 +25,11 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, platform } = body;
 
+    // Default to sync_all if no action specified (for scheduler)
+    const finalAction = action || 'sync_all';
+
     // ── Sync all platform earnings ─────────────────────────────────────────
-    if (action === 'sync_all') {
+    if (finalAction === 'sync_all') {
       const results = {};
 
       // Sync Upwork
@@ -62,7 +66,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Sync specific platform ─────────────────────────────────────────────
-    if (action === 'sync_platform' && platform) {
+    if (finalAction === 'sync_platform' && platform) {
       let result = {};
 
       if (platform === 'upwork') {

@@ -117,6 +117,59 @@ Deno.serve(async (req) => {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
+    // 4B. SYNC KYC DATA TO IDENTITY (if KYC was submitted)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    if (kyc_id) {
+      try {
+        const kycRecords = await base44.entities.KYCVerification.filter(
+          { id: kyc_id },
+          undefined,
+          1
+        );
+        if (kycRecords.length > 0) {
+          const kyc = kycRecords[0];
+          const clearanceMap = {
+            'none': { can_submit_w9: false, can_submit_1099_forms: false, can_submit_grant_applications: false, can_use_government_portals: false, can_submit_financial_onboarding: false, can_attach_id_documents: false },
+            'basic': { can_submit_w9: true, can_submit_1099_forms: true, can_submit_grant_applications: false, can_use_government_portals: false, can_submit_financial_onboarding: false, can_attach_id_documents: true },
+            'standard': { can_submit_w9: true, can_submit_1099_forms: true, can_submit_grant_applications: true, can_use_government_portals: true, can_submit_financial_onboarding: true, can_attach_id_documents: true },
+            'enhanced': { can_submit_w9: true, can_submit_1099_forms: true, can_submit_grant_applications: true, can_use_government_portals: true, can_submit_financial_onboarding: true, can_attach_id_documents: true }
+          };
+          const kyc_tier = kyc.kyc_tier || 'basic';
+          const autopilot_clearance = clearanceMap[kyc_tier] || clearanceMap['basic'];
+          
+          await base44.entities.AIIdentity.update(identity_id, {
+            kyc_verified_data: {
+              kyc_id,
+              synced_at: new Date().toISOString(),
+              kyc_tier,
+              full_legal_name: kyc.full_legal_name,
+              date_of_birth: kyc.date_of_birth,
+              residential_address: kyc.residential_address,
+              city: kyc.city,
+              state: kyc.state,
+              postal_code: kyc.postal_code,
+              country: kyc.country,
+              phone_number: kyc.phone_number,
+              email: kyc.email,
+              government_id_type: kyc.government_id_type,
+              government_id_number: kyc.government_id_number,
+              government_id_expiry: kyc.government_id_expiry,
+              tax_id: kyc.tax_id,
+              ssn_last4: kyc.ssn_last4,
+              id_document_front_url: kyc.id_document_front_url,
+              id_document_back_url: kyc.id_document_back_url,
+              selfie_url: kyc.selfie_url,
+              autopilot_clearance
+            }
+          });
+          console.log(`[Onboarding Launch] ✓ KYC synced to identity (tier: ${kyc_tier})`);
+        }
+      } catch (err) {
+        console.warn('[Onboarding Launch] KYC sync failed (non-fatal):', err.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
     // 5. USERDATASTORE LAUNCH STATE
     // ═══════════════════════════════════════════════════════════════════════════════
     const userDataStores = await base44.entities.UserDataStore.filter(

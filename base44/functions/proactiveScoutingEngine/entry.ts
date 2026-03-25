@@ -246,32 +246,70 @@ Return JSON:
 
         results.created++;
 
-        // Auto-queue high-score autopilot-compatible opps
-        if (autopilotEnabled && opp.autopilot_compatible && overall_score >= 70) {
-          await base44.asServiceRole.entities.Opportunity.update(created.id, { status: 'queued', auto_execute: true });
-          results.auto_queued++;
-        }
+        // Auto-queue high-score autopilot-compatible opps + create execution tasks
+         if (autopilotEnabled && opp.autopilot_compatible && overall_score >= 70) {
+           await base44.asServiceRole.entities.Opportunity.update(created.id, { status: 'queued', auto_execute: true });
+           results.auto_queued++;
+
+           // Create TaskExecutionQueue entry for scouted opportunity
+           try {
+             await base44.asServiceRole.entities.TaskExecutionQueue.create({
+               opportunity_id: created.id,
+               url: opp.url || 'https://' + (opp.platform || 'multi') + '.com',
+               opportunity_type: opp.opportunity_type || 'signup',
+               platform: opp.platform || 'multi',
+               identity_id: opp.identity_type_needed || 'auto',
+               status: 'queued',
+               priority: overall_score,
+               estimated_value: opp.profit_estimate_high || 0,
+               deadline: opp.urgency === '24h' ? new Date(Date.now() + 86400000).toISOString() : undefined,
+               queue_timestamp: new Date().toISOString(),
+               execution_log: [{
+                 timestamp: new Date().toISOString(),
+                 step: 'proactive_scout_queued',
+                 status: 'pending',
+                 details: `Scouted via ProactiveScout (signal: ${opp.market_signal || 'market'}, score: ${overall_score})`
+               }]
+             }).catch(() => null);
+           } catch (e) {
+             console.error(`Task execution queue creation failed for ${created.id}:`, e.message);
+           }
+         }
       } catch (e) {
         results.errors.push(`Save: ${e.message}`);
       }
     }
 
-    // 5. Notify users
-    if (results.created > 0) {
+    // 5. Create notifications + execute sync to task queue
+    if (results.created > 0 || results.auto_queued > 0) {
       try {
         const users = user ? [user] : (await base44.asServiceRole.entities.User.list().catch(() => [])).slice(0, 10);
         for (const u of users) {
           await base44.asServiceRole.entities.Notification.create({
-            user_email: u.email,
             type: 'opportunity_alert',
             severity: results.auto_queued > 0 ? 'urgent' : 'info',
-            title: `🔭 ${results.created} Pre-Opportunities Scouted${results.auto_queued > 0 ? ` · ${results.auto_queued} Auto-Queued` : ''}`,
-            message: `SCOUT found ${results.created} emerging opportunities from ${results.signals_found} live market signals.${results.auto_queued > 0 ? ` ${results.auto_queued} queued for Autopilot execution.` : ''}`,
-            action_type: 'review_required',
+            title: `🔭 ${results.created} Pre-Opportunities Scouted${results.auto_queued > 0 ? ` (${results.auto_queued} → Autopilot)` : ''}`,
+            message: `ProactiveScout discovered ${results.created} emerging opportunities from ${results.signals_found} market signals. ${results.auto_queued} are ready for autonomous execution.`,
+            user_email: u.email,
+            action_type: results.auto_queued > 0 ? 'review_required' : 'info',
             related_entity_type: 'Opportunity',
+            action_data: { auto_queued_count: results.auto_queued, created_count: results.created }
           }).catch(() => {});
         }
       } catch (_) {}
+    }
+
+    // Trigger Autopilot cycle if queued items exist
+    if (results.auto_queued > 0) {
+      try {
+        await base44.asServiceRole.functions.invoke('autopilotCycle', {
+          action: 'execute_queued_tasks',
+          source: 'proactive_scout',
+          task_count: results.auto_queued
+        }).catch(() => null);
+      } catch (e) {
+        console.error('Autopilot trigger failed:', e.message);
+      }
     }
 
     await base44.asServiceRole.entities.ActivityLog.create({

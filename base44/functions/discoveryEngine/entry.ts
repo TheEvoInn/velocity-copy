@@ -540,17 +540,59 @@ Deno.serve(async (req) => {
         if (saved) { created++; topOpps.push(saved); }
       }
 
-      // Auto-queue top AI-compatible for Autopilot
-      const autoQueue = topOpps.filter(o => o.can_ai_complete && (o.score || 0) >= 70).slice(0, 10);
-      for (const opp of autoQueue) {
-        await base44.asServiceRole.entities.WorkOpportunity.update(opp.id, { autopilot_queued: true, status: 'evaluating' }).catch(() => null);
+      // Auto-queue top AI-compatible for Autopilot + create TaskExecutionQueue entries
+       const autoQueue = topOpps.filter(o => o.can_ai_complete && (o.score || 0) >= 70).slice(0, 10);
+       for (const opp of autoQueue) {
+         await base44.asServiceRole.entities.WorkOpportunity.update(opp.id, { autopilot_queued: true, status: 'evaluating' }).catch(() => null);
+
+         // Create task execution queue entry for autopilot
+         try {
+           await base44.asServiceRole.entities.TaskExecutionQueue.create({
+             opportunity_id: opp.id,
+             url: opp.url || '',
+             opportunity_type: opp.opportunity_type || 'signup',
+             platform: opp.platform || 'multi',
+             identity_id: body.preferred_identity_id || opp.preferred_identity_type || 'auto',
+             status: 'queued',
+             priority: Math.round(opp.score || 50),
+             estimated_value: opp.estimated_pay || 0,
+             queue_timestamp: new Date().toISOString(),
+             execution_log: [{
+               timestamp: new Date().toISOString(),
+               step: 'discovery_auto_queued',
+               status: 'pending',
+               details: `Auto-queued from Discovery (score: ${opp.score})`
+             }]
+           }).catch(() => null);
+         } catch (e) {
+           console.error(`Task queue creation failed for ${opp.id}:`, e.message);
+         }
+       }
+
+      // Notify user of discovery results + autopilot queuing
+      if (created > 0 || autoQueue.length > 0) {
+        await base44.asServiceRole.entities.Notification.create({
+          type: 'autopilot_execution',
+          severity: autoQueue.length > 0 ? 'success' : 'info',
+          title: '🔭 Discovery Complete',
+          message: `SCOUT found ${created} new opportunities across ${scanCategories.length} categories. ${autoQueue.length} AI-ready opportunities queued for Autopilot execution.`,
+          user_email: userEmail,
+          related_entity_type: 'Opportunity'
+        }).catch(() => null);
       }
 
       await base44.asServiceRole.entities.ActivityLog.create({
         action_type: 'scan',
-        message: `🔍 SCOUT v5: ${created} new opportunities found across ${scanCategories.length} categories (${aiScanResults.length} live internet · ${autoQueue.length} auto-queued for Autopilot)`,
+        message: `🔍 SCOUT v5: ${created} discovered · ${aiScanResults.length} live internet · ${autoQueue.length} → TaskExecutionQueue · synced to Autopilot`,
         severity: 'success',
-        metadata: { found: filtered.length, created, ai_count: aiScanResults.length, categories_scanned: scanCategories.length, auto_queued: autoQueue.length }
+        metadata: { 
+          found: filtered.length, 
+          created, 
+          ai_count: aiScanResults.length, 
+          categories_scanned: scanCategories.length, 
+          auto_queued: autoQueue.length,
+          task_queue_entries_created: autoQueue.length
+        }
       }).catch(() => {});
 
       return Response.json({
@@ -582,9 +624,27 @@ Deno.serve(async (req) => {
       })).filter(o => o.score > 0);
 
       let created = 0;
+      const newOpps = [];
       for (const opp of scored.slice(0, 20)) {
-        await base44.asServiceRole.entities.WorkOpportunity.create(opp).catch(() => null);
-        created++;
+        const saved = await base44.asServiceRole.entities.WorkOpportunity.create(opp).catch(() => null);
+        if (saved) {
+          created++;
+          newOpps.push(saved);
+        }
+      }
+
+      // Queue high-scoring ones for autopilot
+      for (const opp of newOpps.filter(o => (o.score || 0) >= 70)) {
+        await base44.asServiceRole.entities.TaskExecutionQueue.create({
+          opportunity_id: opp.id,
+          url: opp.url || '',
+          opportunity_type: 'signup',
+          platform: category,
+          status: 'queued',
+          priority: Math.round(opp.score || 50),
+          estimated_value: opp.estimated_pay || 0,
+          queue_timestamp: new Date().toISOString()
+        }).catch(() => null);
       }
 
       return Response.json({ success: true, category, found: scored.length, created });

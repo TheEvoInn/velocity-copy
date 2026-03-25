@@ -9,46 +9,26 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
-const GEMINI_KEY = Deno.env.get('GOOGLE_AI_API_KEY');
-const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY');
+// Module-level client ref — set on each request for use in helper functions
+let _base44 = null;
 
-// ─── LLM HELPER ───────────────────────────────────────────────────────────────
+// ─── LLM HELPER — uses Base44 InvokeLLM (no quota issues) ────────────────────
 async function callLLM(prompt, jsonMode = false, useInternet = true) {
-  if (GEMINI_KEY) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
-      const body = {
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: jsonMode ? 8192 : 2048 },
-        tools: useInternet ? [{ google_search: {} }] : []
-      };
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
-        if (text) return text;
-      }
-    } catch (e) { console.error('Gemini error:', e.message); }
+  try {
+    if (!_base44) throw new Error('No base44 client');
+    const res = await _base44.asServiceRole.integrations.Core.InvokeLLM({
+      prompt,
+      add_context_from_internet: useInternet,
+      model: useInternet ? 'gemini_3_flash' : undefined,
+    });
+    if (typeof res === 'string') return res;
+    if (res?.content) return res.content;
+    if (res?.text) return res.text;
+    return String(res);
+  } catch (e) {
+    console.error('InvokeLLM error:', e.message);
+    return null;
   }
-  if (OPENAI_KEY) {
-    try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_KEY}` },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: jsonMode ? 8192 : 2048,
-          temperature: 0.3,
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content || '';
-      }
-    } catch (e) { console.error('OpenAI error:', e.message); }
-  }
-  return null;
 }
 
 function extractJSON(text) {
@@ -474,6 +454,7 @@ function prioritizeCategoriesByUser(userSkills = [], preferredCategories = []) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    _base44 = base44;
     const body = await req.json().catch(() => ({}));
 
     // Support both user-auth and service-role calls (from orchestrator)

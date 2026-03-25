@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 /**
  * UNIFIED ORCHESTRATOR v3.0 — Full Lifecycle Autopilot Engine
@@ -97,12 +97,12 @@ Deno.serve(async (req) => {
       }
 
       case 'emergency_stop':
-        await base44.entities.PlatformState.update(platformState.id, {
+        await base44.asServiceRole.entities.PlatformState.update(platformState.id, {
           emergency_stop_engaged: true,
           autopilot_enabled: false,
           system_health: 'critical'
         });
-        await base44.entities.ActivityLog.create({
+        await base44.asServiceRole.entities.ActivityLog.create({
           action_type: 'alert',
           message: '🚨 EMERGENCY STOP engaged — all automation halted',
           severity: 'critical',
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
         return Response.json({ success: true, message: 'Emergency stop engaged' });
 
       case 'resume':
-        await base44.entities.PlatformState.update(platformState.id, {
+        await base44.asServiceRole.entities.PlatformState.update(platformState.id, {
           emergency_stop_engaged: false,
           system_health: 'healthy'
         });

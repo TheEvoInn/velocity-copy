@@ -59,6 +59,20 @@ export default function OnboardingWizard({ onComplete }) {
   const queryClient = useQueryClient();
   const { updateField } = usePersistentUserData();
 
+  const forceSaveAndLaunch = async () => {
+    // Save current state to localStorage immediately
+    if (user?.email) {
+      localStorage.setItem(`onboarding_identity_${user.email}`, JSON.stringify(identityData));
+      localStorage.setItem(`onboarding_kyc_${user.email}`, JSON.stringify(kycData));
+      localStorage.setItem(`onboarding_pref_${user.email}`, JSON.stringify(prefData));
+      localStorage.setItem(`onboarding_banking_${user.email}`, JSON.stringify(bankingData));
+      localStorage.setItem(`onboarding_workflow_${user.email}`, JSON.stringify(workflowData));
+      console.log('[Onboarding] Force saved all data to localStorage');
+    }
+    // Trigger launch with current data
+    await handleLaunch(true);
+  };
+
   const handleLaunch = async (doNotShowAgain) => {
     setIsLaunching(true);
     try {
@@ -243,6 +257,16 @@ export default function OnboardingWizard({ onComplete }) {
       queryClient.invalidateQueries({ queryKey: ['userGoals', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['userDataStore'] });
 
+      // Clear localStorage after successful launch
+      if (user?.email) {
+        localStorage.removeItem(`onboarding_identity_${user.email}`);
+        localStorage.removeItem(`onboarding_kyc_${user.email}`);
+        localStorage.removeItem(`onboarding_pref_${user.email}`);
+        localStorage.removeItem(`onboarding_banking_${user.email}`);
+        localStorage.removeItem(`onboarding_workflow_${user.email}`);
+        localStorage.removeItem(`onboarding_step_${user.email}`);
+      }
+
       toast.success('🚀 VELOCITY activated! Autopilot is now running.');
       setIsLaunching(false);
       setTimeout(() => {
@@ -309,7 +333,9 @@ export default function OnboardingWizard({ onComplete }) {
             identityData={identityData} kycData={kycData}
             prefData={prefData} bankingData={bankingData}
             workflowData={workflowData}
-            onLaunch={handleLaunch} onBack={() => setStep(5)}
+            onLaunch={handleLaunch}
+            onForceSave={forceSaveAndLaunch}
+            onBack={() => setStep(5)}
             isLaunching={isLaunching}
           />
         )}

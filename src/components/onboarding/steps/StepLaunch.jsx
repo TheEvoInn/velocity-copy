@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Rocket, CheckCircle, User, Shield, Sliders, DollarSign, Zap, Loader2, Workflow } from 'lucide-react';
 
-export default function StepLaunch({ identityData, kycData, prefData, bankingData, workflowData, onLaunch, onBack, isLaunching }) {
+export default function StepLaunch({ identityData, kycData, prefData, bankingData, workflowData, onLaunch, onForceSave, onBack, isLaunching }) {
   const [doNotShowAgain, setDoNotShowAgain] = useState(true);
 
   const summaryItems = [
@@ -99,6 +99,12 @@ export default function StepLaunch({ identityData, kycData, prefData, bankingDat
             <Button onClick={onBack} variant="outline" size="sm" className="border-slate-700 text-slate-400 h-10 px-4">
               <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back
             </Button>
+            {onForceSave && (
+              <Button onClick={onForceSave}
+                className="h-10 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs">
+                💾 Force Save & Launch
+              </Button>
+            )}
             <Button onClick={() => onLaunch(doNotShowAgain)}
               className="flex-1 h-10 bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-white font-bold">
               <Rocket className="w-4 h-4 mr-2" /> Launch VELOCITY

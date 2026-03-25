@@ -110,12 +110,41 @@ export default function OnboardingWizard({ onComplete }) {
   };
 
   const handleLaunch = async (doNotShowAgain) => {
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // VALIDATE REQUIRED DATA BEFORE LAUNCH
+    // ═══════════════════════════════════════════════════════════════════════════════
+    if (!identityData.first_name || !identityData.last_name) {
+      toast.error('❌ AI Identity name (first & last) is required');
+      return;
+    }
+    if (!prefData.daily_target || prefData.daily_target === 0) {
+      toast.error('❌ Daily profit target is required');
+      return;
+    }
+
     setIsLaunching(true);
     try {
-      // 1. Create or update AI Identity (dedup check)
+      // ═══════════════════════════════════════════════════════════════════════════════
+      // PRE-LAUNCH DATA SAVE: Persist all data to localStorage before proceeding
+      // ═══════════════════════════════════════════════════════════════════════════════
+      try {
+        localStorage.setItem(`onboarding_identity_${user?.email}`, JSON.stringify(identityData));
+        localStorage.setItem(`onboarding_kyc_${user?.email}`, JSON.stringify(kycData));
+        localStorage.setItem(`onboarding_pref_${user?.email}`, JSON.stringify(prefData));
+        localStorage.setItem(`onboarding_banking_${user?.email}`, JSON.stringify(bankingData));
+        localStorage.setItem(`onboarding_workflow_${user?.email}`, JSON.stringify(workflowData));
+        localStorage.setItem(`onboarding_step_${user?.email}`, step.toString());
+        console.log('[Onboarding] ✓ Pre-launch data saved to localStorage');
+      } catch (err) {
+        console.error('[Onboarding] Pre-launch save FAILED:', err);
+        throw new Error('Failed to save onboarding data');
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════════════
+      // 1. CREATE OR UPDATE AI IDENTITY
+      // ═══════════════════════════════════════════════════════════════════════════════
       let identity;
       try {
-        // Check for existing identity by user email
         const existingIdentities = await base44.entities.AIIdentity.filter(
           { user_email: user?.email },
           '-created_date',
@@ -123,7 +152,6 @@ export default function OnboardingWizard({ onComplete }) {
         );
         
         if (existingIdentities.length > 0) {
-          // Update existing instead of creating duplicate
           const existingId = existingIdentities[0].id;
           await base44.entities.AIIdentity.update(existingId, {
             name: `${identityData.first_name} ${identityData.last_name}`.trim() || identityData.name,
@@ -135,30 +163,32 @@ export default function OnboardingWizard({ onComplete }) {
             onboarding_complete: true,
           });
           identity = existingIdentities[0];
-          console.log('[Onboarding] AIIdentity updated (dedup):', identity.id);
+          console.log('[Onboarding] ✓ AIIdentity updated (dedup):', identity.id);
         } else {
           identity = await base44.entities.AIIdentity.create({
-          ...identityData,
-          name: `${identityData.first_name} ${identityData.last_name}`.trim() || identityData.name,
-          user_email: user?.email,
-          role_labels: identityData.role_labels || [],
-          skills: Array.isArray(identityData.skills) ? identityData.skills : [],
-          preferred_categories: prefData.preferred_categories || [],
-          preferred_platforms: [],
-          is_active: true,
-          onboarding_complete: true,
-          spending_limit_per_task: prefData.max_daily_spend || 500,
-          tasks_executed: 0,
-          total_earned: 0,
+            ...identityData,
+            name: `${identityData.first_name} ${identityData.last_name}`.trim() || identityData.name,
+            user_email: user?.email,
+            role_labels: identityData.role_labels || [],
+            skills: Array.isArray(identityData.skills) ? identityData.skills : [],
+            preferred_categories: prefData.preferred_categories || [],
+            preferred_platforms: [],
+            is_active: true,
+            onboarding_complete: true,
+            spending_limit_per_task: prefData.max_daily_spend || 500,
+            tasks_executed: 0,
+            total_earned: 0,
           });
-          console.log('[Onboarding] AIIdentity created:', identity.id);
+          console.log('[Onboarding] ✓ AIIdentity created:', identity.id);
         }
       } catch (err) {
         console.error('[Onboarding] AIIdentity creation/update failed:', err);
         throw new Error(`Failed to create identity: ${err.message}`);
       }
 
-      // 2. Submit KYC if provided
+      // ═══════════════════════════════════════════════════════════════════════════════
+      // 2. SUBMIT KYC IF PROVIDED
+      // ═══════════════════════════════════════════════════════════════════════════════
       let kycRecord;
       if (kycData.full_legal_name) {
         try {
@@ -169,13 +199,15 @@ export default function OnboardingWizard({ onComplete }) {
             verification_type: 'standard',
             identity_id: identity.id,
           });
-          console.log('[Onboarding] KYC submitted:', kycRecord.id);
+          console.log('[Onboarding] ✓ KYC submitted:', kycRecord.id);
         } catch (err) {
           console.warn('[Onboarding] KYC submission failed (non-fatal):', err);
         }
       }
 
-      // 3. Create or update UserGoals (required)
+      // ═══════════════════════════════════════════════════════════════════════════════
+      // 3. CREATE OR UPDATE USERGOALS
+      // ═══════════════════════════════════════════════════════════════════════════════
       try {
         const existingGoals = await base44.entities.UserGoals.filter(
           { created_by: user?.email },
@@ -200,17 +232,19 @@ export default function OnboardingWizard({ onComplete }) {
         };
         if (existingGoals.length > 0) {
           await base44.entities.UserGoals.update(existingGoals[0].id, goalsData);
-          console.log('[Onboarding] UserGoals updated:', existingGoals[0].id);
+          console.log('[Onboarding] ✓ UserGoals updated:', existingGoals[0].id);
         } else {
           await base44.entities.UserGoals.create(goalsData);
-          console.log('[Onboarding] UserGoals created');
+          console.log('[Onboarding] ✓ UserGoals created');
         }
       } catch (err) {
         console.error('[Onboarding] UserGoals save failed:', err);
         throw new Error(`Failed to save preferences: ${err.message}`);
       }
 
-      // 4. Configure withdrawal policy if banking info provided
+      // ═══════════════════════════════════════════════════════════════════════════════
+      // 4. CONFIGURE WITHDRAWAL POLICY IF BANKING PROVIDED
+      // ═══════════════════════════════════════════════════════════════════════════════
       if (bankingData.bank_name || bankingData.paypal_email || bankingData.wise_email) {
         try {
           const existingPolicies = await base44.entities.WithdrawalPolicy.filter(
@@ -233,17 +267,19 @@ export default function OnboardingWizard({ onComplete }) {
           };
           if (existingPolicies.length > 0) {
             await base44.entities.WithdrawalPolicy.update(existingPolicies[0].id, policyData);
-            console.log('[Onboarding] WithdrawalPolicy updated');
+            console.log('[Onboarding] ✓ WithdrawalPolicy updated');
           } else {
             await base44.entities.WithdrawalPolicy.create(policyData);
-            console.log('[Onboarding] WithdrawalPolicy created');
+            console.log('[Onboarding] ✓ WithdrawalPolicy created');
           }
         } catch (err) {
           console.warn('[Onboarding] WithdrawalPolicy save failed (non-fatal):', err);
         }
       }
 
-      // 5. Persist user preferences
+      // ═══════════════════════════════════════════════════════════════════════════════
+      // 5. PERSIST USER PREFERENCES
+      // ═══════════════════════════════════════════════════════════════════════════════
       try {
         await updateField('onboarding_completed', doNotShowAgain);
         await updateField('autopilot_preferences', {
@@ -252,12 +288,14 @@ export default function OnboardingWizard({ onComplete }) {
           max_daily_spend: prefData.max_daily_spend,
           preferred_categories: prefData.preferred_categories,
         });
-        console.log('[Onboarding] User preferences persisted');
+        console.log('[Onboarding] ✓ User preferences persisted');
       } catch (err) {
         console.warn('[Onboarding] Preference persistence failed (non-fatal):', err);
       }
 
-      // 6. Log completion
+      // ═══════════════════════════════════════════════════════════════════════════════
+      // 6. LOG COMPLETION
+      // ═══════════════════════════════════════════════════════════════════════════════
       try {
         await base44.entities.ActivityLog.create({
           action_type: 'system',
@@ -265,16 +303,19 @@ export default function OnboardingWizard({ onComplete }) {
           severity: 'success',
           metadata: { identity_id: identity?.id, kyc_submitted: !!kycRecord, goals_saved: true },
         });
+        console.log('[Onboarding] ✓ Activity log created');
       } catch (err) {
         console.warn('[Onboarding] Activity log failed:', err);
       }
 
-      // 7. TRIGGER REAL MULTI-SYNC & LAUNCH SEQUENCE
+      // ═══════════════════════════════════════════════════════════════════════════════
+      // 7. TRIGGER MULTI-SYNC & LAUNCH SEQUENCE (REAL ACTIVATION)
+      // ═══════════════════════════════════════════════════════════════════════════════
       if (!identity?.id) {
         throw new Error('Identity creation failed — no ID returned');
       }
       try {
-        console.log('[Onboarding] Invoking onboardingLaunchSync with:', { identity_id: identity.id, identity_name: identity.name });
+        console.log('[Onboarding] → Invoking onboardingLaunchSync with:', { identity_id: identity.id, identity_name: identity.name });
         const launchResult = await base44.functions.invoke('onboardingLaunchSync', {
           identity_id: identity.id,
           identity_name: identity.name,
@@ -285,22 +326,22 @@ export default function OnboardingWizard({ onComplete }) {
           preferred_categories: prefData.preferred_categories,
           banking_configured: !!(bankingData.bank_name || bankingData.paypal_email),
         });
-        console.log('[Onboarding] Launch sync complete:', launchResult.data);
+        console.log('[Onboarding] ✓ Launch sync complete:', launchResult.data);
         if (!launchResult.data?.success) {
           throw new Error(launchResult.data?.error || 'Launch sync returned false');
         }
       } catch (err) {
-        console.error('[Onboarding] Launch sync failed:', err.message, err);
+        console.error('[Onboarding] Launch sync FAILED:', err.message, err);
         throw new Error(`Failed to activate VELOCITY: ${err.message}`);
       }
 
-      // Invalidate queries
+      // Invalidate queries to refresh dashboard state
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });
       queryClient.invalidateQueries({ queryKey: ['aiIdentities'] });
       queryClient.invalidateQueries({ queryKey: ['userGoals', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['userDataStore'] });
 
-      // Clear localStorage after successful launch
+      // Clear localStorage ONLY after successful full launch
       if (user?.email) {
         localStorage.removeItem(`onboarding_identity_${user.email}`);
         localStorage.removeItem(`onboarding_kyc_${user.email}`);
@@ -310,7 +351,7 @@ export default function OnboardingWizard({ onComplete }) {
         localStorage.removeItem(`onboarding_step_${user.email}`);
       }
 
-      toast.success('🚀 VELOCITY activated! Autopilot is now running.');
+      toast.success('🚀 VELOCITY launched! Autopilot is now running.');
       setIsLaunching(false);
       setTimeout(() => {
         if (onComplete && typeof onComplete === 'function') {
@@ -318,7 +359,7 @@ export default function OnboardingWizard({ onComplete }) {
         }
       }, 500);
     } catch (err) {
-      console.error('[Onboarding] Launch failed:', err);
+      console.error('[Onboarding] Launch FAILED:', err);
       toast.error(`❌ ${err.message}`);
       setIsLaunching(false);
     }

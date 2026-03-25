@@ -1,16 +1,25 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Rocket, CheckCircle, User, Shield, Sliders, DollarSign, Zap, Loader2, Workflow } from 'lucide-react';
+import { ArrowLeft, Rocket, CheckCircle, User, Shield, Sliders, DollarSign, Zap, Loader2, Workflow, AlertCircle } from 'lucide-react';
 
 export default function StepLaunch({ identityData, kycData, prefData, bankingData, workflowData, onLaunch, onForceSave, onBack, isLaunching }) {
   const [doNotShowAgain, setDoNotShowAgain] = useState(true);
+  
+  // Validate critical data for launch
+  const hasIdentityName = !!(identityData.first_name && identityData.last_name);
+  const hasDailyTarget = !!(prefData.daily_target && prefData.daily_target > 0);
+  const canLaunch = hasIdentityName && hasDailyTarget && !isLaunching;
+  
+  const missingFields = [];
+  if (!identityData.first_name || !identityData.last_name) missingFields.push('AI Identity name (First & Last)');
+  if (!prefData.daily_target || prefData.daily_target === 0) missingFields.push('Daily profit target');
 
   const summaryItems = [
     {
       icon: User, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20',
       label: 'Identity Created',
       value: (identityData.first_name || identityData.last_name) ? `${identityData.first_name || ''} ${identityData.last_name || ''}`.trim() + (identityData.role_labels?.[0] ? ` — ${identityData.role_labels[0]}` : '') : '⚠️ Not configured',
-      ok: !!(identityData.first_name || identityData.last_name),
+      ok: hasIdentityName,
     },
     {
       icon: Shield, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20',
@@ -22,7 +31,7 @@ export default function StepLaunch({ identityData, kycData, prefData, bankingDat
       icon: Sliders, color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20',
       label: 'Autopilot Config',
       value: `Target: $${prefData.daily_target || 0}/day · Risk: ${prefData.risk_tolerance || 'moderate'}`,
-      ok: true,
+      ok: hasDailyTarget,
     },
     {
       icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20',
@@ -88,6 +97,21 @@ export default function StepLaunch({ identityData, kycData, prefData, bankingDat
             </ul>
           </div>
 
+          {/* Validation error if data missing */}
+          {!canLaunch && missingFields.length > 0 && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 mb-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-red-300 mb-1">Cannot launch — missing required data:</p>
+                  <ul className="text-[11px] text-red-200 space-y-0.5 ml-1">
+                    {missingFields.map(field => <li key={field}>• {field}</li>)}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Do not show again */}
           <label className="flex items-center gap-2.5 cursor-pointer bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 mb-4">
             <input type="checkbox" checked={doNotShowAgain} onChange={e => setDoNotShowAgain(e.target.checked)}
@@ -105,8 +129,15 @@ export default function StepLaunch({ identityData, kycData, prefData, bankingDat
                 💾 Force Save & Launch
               </Button>
             )}
-            <Button onClick={() => onLaunch(doNotShowAgain)}
-              className="flex-1 h-10 bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-white font-bold">
+            <Button 
+              onClick={() => onLaunch(doNotShowAgain)}
+              disabled={!canLaunch}
+              className={`flex-1 h-10 font-bold ${
+                canLaunch 
+                  ? 'bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-white cursor-pointer' 
+                  : 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-50'
+              }`}
+            >
               <Rocket className="w-4 h-4 mr-2" /> Launch VELOCITY
             </Button>
           </div>

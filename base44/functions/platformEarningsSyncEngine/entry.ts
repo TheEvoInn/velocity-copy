@@ -22,27 +22,37 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await req.json();
+    let body = {};
+    try { body = await req.json(); } catch (_) { body = {}; }
     const { action, platform } = body;
 
     // Default to sync_all if no action specified (for scheduler)
     const finalAction = action || 'sync_all';
 
-    // TIER 5 FIX: Use test injector if platform APIs not configured
+    // FALLBACK: Use test injector if platform APIs not configured
     const SKIP_REAL_APIs = !UPWORK_API_KEY && !FIVERR_API_KEY;
     if (SKIP_REAL_APIs && finalAction === 'sync_all') {
       console.log('[PlatformEarningsSync] Platform APIs not configured. Using test data injector.');
-      const testResult = await base44.asServiceRole.functions.invoke('testEarningsInjector', {
-        action: 'inject_test_earnings'
-      }).catch(e => ({ error: e.message }));
-
-      if (testResult.data?.success) {
-        return Response.json({
-          success: true,
-          mode: 'test_data',
-          message: 'Using test earnings injector (platform APIs not configured)',
-          test_result: testResult.data
+      try {
+        const testResult = await base44.asServiceRole.functions.invoke('testEarningsInjector', {
+          action: 'inject_test_earnings'
         });
+        if (testResult?.data?.success) {
+          return Response.json({
+            success: true,
+            mode: 'test_data',
+            message: 'Test earnings injected (real APIs not configured)',
+            results: { test: testResult.data }
+          });
+        }
+      } catch (e) {
+        // If test injector also fails, return graceful error
+        return Response.json({
+          success: false,
+          mode: 'degraded',
+          error: 'Platform APIs not configured and test injector unavailable',
+          message: 'Configure UPWORK_API_KEY, UPWORK_API_SECRET, FIVERR_API_KEY or enable test data'
+        }, { status: 503 });
       }
     }
 
@@ -76,11 +86,11 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.ActivityLog.create({
         action_type: 'system',
         message: `💰 Earnings sync: ${successCount}/${Object.keys(results).length} platforms synced`,
-        severity: 'success',
+        severity: successCount === 0 ? 'warning' : 'success',
         metadata: { platforms: Object.keys(results), results }
       }).catch(() => null);
 
-      return Response.json({ success: true, results });
+      return Response.json({ success: successCount > 0, results })
     }
 
     // ── Sync specific platform ─────────────────────────────────────────────

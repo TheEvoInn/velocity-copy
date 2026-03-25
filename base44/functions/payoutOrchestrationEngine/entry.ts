@@ -421,15 +421,12 @@ async function syncAndAutoWithdraw(base44, user, payload) {
     // Step 1: Sync earnings
     const syncResult = await base44.asServiceRole.functions.invoke('platformEarningsSyncEngine', {
       action: 'sync_all'
-    }).catch(e => ({ error: e.message }));
-
-    if (syncResult.error) {
-      return Response.json({
+    }).catch(e => ({
+      data: {
         success: false,
-        error: 'Earnings sync failed',
-        details: syncResult.error
-      });
-    }
+        error: e.message
+      }
+    }));
 
     // Step 2: Check if auto-withdrawal is eligible
     const policies = await base44.asServiceRole.entities.WithdrawalPolicy.filter(

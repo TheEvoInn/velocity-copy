@@ -14,7 +14,8 @@ Deno.serve(async (req) => {
 
     // Create User Intervention requesting credential data
     const intervention = await base44.asServiceRole.entities.UserIntervention.create({
-      task_id: 'credential-sync-' + Date.now(), // Synthetic task ID for this data request
+      user_email: target_email,
+      task_id: 'credential-sync-' + Date.now(),
       requirement_type: 'missing_data',
       required_data: 'Platform account credentials (Upwork, Fiverr, eBay, Amazon, Etsy usernames/emails)',
       data_schema: {

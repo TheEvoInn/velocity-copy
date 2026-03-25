@@ -46,12 +46,20 @@ export function useUserProfile() {
 
 export function useUserOpportunities(statusFilter) {
   const { data: user } = useCurrentUser();
-  const filter = { user_email: user?.email };
-  if (statusFilter) filter.status = statusFilter;
 
   return useQuery({
     queryKey: ['opportunities', user?.email, statusFilter],
-    queryFn: () => base44.entities.WorkOpportunity.filter(filter, '-created_date', 50),
+    queryFn: async () => {
+      if (!user?.email) return [];
+      const filter = { created_by: user.email };
+      if (statusFilter) filter.status = statusFilter;
+      // Try Opportunity first (primary entity), fallback to WorkOpportunity
+      try {
+        return await base44.entities.Opportunity.filter(filter, '-created_date', 50);
+      } catch (_) {
+        return base44.entities.WorkOpportunity.filter(filter, '-created_date', 50);
+      }
+    },
     enabled: !!user?.email,
     initialData: [],
     refetchInterval: 15000,
@@ -60,12 +68,20 @@ export function useUserOpportunities(statusFilter) {
 
 export function useUserTasks(statusFilter) {
   const { data: user } = useCurrentUser();
-  const filter = { user_email: user?.email };
-  if (statusFilter) filter.status = statusFilter;
 
   return useQuery({
     queryKey: ['taskExecutions', user?.email, statusFilter],
-    queryFn: () => base44.entities.TaskExecution.filter(filter, '-created_date', 50),
+    queryFn: async () => {
+      if (!user?.email) return [];
+      const filter = { created_by: user.email };
+      if (statusFilter) filter.status = statusFilter;
+      // Try AITask first (primary), fallback to TaskExecution
+      try {
+        return await base44.entities.AITask.filter(filter, '-created_date', 50);
+      } catch (_) {
+        return base44.entities.TaskExecution.filter(filter, '-created_date', 50);
+      }
+    },
     enabled: !!user?.email,
     initialData: [],
     refetchInterval: 8000,
@@ -73,39 +89,60 @@ export function useUserTasks(statusFilter) {
 }
 
 export function useUserWallet() {
-  const { data: user } = useCurrentUser();
-  const { data: profile } = useUserProfile();
+  const { data: user } = useCurrentUser();  
 
+  // Authoritative balance source: UserGoals (has wallet_balance + total_earned)
+  const goalsQuery = useQuery({
+    queryKey: ['userGoals', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return null;
+      const goals = await base44.entities.UserGoals.filter({ created_by: user.email }, '-created_date', 1);
+      return goals[0] || null;
+    },
+    enabled: !!user?.email,
+    staleTime: 15000,
+  });
+
+  // Transaction history for time-window earnings
   const txQuery = useQuery({
     queryKey: ['walletTxs', user?.email],
-    queryFn: () => base44.entities.WalletTransaction.filter({ user_email: user.email }, '-created_date', 100),
+    queryFn: async () => {
+      if (!user?.email) return [];
+      try {
+        return await base44.entities.Transaction.filter({ created_by: user.email }, '-created_date', 200);
+      } catch (_) {
+        return base44.entities.WalletTransaction.filter({ created_by: user.email }, '-created_date', 100);
+      }
+    },
     enabled: !!user?.email,
     initialData: [],
     refetchInterval: 20000,
   });
 
-  const balance = profile?.wallet_balance || 0;
-  const totalEarned = profile?.total_earned || 0;
+  const goals = goalsQuery.data;
+  const balance = goals?.wallet_balance || 0;
+  const totalEarned = goals?.total_earned || 0;
 
-  const todayEarnings = (txQuery.data || [])
-    .filter(tx => tx.type === 'earning' && new Date(tx.created_date).toDateString() === new Date().toDateString())
-    .reduce((s, tx) => s + (tx.amount || 0), 0);
+  const now = new Date();
+  const todayStr = now.toDateString();
+  const weekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
 
-  const weekEarnings = (txQuery.data || [])
-    .filter(tx => {
-      if (tx.type !== 'earning') return false;
-      const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      return new Date(tx.created_date).getTime() >= weekAgo;
-    })
-    .reduce((s, tx) => s + (tx.amount || 0), 0);
+  const txs = txQuery.data || [];
+  const todayEarnings = txs
+    .filter(tx => tx.type === 'income' && new Date(tx.created_date).toDateString() === todayStr)
+    .reduce((s, tx) => s + (tx.net_amount || tx.amount || 0), 0);
+
+  const weekEarnings = txs
+    .filter(tx => tx.type === 'income' && new Date(tx.created_date).getTime() >= weekAgo)
+    .reduce((s, tx) => s + (tx.net_amount || tx.amount || 0), 0);
 
   return {
-    ...txQuery,
-    transactions: txQuery.data || [],
+    transactions: txs,
     balance,
     totalEarned,
     todayEarnings,
     weekEarnings,
+    isLoading: goalsQuery.isLoading,
   };
 }
 
@@ -190,8 +227,9 @@ export function useActiveIdentity() {
     queryKey: ['activeIdentity', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
+      // AIIdentity RLS uses created_by; user_email is a denormalized field
       const identities = await base44.entities.AIIdentity.filter(
-        { user_email: user.email, is_active: true },
+        { created_by: user.email, is_active: true },
         '-last_used_at',
         1
       );

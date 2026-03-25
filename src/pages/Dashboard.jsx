@@ -281,7 +281,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── ONBOARDING BANNER ── */}
-        {!isOnboarded && goalsList.length === 0 && (
+        {!isOnboarded && !goals && (
           <Link to="/Onboarding">
             <div className="mb-4 px-5 py-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
               style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.5)' }}

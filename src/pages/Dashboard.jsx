@@ -381,8 +381,8 @@ export default function Dashboard() {
                     <span className="text-xs text-slate-400 truncate max-w-[180px]">{task.task_name || task.task_type || 'Task'}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {(task.revenue_associated > 0 || task.earnings > 0) && (
-                      <span className="text-xs font-mono text-emerald-400">+${(task.revenue_associated || task.earnings || 0).toFixed(2)}</span>
+                    {task.revenue_associated > 0 && (
+                      <span className="text-xs font-mono text-emerald-400">+${task.revenue_associated.toFixed(2)}</span>
                     )}
                     <span className="text-xs text-slate-600 capitalize">{task.status}</span>
                   </div>

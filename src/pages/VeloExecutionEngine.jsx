@@ -17,7 +17,7 @@ export default function VeloExecutionEngine() {
   // Fetch all active tasks
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ['executionTasks', user?.email],
-    queryFn: () => base44.entities.AITask.filter({ created_by: user?.email }, '-updated_at', 100),
+    queryFn: () => base44.entities.AITask.filter({ created_by: user?.email }, '-created_date', 100),
     enabled: !!user?.email,
   });
 
@@ -266,15 +266,15 @@ export default function VeloExecutionEngine() {
                 )}
               </div>
 
-              {/* Execution Speed */}
+              {/* Throughput */}
               <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-4">
                 <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-cyan-400" /> Avg Execution Time
+                  <Zap className="w-4 h-4 text-cyan-400" /> Active / In Progress
                 </h3>
                 <div className="text-3xl font-bold text-cyan-400">
-                  {tasks.length > 0 ? '2.3s' : 'N/A'}
+                  {stats.executing + tasks.filter(t => t.status === 'analyzing').length}
                 </div>
-                <div className="text-xs text-slate-400 mt-2">Average per task</div>
+                <div className="text-xs text-slate-400 mt-2">Tasks running right now</div>
               </div>
 
               {/* Queue Health */}

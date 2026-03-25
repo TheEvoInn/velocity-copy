@@ -151,7 +151,7 @@ export function useUserWorkflows() {
 
   return useQuery({
     queryKey: ['workflows', user?.email],
-    queryFn: () => base44.entities.UserWorkflow.filter({ user_email: user.email }, '-created_date', 30),
+    queryFn: () => base44.entities.UserWorkflow.filter({ created_by: user.email }, '-created_date', 30),
     enabled: !!user?.email,
     initialData: [],
   });

@@ -35,13 +35,13 @@ export default function VeloAutopilotControl() {
 
   const { data: tasks = [], isLoading: loadingTasks } = useQuery({
     queryKey: ['aiTasks', user?.email],
-    queryFn: () => base44.entities.AITask.filter({ created_by: user?.email }),
+    queryFn: () => base44.entities.AITask.filter({ created_by: user?.email }, '-created_date', 100),
     enabled: !!user?.email,
   });
 
   const { data: execLogs = [] } = useQuery({
     queryKey: ['taskExecutionLogs', user?.email],
-    queryFn: () => base44.entities.EngineAuditLog.filter({ created_by: user?.email }),
+    queryFn: () => base44.entities.EngineAuditLog.filter({ created_by: user?.email }, '-created_date', 50),
     enabled: !!user?.email,
     staleTime: 5000,
   });
@@ -268,7 +268,7 @@ export default function VeloAutopilotControl() {
                           <div className="flex gap-4 text-xs text-slate-500">
                             <div>Priority: <span className="text-white">{task.priority || 50}</span></div>
                             <div>Retries: <span className="text-white">{task.retry_count || 0}</span></div>
-                            <div>Created: <span className="text-white">{task.created_at ? new Date(task.created_at).toLocaleDateString() : '—'}</span></div>
+                            <div>Created: <span className="text-white">{new Date(task.created_at || task.created_date).toLocaleDateString()}</span></div>
                           </div>
                         </div>
                         <div className={getStatusColor(task.status)}>{getStatusIcon(task.status)}</div>

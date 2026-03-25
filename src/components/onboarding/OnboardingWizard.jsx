@@ -221,6 +221,11 @@ export default function OnboardingWizard({ onComplete }) {
 
       // 7. Consolidate all onboarding data into UserDataStore for unified access
       try {
+        const userDataStores = await base44.entities.UserDataStore.filter(
+          { user_email: user?.email },
+          '-created_date',
+          1
+        );
         const consolidatedData = {
           onboarding_completed: doNotShowAgain,
           onboarding_completed_at: new Date().toISOString(),
@@ -234,21 +239,16 @@ export default function OnboardingWizard({ onComplete }) {
           autopilot_enabled: prefData.autopilot_enabled,
           withdrawal_policy_created: !!(bankingData.bank_name || bankingData.paypal_email),
           banking_configured: !!(bankingData.bank_name || bankingData.paypal_email),
-          onboarding_data: {
-            identity: { first_name: identityData.first_name, last_name: identityData.last_name, name: identity?.name },
-            preferences: { daily_target: prefData.daily_target, risk_tolerance: prefData.risk_tolerance, autopilot_enabled: prefData.autopilot_enabled },
-            banking: { configured: !!(bankingData.bank_name || bankingData.paypal_email), method: bankingData.payout_method },
-            kyc: { submitted: !!kycRecord?.id, status: kycRecord?.status },
-          },
         };
 
-        // Write consolidated data to UserDataStore
-        await base44.asServiceRole.functions.invoke('userDataPersistenceManager', {
-          action: 'update',
-          field: 'onboarding_data',
-          value: consolidatedData,
-          force_update: true,
-        });
+        if (userDataStores.length > 0) {
+          await base44.entities.UserDataStore.update(userDataStores[0].id, consolidatedData);
+        } else {
+          await base44.entities.UserDataStore.create({
+            user_email: user?.email,
+            ...consolidatedData,
+          });
+        }
         console.log('[Onboarding] Data consolidated to UserDataStore');
       } catch (err) {
         console.warn('[Onboarding] Data consolidation failed (non-fatal):', err);

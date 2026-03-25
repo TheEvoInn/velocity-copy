@@ -60,6 +60,30 @@ export default function OnboardingWizard({ onComplete }) {
   const queryClient = useQueryClient();
   const { updateField } = usePersistentUserData();
 
+  // Load saved draft on mount
+  React.useEffect(() => {
+    if (!user?.email) return;
+    try {
+      const saved = {
+        identity: localStorage.getItem(`onboarding_identity_${user.email}`),
+        kyc: localStorage.getItem(`onboarding_kyc_${user.email}`),
+        pref: localStorage.getItem(`onboarding_pref_${user.email}`),
+        banking: localStorage.getItem(`onboarding_banking_${user.email}`),
+        workflow: localStorage.getItem(`onboarding_workflow_${user.email}`),
+        step: localStorage.getItem(`onboarding_step_${user.email}`),
+      };
+      if (saved.identity) setIdentityData(JSON.parse(saved.identity));
+      if (saved.kyc) setKycData(JSON.parse(saved.kyc));
+      if (saved.pref) setPrefData(JSON.parse(saved.pref));
+      if (saved.banking) setBankingData(JSON.parse(saved.banking));
+      if (saved.workflow) setWorkflowData(JSON.parse(saved.workflow));
+      if (saved.step) setStep(parseInt(saved.step));
+      console.log('[Onboarding] Draft restored from localStorage');
+    } catch (err) {
+      console.warn('[Onboarding] Failed to restore draft:', err);
+    }
+  }, [user?.email]);
+
   const saveDraft = async () => {
     if (!user?.email) return;
     setIsSavingDraft(true);
@@ -81,7 +105,7 @@ export default function OnboardingWizard({ onComplete }) {
   };
 
   const forceSaveAndLaunch = async () => {
-    saveDraft();
+    await saveDraft();
     await handleLaunch(true);
   };
 

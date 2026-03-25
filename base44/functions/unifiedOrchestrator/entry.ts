@@ -11,13 +11,20 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
 
-    // Scheduled automation trigger — run full cycle
-    if (body.automation && !body.action) {
-      const user = await base44.auth.me().catch(() => null);
-      return Response.json(await orchestrateFullCycle(base44, user, false));
-    }
+    // Resolve user: support service-role calls with user_email in body
+    let user = null;
+    try { user = await base44.auth.me(); } catch (e) {}
 
-    const user = await base44.auth.me();
+    // Service role / scheduled trigger: accept user_email from body
+    if (!user && body.user_email) {
+      user = { email: body.user_email };
+    }
+    // Scheduled automation trigger — run full cycle with first enabled user
+    if (!user && body.automation) {
+      const goals = await base44.asServiceRole.entities.UserGoals.list('-created_date', 1).catch(() => []);
+      const g = goals.find(g => g.autopilot_enabled && g.created_by);
+      if (g) user = { email: g.created_by };
+    }
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const action = body.action || 'full_cycle';
@@ -277,7 +284,7 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
       }
     }
 
-    // 4b. Execute queued WorkOpportunity items from Discovery Engine
+    // 4b. Execute queued WorkOpportunity items from Discovery Engine via agentWorker
     addLog('work_opps', 'running', 'Checking WorkOpportunity queue from Discovery Engine');
     try {
       const queuedWorkOpps = await base44.asServiceRole.entities.WorkOpportunity.filter(
@@ -288,32 +295,75 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
       for (const opp of safeWorkOpps) {
         if (!opp?.id) continue;
         try {
-          // Mark as active — deliverable generation handled by autopilotOrchestrator if keys available
+          // Mark as executing
           await base44.asServiceRole.entities.WorkOpportunity.update(opp.id, {
-            status: 'active',
+            status: 'executing',
             autopilot_queued: false,
-            task_execution_id: `exec_${Date.now()}_${opp.id.slice(-4)}`,
           });
-          // Create a wallet transaction for the simulated earning
-          const earnedAmount = opp.estimated_pay ? opp.estimated_pay * 0.85 : 0;
-          if (earnedAmount > 0 && user?.email) {
-            await base44.asServiceRole.entities.WalletTransaction.create({
-              user_email: user.email,
-              type: 'earning',
-              amount: earnedAmount,
-              currency: 'USD',
-              source: opp.platform || 'autopilot',
-              description: `Task completed: ${opp.title}`,
-              status: 'confirmed',
+
+          // Convert to Opportunity entity if not already, so agentWorker can process it
+          let linkedOppId = opp.linked_opportunity_id;
+          if (!linkedOppId) {
+            const createdOpp = await base44.asServiceRole.entities.Opportunity.create({
+              title: opp.title,
+              description: opp.description || '',
+              url: opp.url || '',
+              category: opp.category || 'service',
+              platform: opp.platform || '',
+              profit_estimate_low: opp.estimated_pay || 0,
+              profit_estimate_high: (opp.estimated_pay || 0) * 1.2,
+              status: 'queued',
+              auto_execute: true,
+              source: 'discovery_engine',
             }).catch(() => null);
+            if (createdOpp) linkedOppId = createdOpp.id;
           }
-          workOppsExecuted++;
-          result.executed++;
+
+          // Create execution task
+          const execTask = await base44.asServiceRole.entities.TaskExecutionQueue.create({
+            opportunity_id: linkedOppId || '',
+            url: opp.url || '',
+            platform: opp.platform || '',
+            opportunity_type: opp.category || 'other',
+            identity_id: activeIdentity?.id || '',
+            identity_name: activeIdentity?.name || 'APEX',
+            status: 'queued',
+            priority: opp.score || 50,
+            estimated_value: opp.estimated_pay || 0,
+            queue_timestamp: new Date().toISOString(),
+            max_retries: 2,
+          }).catch(() => null);
+
+          // Execute via agentWorker for real AI-generated deliverable
+          const execRes = await base44.asServiceRole.functions.invoke('agentWorker', {
+            action: 'execute_task',
+            payload: {
+              task_id: execTask?.id || '',
+              opportunity_id: linkedOppId || '',
+              url: opp.url || '',
+              identity_id: activeIdentity?.id || '',
+              platform: opp.platform || '',
+            }
+          }).catch(e => ({ data: { success: false, error: e.message } }));
+
+          const success = execRes?.data?.success;
+          await base44.asServiceRole.entities.WorkOpportunity.update(opp.id, {
+            status: success ? 'active' : 'failed',
+            task_execution_id: execTask?.id || '',
+          });
+
+          if (success) {
+            workOppsExecuted++;
+            result.executed++;
+          } else {
+            result.errors.push(`WorkOpp ${opp.title}: ${execRes?.data?.error || 'execution failed'}`);
+          }
         } catch (e) {
           result.errors.push(`WorkOpp ${opp.title}: ${e.message}`);
+          await base44.asServiceRole.entities.WorkOpportunity.update(opp.id, { status: 'failed' }).catch(() => null);
         }
       }
-      addLog('work_opps', 'success', `Processed ${workOppsExecuted} WorkOpportunity tasks`);
+      addLog('work_opps', 'success', `Executed ${workOppsExecuted}/${safeWorkOpps.length} WorkOpportunity tasks via agentWorker`);
     } catch (e) {
       addLog('work_opps', 'error', e.message);
     }
@@ -382,11 +432,12 @@ async function orchestrateFullCycle(base44, user, forceRun = false) {
  */
 async function runScan(base44, user) {
   try {
-    // Use discoveryEngine v3 for per-user isolated, multi-category scan
+    // Use discoveryEngine v5 — pass user_email so service-role calls work without user token
     const scanRes = await base44.asServiceRole.functions.invoke('discoveryEngine', {
       action: 'full_scan',
       user_email: user?.email,
-      filters: { ai_only: true }
+      filters: { ai_only: true },
+      preferred_categories: [],
     });
     return {
       success: true,

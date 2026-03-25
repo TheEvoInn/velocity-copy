@@ -474,10 +474,16 @@ function prioritizeCategoriesByUser(userSkills = [], preferredCategories = []) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user?.email) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await req.json().catch(() => ({}));
 
-    const body = await req.json();
+    // Support both user-auth and service-role calls (from orchestrator)
+    let user = null;
+    try { user = await base44.auth.me(); } catch (e) {}
+    const userEmail = user?.email || body.user_email;
+    if (!userEmail) return Response.json({ error: 'Unauthorized — no user or user_email' }, { status: 401 });
+    // Synthetic user object for service-role calls
+    if (!user) user = { email: userEmail };
+
     const { action, filters = {}, categories = [] } = body;
 
     // ── FULL DISCOVERY SCAN ───────────────────────────────────────────────
@@ -488,7 +494,7 @@ Deno.serve(async (req) => {
       const riskTolerance = body.risk_tolerance || 'moderate';
 
       // Phase 1: Curated base library
-      let allOpportunities = getCuratedOpportunities(user.email);
+      let allOpportunities = getCuratedOpportunities(userEmail);
 
       // Phase 2: AI-powered internet scan — prioritized by user skills
       const hasLLM = !!(GEMINI_KEY || OPENAI_KEY);
@@ -540,7 +546,7 @@ Deno.serve(async (req) => {
       filtered.sort((a, b) => (b.score || 0) - (a.score || 0));
 
       // Dedup vs existing DB
-      const existing = await base44.entities.WorkOpportunity.filter({ user_email: user.email }, '-created_date', 400).catch(() => []);
+      const existing = await base44.asServiceRole.entities.WorkOpportunity.filter({ user_email: userEmail }, '-created_date', 400).catch(() => []);
       const existingTitles = new Set((existing || []).map(o => (o.title || '').toLowerCase().slice(0, 40)));
       const newOpps = filtered.filter(o => !existingTitles.has((o.title || '').toLowerCase().slice(0, 40)));
 
@@ -548,17 +554,18 @@ Deno.serve(async (req) => {
       let created = 0;
       const topOpps = [];
       for (const opp of newOpps.slice(0, 60)) {
-        const saved = await base44.entities.WorkOpportunity.create(opp).catch(() => null);
+        const withEmail = { ...opp, user_email: userEmail };
+        const saved = await base44.asServiceRole.entities.WorkOpportunity.create(withEmail).catch(() => null);
         if (saved) { created++; topOpps.push(saved); }
       }
 
       // Auto-queue top AI-compatible for Autopilot
       const autoQueue = topOpps.filter(o => o.can_ai_complete && (o.score || 0) >= 70).slice(0, 10);
       for (const opp of autoQueue) {
-        await base44.entities.WorkOpportunity.update(opp.id, { autopilot_queued: true, status: 'evaluating' }).catch(() => null);
+        await base44.asServiceRole.entities.WorkOpportunity.update(opp.id, { autopilot_queued: true, status: 'evaluating' }).catch(() => null);
       }
 
-      await base44.entities.ActivityLog.create({
+      await base44.asServiceRole.entities.ActivityLog.create({
         action_type: 'scan',
         message: `🔍 SCOUT v5: ${created} new opportunities found across ${scanCategories.length} categories (${aiScanResults.length} live internet · ${autoQueue.length} auto-queued for Autopilot)`,
         severity: 'success',
@@ -589,13 +596,13 @@ Deno.serve(async (req) => {
 
       const aiOpps = await scanCategoryWithAI(category, [...catData.primary, ...catData.expanded], catData.platforms);
       const scored = aiOpps.map(o => ({
-        ...o, category, user_email: user.email, status: 'discovered',
+        ...o, category, user_email: userEmail, status: 'discovered',
         score: scoreOpportunity({ ...o, online_only: true }), pay_currency: 'USD',
       })).filter(o => o.score > 0);
 
       let created = 0;
       for (const opp of scored.slice(0, 20)) {
-        await base44.entities.WorkOpportunity.create(opp).catch(() => null);
+        await base44.asServiceRole.entities.WorkOpportunity.create(opp).catch(() => null);
         created++;
       }
 
@@ -642,7 +649,7 @@ Deno.serve(async (req) => {
 
     // ── SUMMARY ───────────────────────────────────────────────────────────
     if (action === 'get_summary') {
-      const opps = await base44.entities.WorkOpportunity.filter({ user_email: user.email }, '-created_date', 400).catch(() => []);
+      const opps = await base44.asServiceRole.entities.WorkOpportunity.filter({ user_email: userEmail }, '-created_date', 400).catch(() => []);
       const summary = {
         total: opps.length,
         ai_compatible: opps.filter(o => o.can_ai_complete).length,
@@ -662,13 +669,13 @@ Deno.serve(async (req) => {
 
     // ── QUEUE ALL AI-COMPATIBLE FOR AUTOPILOT ─────────────────────────────
     if (action === 'queue_all_for_autopilot') {
-      const opps = await base44.entities.WorkOpportunity.filter(
-        { user_email: user.email, can_ai_complete: true, status: 'discovered' }, '-score', 30
+      const opps = await base44.asServiceRole.entities.WorkOpportunity.filter(
+        { user_email: userEmail, can_ai_complete: true, status: 'discovered' }, '-score', 30
       ).catch(() => []);
 
       let queued = 0;
       for (const opp of opps) {
-        await base44.entities.WorkOpportunity.update(opp.id, { autopilot_queued: true, status: 'evaluating' }).catch(() => null);
+        await base44.asServiceRole.entities.WorkOpportunity.update(opp.id, { autopilot_queued: true, status: 'evaluating' }).catch(() => null);
         queued++;
       }
       return Response.json({ success: true, queued, message: `${queued} opportunities queued for Autopilot` });

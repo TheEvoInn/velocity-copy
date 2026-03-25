@@ -11,30 +11,43 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
 
     // For scheduled automation calls, use service role
-    const goals = await base44.asServiceRole.entities.UserGoals.list();
-    const userGoals = goals[0];
+    // Support explicit action from frontend (e.g. process_queue)
+    const action = body.action || 'full_cycle';
 
-    if (!userGoals?.autopilot_enabled) {
-      return Response.json({ success: false, message: 'Autopilot disabled in user goals — cycle skipped' });
-    }
-
-    // Check platform state
-    const states = await base44.asServiceRole.entities.PlatformState.list();
+    const states = await base44.asServiceRole.entities.PlatformState.list().catch(() => []);
     const ps = states[0];
 
     if (ps?.emergency_stop_engaged) {
       return Response.json({ success: false, message: 'Emergency stop engaged — cycle skipped' });
     }
 
-    // Delegate to unifiedOrchestrator full_cycle via service role
-    const cycleRes = await base44.asServiceRole.functions.invoke('unifiedOrchestrator', {
-      action: 'full_cycle'
-    });
+    // Get all users with autopilot enabled
+    const allGoals = await base44.asServiceRole.entities.UserGoals.list().catch(() => []);
+    const enabledGoals = allGoals.filter(g => g.autopilot_enabled);
+
+    if (enabledGoals.length === 0) {
+      return Response.json({ success: false, message: 'No users have autopilot enabled — cycle skipped' });
+    }
+
+    // Run cycle for each enabled user
+    const results = [];
+    for (const goals of enabledGoals) {
+      const userEmail = goals.created_by;
+      if (!userEmail) continue;
+
+      const cycleRes = await base44.asServiceRole.functions.invoke('unifiedOrchestrator', {
+        action: action === 'process_queue' ? 'execute_queued_tasks' : 'full_cycle',
+        user_email: userEmail,
+      }).catch(e => ({ data: { success: false, error: e.message } }));
+
+      results.push({ user: userEmail, result: cycleRes?.data });
+    }
 
     return Response.json({
       success: true,
       source: 'autopilotCycle (scheduled)',
-      cycle: cycleRes.data
+      users_processed: results.length,
+      results,
     });
 
   } catch (error) {

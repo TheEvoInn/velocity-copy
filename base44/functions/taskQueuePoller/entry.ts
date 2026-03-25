@@ -33,24 +33,22 @@ Deno.serve(async (req) => {
 
     for (const task of toExecute) {
       try {
-        // Skip if task not created by current user (RLS will block update anyway)
-        if (task.created_by !== user.email) continue;
 
-        // Mark as processing using user context
-        await base44.entities.TaskExecutionQueue.update(task.id, {
+        // Mark as processing (use service role since we're polling system-wide tasks)
+        await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
           status: 'processing',
           started_processing_at: new Date().toISOString()
         }).catch(() => null);
 
         // Invoke Autopilot executor
-        await base44.functions.invoke('unifiedAutopilot', {
+        await base44.asServiceRole.functions.invoke('unifiedAutopilot', {
           task_id: task.id,
           action: 'execute_queued_task',
           opportunity_id: task.opportunity_id
         }).catch((e) => {
           console.error(`Task ${task.id} execution failed:`, e.message);
           // Revert to queued if execution fails
-          base44.entities.TaskExecutionQueue.update(task.id, {
+          base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
             status: 'queued'
           }).catch(() => null);
         });
@@ -62,7 +60,7 @@ Deno.serve(async (req) => {
     }
 
     // Log polling activity
-    await base44.entities.ActivityLog.create({
+    await base44.asServiceRole.entities.ActivityLog.create({
       action_type: 'system',
       message: `📋 Task queue poll: ${queuedTasks.length} queued, triggered ${triggered}`,
       severity: 'info',

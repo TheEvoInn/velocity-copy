@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUserGoals, useCryptoWallets, useAITasks, useActivityLogs, useOpportunities } from '@/hooks/useQueryHooks';
 import { base44 } from '@/api/base44Client';
 import WorkflowOrbitView from './WorkflowOrbitView';
 import {
@@ -375,15 +374,27 @@ function LowerControlStrip({ navigate, wallets, logs, goals, onAutopilotChange, 
 export default function CockpitHUD({ hoveredModule, onNavigate }) {
   const navigate = useNavigate();
   const handleNav = onNavigate || navigate;
-  const { data: goals = [] }         = useUserGoals();
-  const { data: wallets = [] }       = useCryptoWallets();
-  const { data: tasks = [] }         = useAITasks();
-  const { data: logs = [] }          = useActivityLogs(20);
-  const { data: opportunities = [] } = useOpportunities();
+  const [data, setData] = useState({ goals: [], wallets: [], tasks: [], logs: [], opportunities: [] });
 
   const [autopilotMode, setAutopilotMode] = useState('auto');
   const [showOrbitView, setShowOrbitView] = useState(false);
   const [hudMinimized, setHudMinimized] = useState(false);
+
+  // Lazy load data to prevent blocking render
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const goals = await base44.entities.UserGoals.list();
+        const tasks = await base44.entities.TaskExecutionQueue.filter({ status: { $in: ['executing', 'processing', 'navigating'] } }, null, 50);
+        const logs = await base44.entities.ActivityLog.list('-created_date', 20);
+        const opportunities = await base44.entities.Opportunity.filter({ status: 'new' }, null, 20);
+        setData({ goals: goals || [], tasks: tasks || [], logs: logs || [], wallets: [], opportunities: opportunities || [] });
+      } catch (e) {
+        console.error('[CockpitHUD] Data load error:', e);
+      }
+    };
+    loadData();
+  }, []);
 
   const handleAutopilotChange = async (mode) => {
     setAutopilotMode(mode);
@@ -420,7 +431,7 @@ export default function CockpitHUD({ hoveredModule, onNavigate }) {
 
               {/* ── CENTER DISPLAY (top only, 3D shows through bottom) ──────────── */}
               <div className="flex flex-col pt-4 px-3 pointer-events-auto" style={{ maxHeight: '60vh' }}>
-                <MainDisplay goals={goals} tasks={tasks} wallets={wallets} logs={logs} opportunities={opportunities} />
+                <MainDisplay goals={data.goals} tasks={data.tasks} wallets={data.wallets} logs={data.logs} opportunities={data.opportunities} />
               </div>
 
               {/* ── RIGHT CONSOLE ─────────────────────────────────────────────────── */}
@@ -440,9 +451,9 @@ export default function CockpitHUD({ hoveredModule, onNavigate }) {
       {/* ── Lower control strip ──────────────────────────────────────────────── */}
       <LowerControlStrip
         navigate={handleNav}
-        wallets={wallets}
-        logs={logs}
-        goals={goals}
+        wallets={data.wallets}
+        logs={data.logs}
+        goals={data.goals}
         onAutopilotChange={handleAutopilotChange}
         autopilotMode={autopilotMode}
         onOrbitView={setShowOrbitView}

@@ -41,7 +41,8 @@ export default function VeloFinanceCommand() {
   const incomeTransactions = transactions.filter(t => t.type === 'income');
   const expenseTransactions = transactions.filter(t => t.type === 'expense');
   
-  const totalIncome = incomeTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+  // Prefer net_amount (after fees) for income display, gross for expense
+  const totalIncome = incomeTransactions.reduce((sum, t) => sum + (t.net_amount || t.amount || 0), 0);
   const totalExpense = expenseTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
   const filteredTransactions = filterType === 'all' 
@@ -254,7 +255,7 @@ export default function VeloFinanceCommand() {
                 {['arbitrage', 'service', 'lead_gen', 'digital_flip', 'freelance', 'resale', 'other'].map(category => {
                   const catIncome = transactions
                     .filter(t => t.type === 'income' && t.category === category)
-                    .reduce((sum, t) => sum + (t.amount || 0), 0);
+                    .reduce((sum, t) => sum + (t.net_amount || t.amount || 0), 0);
                   
                   if (catIncome === 0) return null;
                   

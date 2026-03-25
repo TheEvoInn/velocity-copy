@@ -106,7 +106,7 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  const activeTasks = tasks.filter(t => t.status === 'running').length;
+  const activeTasks = tasks.filter(t => t.status === 'executing' || t.status === 'running').length;
   const isOnboarded = goals?.onboarded === true;
 
   const { data: interventionData } = useQuery({
@@ -116,8 +116,10 @@ export default function Dashboard() {
   });
   const pendingInterventions = interventionData?.length || 0;
   const queuedTasks = tasks.filter(t => t.status === 'queued').length;
+  const todayStr = new Date().toDateString();
   const completedToday = tasks.filter(t =>
-    t.status === 'completed' && new Date(t.created_date).toDateString() === new Date().toDateString()
+    t.status === 'completed' &&
+    (new Date(t.completed_at || t.updated_date || t.created_date).toDateString() === todayStr)
   ).length;
   const newOpps = opportunities.filter(o => o.status === 'discovered').length;
   const isAutopilotOn = goals?.autopilot_enabled;
@@ -281,7 +283,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── ONBOARDING BANNER ── */}
-        {!isOnboarded && !goals && (
+        {!isOnboarded && (
           <Link to="/Onboarding">
             <div className="mb-4 px-5 py-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
               style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.5)' }}
@@ -348,9 +350,6 @@ export default function Dashboard() {
         {/* ── DAILY RECAP WIDGET ── */}
         <DailyRecapWidget />
 
-        {/* ── DAILY RECAP WIDGET ── */}
-        <DailyRecapWidget />
-
         {/* ── SIX DEPARTMENT MODULE GRID ── */}
         <div className="mb-2">
           <p className="font-orbitron text-[10px] tracking-[0.3em] text-slate-600 mb-4">CORE DEPARTMENTS</p>
@@ -377,13 +376,13 @@ export default function Dashboard() {
                   style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div className="flex items-center gap-2.5">
                     <div className="w-1.5 h-1.5 rounded-full" style={{
-                      background: task.status === 'completed' ? '#10b981' : task.status === 'running' ? '#00e8ff' : task.status === 'failed' ? '#ef4444' : '#f59e0b'
+                      background: task.status === 'completed' ? '#10b981' : (task.status === 'executing' || task.status === 'running') ? '#00e8ff' : task.status === 'failed' ? '#ef4444' : '#f59e0b'
                     }} />
-                    <span className="text-xs text-slate-400 truncate max-w-[180px]">{task.task_type || 'Task'}</span>
+                    <span className="text-xs text-slate-400 truncate max-w-[180px]">{task.task_name || task.task_type || 'Task'}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {task.earnings > 0 && (
-                      <span className="text-xs font-mono text-emerald-400">+${task.earnings.toFixed(2)}</span>
+                    {(task.revenue_associated > 0 || task.earnings > 0) && (
+                      <span className="text-xs font-mono text-emerald-400">+${(task.revenue_associated || task.earnings || 0).toFixed(2)}</span>
                     )}
                     <span className="text-xs text-slate-600 capitalize">{task.status}</span>
                   </div>

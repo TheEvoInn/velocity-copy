@@ -41,8 +41,7 @@ import OptimizationDashboard from './pages/OptimizationDashboard';
 import PendingInterventions from './pages/PendingInterventions';
 import Onboarding from './pages/Onboarding';
 import AccountCreationDashboard from './pages/AccountCreationDashboard';
-import VeloIdentityHub from './pages/VeloIdentityHub';
-import VeloAutopilotControl from './pages/VeloAutopilotControl';
+// Removed: VeloIdentityHub and VeloAutopilotControl (using real pages instead)
 import VeloFinanceCommand from './pages/VeloFinanceCommand';
 import VeloExecutionEngine from './pages/VeloExecutionEngine';
 import StrategySetupWizard from './pages/StrategySetupWizard';

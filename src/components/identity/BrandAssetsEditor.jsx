@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 import {
   Palette, Type, Mic2, Briefcase, Save, ChevronDown, ChevronUp,
-  Plus, X, AlertCircle, Sparkles, LayoutTemplate, PenLine
+  Plus, X, AlertCircle, Sparkles, LayoutTemplate, PenLine, Wand2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,7 @@ const VOCABULARY_STYLES = ['simple', 'technical', 'academic', 'conversational', 
 const INDUSTRY_OPTIONS = ['technology', 'design', 'marketing', 'finance', 'healthcare', 'legal', 'education', 'e-commerce', 'consulting', 'creative_arts', 'real_estate', 'other'];
 const PROJECT_TYPES = ['short_term', 'long_term', 'one_time', 'recurring', 'agency', 'enterprise', 'startup', 'nonprofit'];
 
-function Section({ icon: Icon, title, color = 'text-violet-400', children, defaultOpen = false }) {
+function Section({ icon: Icon, title, color = 'text-violet-400', children, defaultOpen = false, onAITrigger }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
@@ -28,6 +29,17 @@ function Section({ icon: Icon, title, color = 'text-violet-400', children, defau
         <div className="flex items-center gap-2">
           <Icon className={`w-4 h-4 ${color}`} />
           <span className="text-sm font-semibold text-white">{title}</span>
+          {onAITrigger && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onAITrigger(); }}
+              className="ml-auto mr-2 p-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/40 text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-1"
+              title="Generate with AI"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              <span className="text-xs">AI</span>
+            </button>
+          )}
         </div>
         {open ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
       </button>
@@ -177,6 +189,8 @@ export default function BrandAssetsEditor({ identity }) {
 
   const set = (k, v) => setBrand(p => ({ ...p, [k]: v }));
 
+  const [aiGenerating, setAiGenerating] = useState(false);
+
   const saveMutation = useMutation({
     mutationFn: () => base44.entities.AIIdentity.update(identity.id, { brand_assets: brand }),
     onSuccess: () => {
@@ -185,6 +199,44 @@ export default function BrandAssetsEditor({ identity }) {
     },
     onError: err => toast.error(`Save failed: ${err.message}`),
   });
+
+  const generateBrandWithAI = async (section) => {
+    try {
+      setAiGenerating(true);
+      const result = await base44.functions.invoke('generateBrandAssets', {
+        identity_id: identity.id,
+        section,
+        current_brand: brand,
+      });
+      if (result.data?.generated) {
+        setBrand(p => ({ ...p, ...result.data.generated }));
+        toast.success(`${section} generated with AI`);
+      }
+    } catch (err) {
+      toast.error(`AI generation failed: ${err.message}`);
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const getSuggestionsForBrand = async () => {
+    try {
+      setAiGenerating(true);
+      const result = await base44.functions.invoke('getBrandSuggestions', {
+        identity_id: identity.id,
+        current_brand: brand,
+      });
+      if (result.data?.suggestions) {
+        toast.success('Brand suggestions loaded below');
+        // Render suggestions in a modal/panel
+        console.log('Suggestions:', result.data.suggestions);
+      }
+    } catch (err) {
+      toast.error(`Failed to get suggestions: ${err.message}`);
+    } finally {
+      setAiGenerating(false);
+    }
+  };
 
   if (!identity) return null;
 
@@ -203,7 +255,7 @@ export default function BrandAssetsEditor({ identity }) {
       </div>
 
       {/* 1. Visual Branding */}
-      <Section icon={Palette} title="Visual Branding" color="text-pink-400" defaultOpen={true}>
+      <Section icon={Palette} title="Visual Branding" color="text-pink-400" defaultOpen={true} onAITrigger={() => generateBrandWithAI('Visual Branding')}>
         <Field label="Color Palette">
           <div className="space-y-2">
             <ColorSwatch value={brand.primary_color} onChange={v => set('primary_color', v)} label="Primary" />
@@ -246,7 +298,7 @@ export default function BrandAssetsEditor({ identity }) {
       </Section>
 
       {/* 2. Written & Communication Style */}
-      <Section icon={PenLine} title="Written & Communication Style" color="text-blue-400">
+      <Section icon={PenLine} title="Written & Communication Style" color="text-blue-400" onAITrigger={() => generateBrandWithAI('Written & Communication Style')}>
         <Field label="Formality Level">
           <SingleSelect options={FORMALITY_LEVELS} value={brand.formality_level} onChange={v => set('formality_level', v)} color="blue" />
         </Field>
@@ -269,7 +321,7 @@ export default function BrandAssetsEditor({ identity }) {
       </Section>
 
       {/* 3. Behavioral Rules */}
-      <Section icon={Mic2} title="AI Behavioral Rules" color="text-amber-400">
+      <Section icon={Mic2} title="AI Behavioral Rules" color="text-amber-400" onAITrigger={() => generateBrandWithAI('AI Behavioral Rules')}>
         <Field label="Always Do" hint="Rules the AI must always follow for this identity">
           <TagList value={brand.always_rules} onChange={v => set('always_rules', v)} placeholder='e.g. "Always cite sources"' />
         </Field>
@@ -290,7 +342,7 @@ export default function BrandAssetsEditor({ identity }) {
       </Section>
 
       {/* 4. Professional Identity */}
-      <Section icon={Briefcase} title="Professional Identity & Metadata" color="text-emerald-400">
+      <Section icon={Briefcase} title="Professional Identity & Metadata" color="text-emerald-400" onAITrigger={() => generateBrandWithAI('Professional Identity & Metadata')}>
         <Field label="Industry Alignment">
           <ChipSelect options={INDUSTRY_OPTIONS} value={brand.industry_alignment} onChange={v => set('industry_alignment', v)} color="emerald" />
         </Field>
@@ -326,10 +378,21 @@ export default function BrandAssetsEditor({ identity }) {
         </Field>
       </Section>
 
+      {/* AI Suggestions Button */}
+      <Button
+        onClick={getSuggestionsForBrand}
+        disabled={aiGenerating}
+        variant="outline"
+        className="w-full border-cyan-500/30 text-cyan-400 hover:bg-cyan-600/10 gap-2"
+      >
+        {aiGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+        Get AI Suggestions for Easy Brand Creation
+      </Button>
+
       {/* Save */}
       <Button
         onClick={() => saveMutation.mutate()}
-        disabled={saveMutation.isPending}
+        disabled={saveMutation.isPending || aiGenerating}
         className="w-full bg-violet-600 hover:bg-violet-500 gap-2"
       >
         <Save className="w-4 h-4" />

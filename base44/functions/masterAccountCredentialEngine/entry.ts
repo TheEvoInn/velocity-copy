@@ -1,23 +1,10 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+
 /**
  * MASTER ACCOUNT CREDENTIAL ENGINE
  * Returns REAL verified user data for account creation
- * Uses AIIdentity KYC data or requests missing via intervention
+ * Uses AIIdentity KYC data + onboarding config + terminology matching
  */
-
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
-
-// Helper: Extract email from onboarding_config JSON blob
-function tryParseOnboardingEmail(configBlob) {
-  try {
-    if (typeof configBlob === 'string') {
-      const config = JSON.parse(configBlob);
-      return config.email || config.contact_email || config.user_email || null;
-    }
-    return configBlob?.email || configBlob?.contact_email || configBlob?.user_email || null;
-  } catch {
-    return null;
-  }
-}
 
 Deno.serve(async (req) => {
   try {
@@ -47,26 +34,89 @@ Deno.serve(async (req) => {
 
       const identity = identities[0];
 
-      // Check KYC data completeness — with multi-source email extraction
+      // Extract email & name from multiple sources with fallback chain
+      let extractedEmail = null;
+      let extractedName = null;
+      let extractionSource = {};
+
+      // Source 1: KYC verified data (highest priority)
       const kyc = identity.kyc_verified_data || {};
-      
-      // Terminology-aware email extraction (try multiple sources)
-      const extractedEmail = kyc.email 
-        || identity.email 
-        || (identity.onboarding_config ? tryParseOnboardingEmail(identity.onboarding_config) : null)
-        || user.email;
-      
-      const extractedName = kyc.full_legal_name 
-        || identity.name;
-      
+      if (kyc.email) {
+        extractedEmail = kyc.email;
+        extractionSource.email = 'kyc_verified_data';
+      }
+      if (kyc.full_legal_name) {
+        extractedName = kyc.full_legal_name;
+        extractionSource.name = 'kyc_verified_data';
+      }
+
+      // Source 2: Direct identity fields
+      if (!extractedEmail && identity.email) {
+        extractedEmail = identity.email;
+        extractionSource.email = 'identity_email';
+      }
+      if (!extractedName && identity.name) {
+        extractedName = identity.name;
+        extractionSource.name = 'identity_name';
+      }
+
+      // Source 3: Onboarding config (parse JSON blob for terminology-matched fields)
+      if (identity.onboarding_config && (!extractedEmail || !extractedName)) {
+        try {
+          const onboardingData = typeof identity.onboarding_config === 'string'
+            ? JSON.parse(identity.onboarding_config)
+            : identity.onboarding_config;
+          
+          // Search for email using terminology matching
+          if (!extractedEmail) {
+            const emailKeys = ['email', 'user_email', 'account_email', 'contact_email', 'primary_email'];
+            for (const key of emailKeys) {
+              if (onboardingData[key]) {
+                extractedEmail = onboardingData[key];
+                extractionSource.email = `onboarding_config.${key}`;
+                break;
+              }
+            }
+          }
+          
+          // Search for name using terminology matching
+          if (!extractedName) {
+            const nameKeys = ['full_name', 'legal_name', 'full_legal_name', 'name', 'display_name'];
+            for (const key of nameKeys) {
+              if (onboardingData[key]) {
+                extractedName = onboardingData[key];
+                extractionSource.name = `onboarding_config.${key}`;
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[MasterAccountCredentialEngine] Failed to parse onboarding_config:', e.message);
+        }
+      }
+
+      // Source 4: Fallback to authenticated user
+      if (!extractedEmail) {
+        extractedEmail = user.email;
+        extractionSource.email = 'user_email';
+      }
+      if (!extractedName) {
+        extractedName = user.full_name || identity.name || 'User';
+        extractionSource.name = 'user_full_name';
+      }
+
+      // Validate we have required data
       const hasRequiredData = extractedName && extractedEmail;
 
       if (!hasRequiredData) {
-        // Create intervention request for missing data
+        const missingFields = [];
+        if (!extractedName) missingFields.push('full_legal_name');
+        if (!extractedEmail) missingFields.push('email');
+        
         const intervention = await base44.asServiceRole.entities.UserIntervention.create({
           user_email: user.email,
           requirement_type: 'missing_data',
-          required_data: 'Complete identity profile (name, email) to enable account creation',
+          required_data: `Missing required fields: ${missingFields.join(', ')}`,
           data_schema: {
             type: 'object',
             properties: {
@@ -80,14 +130,15 @@ Deno.serve(async (req) => {
 
         return Response.json({
           success: false,
-          error: `Identity missing required data (name: ${!!extractedName}, email: ${!!extractedEmail})`,
+          error: `Missing required identity data: ${missingFields.join(', ')}`,
           need_intervention: true,
           intervention_id: intervention?.id,
-          intervention_type: 'complete_identity'
+          intervention_type: 'complete_identity',
+          missing_fields: missingFields
         }, { status: 400 });
       }
 
-      // Return real credentials from extracted data
+      // Return extracted real credentials
       return Response.json({
         success: true,
         credentials: {
@@ -95,7 +146,8 @@ Deno.serve(async (req) => {
           full_name: extractedName,
           phone: kyc.phone_number || '',
           identity_name: identity.name,
-          identity_id: identity.id
+          identity_id: identity.id,
+          extraction_sources: extractionSource
         }
       });
     }

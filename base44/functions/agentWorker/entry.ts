@@ -1,5 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
-import OpenAI from 'npm:openai@4.47.1';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 /**
  * Agent Worker v3.0 — Real Execution Engine
@@ -8,28 +7,34 @@ import OpenAI from 'npm:openai@4.47.1';
  *  - Entity automation trigger: body.event (TaskExecutionQueue updated to 'queued')
  */
 
-function getOpenAI() {
-  return new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') });
+// Uses Base44's built-in InvokeLLM integration — no external API key required
+async function llmComplete(messages, maxTokens = 1500, base44Client = null) {
+  const systemMsg = messages.find(m => m.role === 'system');
+  const userMsg = messages.find(m => m.role === 'user');
+  const prompt = systemMsg
+    ? `${systemMsg.content}\n\n${userMsg?.content || ''}`
+    : (userMsg?.content || '');
+
+  // Use base44 InvokeLLM via service role
+  const client = base44Client || _globalBase44;
+  if (!client) throw new Error('No base44 client available for LLM');
+
+  const res = await client.asServiceRole.integrations.Core.InvokeLLM({
+    prompt,
+    response_json_schema: null,
+  });
+  if (typeof res === 'string') return res;
+  if (res?.content) return res.content;
+  if (res?.text) return res.text;
+  return String(res);
 }
 
-async function llmComplete(messages, maxTokens = 1500) {
-  try {
-    const openai = getOpenAI();
-    const res = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages,
-      max_tokens: maxTokens,
-    });
-    return res.choices[0].message.content;
-  } catch (e) {
-    console.log(`[AgentWorker] OpenAI failed (${e.message}), trying fallback`);
-    throw new Error(`LLM unavailable: ${e.message}`);
-  }
-}
+let _globalBase44 = null;
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    _globalBase44 = base44;
     const body = await req.json().catch(() => ({}));
 
     if (body.event && body.event.entity_name === 'TaskExecutionQueue') {

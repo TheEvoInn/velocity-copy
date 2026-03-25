@@ -116,13 +116,16 @@ Only return valid, complete information. If no code or link found, return null f
                 continue;
               }
 
-              // Update message with extracted data
-              msg.verification_code = parsed.code || null;
-              msg.confirmation_link = parsed.link || null;
+              // Validate and assign extracted values
+              const code = parsed?.code?.trim() || null;
+              const link = parsed?.link?.trim() || null;
+
+              msg.verification_code = code && /^[a-zA-Z0-9]{4,8}$/.test(code) ? code : null;
+              msg.confirmation_link = link && link.startsWith('http') ? link : null;
               msg.processed = true;
 
-              if (parsed.code) codesExtracted++;
-              if (parsed.link) linksExtracted++;
+              if (msg.verification_code) codesExtracted++;
+              if (msg.confirmation_link) linksExtracted++;
 
               // Step 4: Update InPlatformEmail record
               const updatedMessages = emailRecord.messages.map(m =>
@@ -131,9 +134,9 @@ Only return valid, complete information. If no code or link found, return null f
 
               await base44.asServiceRole.entities.InPlatformEmail.update(emailRecord.id, {
                 messages: updatedMessages,
-                extracted_verification_code: parsed.code || emailRecord.extracted_verification_code,
-                extracted_confirmation_link: parsed.link || emailRecord.extracted_confirmation_link,
-                verification_status: parsed.code ? 'code_received' : (parsed.link ? 'link_received' : emailRecord.verification_status),
+                extracted_verification_code: msg.verification_code || emailRecord.extracted_verification_code,
+                extracted_confirmation_link: msg.confirmation_link || emailRecord.extracted_confirmation_link,
+                verification_status: msg.verification_code ? 'code_received' : (msg.confirmation_link ? 'link_received' : emailRecord.verification_status),
                 total_messages: (emailRecord.total_messages || 0) + 1,
                 unread_count: Math.max(0, (emailRecord.unread_count || 0) - 1)
               });
@@ -142,9 +145,10 @@ Only return valid, complete information. If no code or link found, return null f
                 message_id: msg.message_id,
                 from: msg.from,
                 subject: msg.subject,
-                code_extracted: !!parsed.code,
-                link_extracted: !!parsed.link,
-                confirm_type: parsed.confirm_type
+                code_extracted: !!msg.verification_code,
+                link_extracted: !!msg.confirmation_link,
+                confirm_type: parsed.confirm_type,
+                extracted_value: msg.verification_code || msg.confirmation_link
               });
 
             } catch (e) {
@@ -216,27 +220,29 @@ Only return valid, complete information. If no code or link found, return null f
                 ).catch(() => null);
 
                 if (linkedAcc && (results.codes_extracted > 0 || results.links_extracted > 0)) {
-                  await base44.asServiceRole.entities.LinkedAccountCreation.update(emailRecord.linked_account_id, {
-                    status: 'verification_received',
-                    verification_code_received: results.codes_extracted > 0,
-                    confirmation_link_received: results.links_extracted > 0,
-                    verification_date: new Date().toISOString()
-                  });
+                   const codeMsg = results.processed_messages.find(m => m.code_extracted);
+                   const linkMsg = results.processed_messages.find(m => m.link_extracted);
 
-                  // Trigger next step: complete account creation with actual extracted values
-                  const extractedCode = results.processed_messages
-                    .find(m => m.code_extracted)?.message_id || null;
-                  const extractedLink = results.processed_messages
-                    .find(m => m.link_extracted)?.message_id || null;
+                    await base44.asServiceRole.entities.LinkedAccountCreation.update(emailRecord.linked_account_id, {
+                     status: 'verification_received',
+                     verification_code_received: !!codeMsg,
+                     verification_code_value: codeMsg?.extracted_value || null,
+                     confirmation_link_received: !!linkMsg,
+                     confirmation_link_value: linkMsg?.extracted_value || null,
+                     verification_date: new Date().toISOString()
+                   });
+
+                   // Trigger next step: complete account creation with actual extracted values
 
                   await base44.asServiceRole.functions.invoke('accountCreationEmailWorkflow', {
                     action: 'verify_account',
                     account_id: emailRecord.linked_account_id,
                     identity_id: emailRecord.identity_id,
                     email_address: emailRecord.email_address,
-                    verification_code: extractedCode ? await getExtractedCode(base44, emailRecord.id, extractedCode) : null,
-                    confirmation_link: extractedLink ? await getExtractedLink(base44, emailRecord.id, extractedLink) : null,
-                    inbox_message_id: extractedCode || extractedLink
+                    verification_code: codeMsg?.extracted_value || null,
+                    confirmation_link: linkMsg?.extracted_value || null,
+                    inbox_email_id: emailRecord.id,
+                    is_real_data: true
                   }).catch(e => console.error('Verification trigger failed:', e.message));
                 }
               }
@@ -246,12 +252,23 @@ Only return valid, complete information. If no code or link found, return null f
           }
         }
 
+        // Notify user of extraction results
+        if (results.codes_extracted > 0 || results.links_extracted > 0) {
+          await base44.asServiceRole.entities.Notification.create({
+            type: 'autopilot_execution',
+            severity: 'info',
+            title: 'Verification Codes Extracted',
+            message: `🎯 Autopilot extracted ${results.codes_extracted} verification codes and ${results.links_extracted} confirmation links from incoming emails. Account verification workflows are now executing.`,
+            user_email: user.email
+          }).catch(() => null);
+        }
+        
         // Activity log
         await base44.asServiceRole.entities.ActivityLog.create({
           action_type: 'system',
-          message: `📧 Mailbox Engine: Processed ${results.emails_processed} mailboxes, extracted ${results.codes_extracted} codes + ${results.links_extracted} links`,
+          message: `📧 Mailbox Engine: Processed ${results.emails_processed} mailboxes, extracted ${results.codes_extracted} codes + ${results.links_extracted} links, triggered ${results.accounts_completed} verifications`,
           severity: results.errors.length > 0 ? 'warning' : 'success',
-          metadata: results
+          metadata: { ...results, real_data_only: true }
         }).catch(() => null);
 
         return Response.json({ success: true, ...results });
@@ -293,8 +310,17 @@ Only return valid, complete information. If no code or link found, return null f
         });
 
         const parsed = parseRes.code || parseRes.data;
-        targetMsg.verification_code = parsed?.code || null;
-        targetMsg.confirmation_link = parsed?.link || null;
+        targetMsg.verification_code = parsed?.code?.trim() || null;
+        targetMsg.confirmation_link = parsed?.link?.trim() || null;
+        
+        // Validate extracted values
+        if (targetMsg.verification_code && !/^[a-zA-Z0-9]{4,8}$/.test(targetMsg.verification_code)) {
+          targetMsg.verification_code = null;
+        }
+        if (targetMsg.confirmation_link && !targetMsg.confirmation_link.startsWith('http')) {
+          targetMsg.confirmation_link = null;
+        }
+        
         targetMsg.processed = true;
 
         await base44.asServiceRole.entities.InPlatformEmail.update(email_id, {

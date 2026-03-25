@@ -114,19 +114,43 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Step 4: Queue sign-up workflows for each identity × platform combination
+        // Step 4: Queue sign-up workflows and create TaskExecutionQueue records
         for (const identity of identities) {
           const emails = emailsByIdentity[identity.id] || [];
           
           for (const emailData of emails) {
             try {
-              // Initiate account creation workflow
+              // Create TaskExecutionQueue entry for this account creation
+              const taskRes = await base44.asServiceRole.entities.TaskExecutionQueue.create({
+                opportunity_id: `strategy_${strategy_name}_${identity.id}`,
+                url: `${emailData.platform}_signup`,
+                opportunity_type: 'signup',
+                platform: emailData.platform,
+                identity_id: identity.id,
+                identity_name: identity.name,
+                status: 'queued',
+                priority: 80,
+                estimated_value: 0,
+                queue_timestamp: new Date().toISOString(),
+                max_retries: 2,
+                execution_log: [{
+                  timestamp: new Date().toISOString(),
+                  step: 'strategy_queued',
+                  status: 'pending',
+                  details: `Queued via ${strategy_name} bulk strategy`
+                }]
+              });
+
+              // Initiate account creation workflow with task reference
               const workflowRes = await base44.asServiceRole.functions.invoke('accountCreationEmailWorkflow', {
                 action: 'start_account_creation',
                 identity_id: identity.id,
                 identity_name: identity.name,
                 platform: emailData.platform,
-                opportunity_id: `${strategy_name}_${identity.id}_${emailData.platform}`
+                email_address: emailData.email_address,
+                task_execution_id: taskRes.id,
+                is_bulk_strategy: true,
+                strategy_name
               });
 
               if (workflowRes.data?.success) {
@@ -158,48 +182,64 @@ Deno.serve(async (req) => {
           results.errors.push(`Sync orchestration failed: ${e.message}`);
         }
 
-        // Step 6: Log strategy execution
+        // Step 6: Notify user of execution
+        await base44.asServiceRole.entities.Notification.create({
+          type: 'autopilot_execution',
+          severity: 'success',
+          title: 'Bulk Strategy Executed',
+          message: `🚀 "${strategy_name}" deployed: ${results.identities_created} identities created, ${results.emails_generated} in-platform emails generated, ${results.workflows_queued} sign-up workflows queued for autonomous execution`,
+          user_email: user.email
+        }).catch(() => null);
+
+        // Step 7: Log strategy execution
         await base44.asServiceRole.entities.ActivityLog.create({
           action_type: 'system',
-          message: `🚀 Strategy executed: "${strategy_name}" — ${results.identities_created} identities, ${results.emails_generated} emails, ${results.workflows_queued} workflows queued`,
-          severity: 'success',
-          metadata: results
+          message: `🚀 Strategy "${strategy_name}": ${results.identities_created} identities, ${results.emails_generated} emails, ${results.workflows_queued} workflows queued, synced to Autopilot`,
+          severity: results.errors.length > 0 ? 'warning' : 'success',
+          metadata: { ...results, real_data_flows_through: true, strategy_id: results.strategy_id }
         }).catch(() => null);
 
         results.status = results.errors.length > 0 ? 'completed_with_errors' : 'completed_success';
+        results.ready_for_autopilot = results.workflows_queued > 0 && results.errors.length < results.identities_created;
 
         return Response.json({ success: true, ...results });
       }
 
-      // Get execution status
+      // Get execution status and related tasks
       case 'get_status': {
-        const { execution_id } = body;
+        const { strategy_id, execution_id } = body;
         
-        if (!execution_id) {
-          return Response.json({ error: 'execution_id required', status: 400 });
+        if (!strategy_id && !execution_id) {
+          return Response.json({ error: 'strategy_id or execution_id required', status: 400 });
         }
 
-        const logs = await base44.asServiceRole.entities.ActivityLog.filter(
-          { message: { $regex: execution_id } },
-          '-created_date',
-          1
-        ).catch(() => []);
+        // Fetch strategy and related tasks
+        const strategy = strategy_id
+          ? await base44.asServiceRole.entities.Strategy.get(strategy_id).catch(() => null)
+          : null;
 
-        const log = Array.isArray(logs) ? logs[0] : null;
-        
-        if (!log) {
-          return Response.json({ error: 'Execution not found', status: 404 });
-        }
+        // Get all tasks queued for this strategy
+        const tasks = strategy_id
+          ? await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+              { opportunity_id: { $regex: `strategy_${strategy?.title}` } },
+              '-created_date',
+              100
+            ).catch(() => [])
+          : [];
+
+        const tasksArray = Array.isArray(tasks) ? tasks : [];
+        const taskStats = {
+          queued: tasksArray.filter(t => t.status === 'queued').length,
+          processing: tasksArray.filter(t => t.status === 'processing').length,
+          completed: tasksArray.filter(t => t.status === 'completed').length,
+          failed: tasksArray.filter(t => t.status === 'failed').length
+        };
 
         return Response.json({
           success: true,
-          execution_id,
-          status: log.metadata?.status || 'unknown',
-          identities_created: log.metadata?.identities_created || 0,
-          emails_generated: log.metadata?.emails_generated || 0,
-          workflows_queued: log.metadata?.workflows_queued || 0,
-          total_workflows: log.metadata?.total_workflows || 0,
-          errors: log.metadata?.errors || []
+          strategy,
+          task_statistics: taskStats,
+          total_tasks: tasksArray.length
         });
       }
 

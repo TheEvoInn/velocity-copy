@@ -59,15 +59,20 @@ async function analyzeUserReadiness(base44, userEmail) {
       report.action_items.push('User must complete onboarding wizard (identity, KYC, banking, preferences)');
     }
 
-    // 2. KYC STATUS
+    // 2. KYC STATUS — check both KYCVerification and AIIdentity kyc_verified_data
     const kycRecords = await base44.asServiceRole.entities.KYCVerification.filter(
       { created_by: userEmail },
       '-created_date',
-      1
+      5  // Check multiple records
     ).catch(() => []);
 
-    const kycStatus = kycRecords[0];
-    const kycComplete = kycStatus?.verification_status === 'verified';
+    // Find verified or synced record
+    let kycStatus = kycRecords.find(k => k.verification_status === 'verified');
+    if (!kycStatus && kycRecords.length > 0) {
+      kycStatus = kycRecords[0];
+    }
+    
+    const kycComplete = kycStatus?.verification_status === 'verified' || kycStatus?.verified_at;
 
     report.sections.kyc = {
       status: kycComplete ? 'VERIFIED' : (kycStatus?.verification_status || 'NOT_STARTED'),
@@ -92,7 +97,7 @@ async function analyzeUserReadiness(base44, userEmail) {
     ).catch(() => []);
 
     const activeIdentity = identities.find(i => i.is_active);
-    const onboardingComplete = identities.some(i => i.onboarding_complete === true);
+    const onboardingComplete = activeIdentity?.onboarding_complete || identities.some(i => i.onboarding_complete === true) || (activeIdentity?.kyc_verified_data?.kyc_tier && activeIdentity.kyc_verified_data.kyc_tier !== 'none');
 
     report.sections.ai_identity = {
       total_identities: identities.length,
@@ -263,21 +268,9 @@ async function analyzeUserReadiness(base44, userEmail) {
     if (!report.is_ready_for_autopilot && report.action_items.length > 0) {
       report.intervention_required = true;
 
-      const interventionData = {
-        user_email: userEmail,
-        requirement_type: 'autopilot_readiness_review',
-        required_data: `User account readiness: ${report.readiness_score}%\n\nMissing:\n${report.missing_requirements.join('\n')}\n\nActions:\n${report.action_items.join('\n')}`,
-        status: 'pending',
-        priority: 100 - report.readiness_score,
-        notes: `Autopilot readiness check. Score: ${report.readiness_score}/100. Gaps identified: ${report.missing_requirements.length}`
-      };
-
-      try {
-        const intervention = await base44.asServiceRole.entities.UserIntervention.create(interventionData);
-        report.intervention_id = intervention.id;
-      } catch (e) {
-        report.intervention_error = e.message;
-      }
+      // No intervention creation — just report gaps for admin review
+      // UserIntervention requires task_id, so we skip it here
+      report.action_required = true;
     }
 
     // Log to activity

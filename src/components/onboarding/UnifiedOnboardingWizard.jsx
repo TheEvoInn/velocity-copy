@@ -493,29 +493,44 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
           onboarding_config: JSON.stringify({...formData, step: 'identity'}),
         });
       } else if (step.id === 'kyc') {
-        // Create KYC record if data provided
+        // Create KYC record with actual submitted data
         if (Object.values(formData).some(v => !!v)) {
           const kycs = await base44.entities.KYCVerification.filter({ user_email: user?.email }, '-created_date', 1);
           const kycId = kycs[0]?.id;
+          
+          // Build full name from identity step data if available in config
+          let fullName = '';
+          try {
+            const identConfig = localStorage.getItem(`onboarding_${identityId}_first_name`);
+            const lastNameConfig = localStorage.getItem(`onboarding_${identityId}_last_name`);
+            fullName = `${identConfig || ''} ${lastNameConfig || ''}`.trim();
+          } catch (e) {
+            fullName = formData.full_legal_name || '';
+          }
+          
+          const kycUpdate = {
+            full_legal_name: fullName || formData.full_legal_name || '',
+            government_id_type: formData.government_id_type || '',
+            government_id_number: formData.government_id_number || '',
+            government_id_expiry: formData.id_expiry || '',
+            date_of_birth: formData.date_of_birth || '',
+            residential_address: formData.address || '',
+            city: formData.city || '',
+            state: formData.state || '',
+            postal_code: formData.postal_code || '',
+            country: formData.country || '',
+            phone_number: formData.phone || '',
+            kyc_tier: 'basic',
+            verification_status: 'pending',
+            submitted_at: new Date().toISOString(),
+          };
+          
           if (kycId) {
-            await base44.entities.KYCVerification.update(kycId, {
-              full_legal_name: formData.full_legal_name || '',
-              government_id_type: formData.government_id_type || '',
-              government_id_number: formData.government_id_number || '',
-              date_of_birth: formData.date_of_birth || '',
-              residential_address: formData.address || '',
-              kyc_tier: 'basic',
-            });
+            await base44.entities.KYCVerification.update(kycId, kycUpdate);
           } else {
             await base44.entities.KYCVerification.create({
               user_email: user?.email,
-              full_legal_name: formData.full_legal_name || '',
-              government_id_type: formData.government_id_type || '',
-              government_id_number: formData.government_id_number || '',
-              date_of_birth: formData.date_of_birth || '',
-              residential_address: formData.address || '',
-              kyc_tier: 'basic',
-              verification_status: 'pending',
+              ...kycUpdate,
             });
           }
         }

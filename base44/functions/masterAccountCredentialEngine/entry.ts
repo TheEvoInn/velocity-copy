@@ -6,6 +6,19 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+// Helper: Extract email from onboarding_config JSON blob
+function tryParseOnboardingEmail(configBlob) {
+  try {
+    if (typeof configBlob === 'string') {
+      const config = JSON.parse(configBlob);
+      return config.email || config.contact_email || config.user_email || null;
+    }
+    return configBlob?.email || configBlob?.contact_email || configBlob?.user_email || null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);

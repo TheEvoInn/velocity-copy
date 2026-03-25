@@ -1,7 +1,7 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 /**
- * Withdrawal & Payout Management Engine - Phase 8
+ * Withdrawal & Payout Management Engine - Phase 8 + Tier 3 Integration
  * Automated settlement processing, multi-method payout routing,
  * tax withholding, compliance verification, fraud prevention
  */

@@ -412,7 +412,7 @@ Return JSON:
     }
   });
 
-  await base44.entities.ActivityLog.create({
+  await base44.asServiceRole.entities.ActivityLog.create({
     action_type: 'scan',
     message: `📊 SCOUT trend analysis complete — ${Object.keys(res || {}).length} signal categories collected`,
     severity: 'info',

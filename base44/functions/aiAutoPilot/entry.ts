@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 Deno.serve(async (req) => {
   try {
@@ -215,6 +215,7 @@ Respond with a JSON object:
 
     // Create AI task record
     const createdTask = await base44.asServiceRole.entities.AITask.create({
+      task_type: 'url_analysis',
       title: task.title,
       category: task.category,
       status: 'completed',
@@ -224,7 +225,8 @@ Respond with a JSON object:
       opportunity_id: task.opportunity_id || null,
       ai_reasoning: task.ai_reasoning,
       stream: 'ai_autonomous',
-      deposited: false
+      deposited: false,
+      priority: 50
     });
 
     // ── Log to AIWorkLog ──────────────────────────────────────────────────────

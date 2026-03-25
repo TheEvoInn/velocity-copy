@@ -1,19 +1,18 @@
 /**
- * DISCOVERY ENGINE v3
- * Expanded AI-powered work discovery — 25+ categories, keyword expansion,
- * online-only filtering, per-user isolation, autopilot sync
+ * DISCOVERY HUB — VELO AI
+ * AI Assistant: SCOUT
+ * 30+ categories · LLM internet scan · Keyword expansion · Online-only · AI-ready
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useCurrentUser, useUserOpportunities } from '@/hooks/useUserData';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  Search, RefreshCw, Sparkles, Filter, TrendingUp, Zap, Globe,
-  CheckCircle, Bot, Clock, DollarSign, Target, ChevronDown, ChevronUp, X, Radio
+  Search, RefreshCw, Sparkles, Filter, Zap, Globe,
+  CheckCircle, Bot, Clock, DollarSign, Target, ChevronDown, ChevronUp, Radio, Brain
 } from 'lucide-react';
 import DiscoveryScanStatus from '@/components/discovery/DiscoveryScanStatus';
 
-// ─── CATEGORY META ─────────────────────────────────────────────────────────────
 const CATEGORIES = {
   all:                  { label: 'All',               color: '#94a3b8', emoji: '🌐' },
   ai_training:          { label: 'AI Training',        color: '#a855f7', emoji: '🤖' },
@@ -44,14 +43,14 @@ const CATEGORIES = {
 
 const DIFFICULTY_COLOR = { beginner: '#10b981', intermediate: '#f9d65c', advanced: '#ef4444' };
 const SCAN_STEPS = [
-  '⚙️ Initializing keyword expansion engine...',
+  '⚙️ Initializing SCOUT keyword expansion engine...',
   '🔍 Expanding 200+ search terms across 30 categories...',
   '🌐 Scanning: Upwork · Fiverr · Rev · Appen · MTurk · Scale.ai · Outlier.ai · Remotasks...',
   '🤖 AI internet discovery — live scraping active opportunities...',
   '🚫 Filtering physical, phone-required, and non-online tasks...',
   '📊 Scoring by pay rate, speed, AI-fit, platform reliability...',
   '⚡ Task Reader parsing — converting to executable workflows...',
-  '✅ Discovery complete — syncing to your Autopilot queue!',
+  '✅ SCOUT discovery complete — syncing to Autopilot queue!',
 ];
 
 function OppCard({ opp, onQueueAutopilot }) {
@@ -65,7 +64,6 @@ function OppCard({ opp, onQueueAutopilot }) {
       onMouseEnter={e => { e.currentTarget.style.borderColor = `${color}55`; e.currentTarget.style.transform = 'translateY(-1px)'; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = `${color}22`; e.currentTarget.style.transform = 'translateY(0)'; }}>
 
-      {/* Top row */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs px-2 py-0.5 rounded-full font-orbitron"
@@ -92,15 +90,9 @@ function OppCard({ opp, onQueueAutopilot }) {
         )}
       </div>
 
-      {/* Title */}
       <div className="font-semibold text-sm text-white mb-1 leading-tight">{opp.title}</div>
+      {opp.platform && <div className="text-xs text-slate-500 mb-2">{opp.platform}</div>}
 
-      {/* Platform */}
-      {opp.platform && (
-        <div className="text-xs text-slate-500 mb-2">{opp.platform}</div>
-      )}
-
-      {/* Metrics row */}
       <div className="flex items-center gap-3 mb-3">
         {opp.estimated_pay > 0 && (
           <span className="flex items-center gap-1 text-xs font-mono text-emerald-400">
@@ -119,7 +111,6 @@ function OppCard({ opp, onQueueAutopilot }) {
         )}
       </div>
 
-      {/* Score bar */}
       {opp.score > 0 && (
         <div className="mb-3">
           <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
@@ -129,7 +120,6 @@ function OppCard({ opp, onQueueAutopilot }) {
         </div>
       )}
 
-      {/* Expandable description */}
       {opp.description && (
         <div>
           <button onClick={() => setExpanded(e => !e)}
@@ -137,16 +127,12 @@ function OppCard({ opp, onQueueAutopilot }) {
             {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             {expanded ? 'Less' : 'Details'}
           </button>
-          {expanded && (
-            <div className="text-xs text-slate-400 leading-relaxed">{opp.description}</div>
-          )}
+          {expanded && <div className="text-xs text-slate-400 leading-relaxed">{opp.description}</div>}
         </div>
       )}
 
-      {/* Autopilot queue button */}
       {opp.can_ai_complete && opp.status === 'discovered' && (
-        <button
-          onClick={() => onQueueAutopilot(opp)}
+        <button onClick={() => onQueueAutopilot(opp)}
           className="mt-3 w-full py-1.5 rounded-xl text-xs font-orbitron tracking-wide transition-all"
           style={{ background: 'rgba(0,232,255,0.06)', border: '1px solid rgba(0,232,255,0.2)', color: '#00e8ff' }}>
           ⚡ Queue for Autopilot
@@ -200,7 +186,6 @@ export default function Discovery() {
   const [maxTime, setMaxTime] = useState(999);
   const [lastScanResult, setLastScanResult] = useState(null);
 
-  // Filter & sort
   const opportunities = useMemo(() => {
     let opps = [...rawOpps];
     if (catFilter !== 'all') opps = opps.filter(o => o.category === catFilter);
@@ -215,7 +200,6 @@ export default function Discovery() {
     return opps;
   }, [rawOpps, catFilter, diffFilter, aiOnly, sortBy, minPay, maxTime]);
 
-  // Category counts
   const catCounts = useMemo(() => {
     const counts = {};
     rawOpps.forEach(o => { counts[o.category] = (counts[o.category] || 0) + 1; });
@@ -231,26 +215,21 @@ export default function Discovery() {
       setScanProgress(Math.round(((i + 1) / SCAN_STEPS.length) * 100));
       await new Promise(r => setTimeout(r, 450));
     }
-    try {
-      const res = await base44.functions.invoke('discoveryEngine', {
-        action: 'full_scan',
-        user_email: user?.email,
-        filters: filtersPayload,
-      });
-      setLastScanResult(res.data);
-      qc.invalidateQueries({ queryKey: ['opportunities'] });
-      refetch();
-    } catch {}
+    const res = await base44.functions.invoke('discoveryEngine', {
+      action: 'full_scan',
+      user_email: user?.email,
+      filters: filtersPayload,
+    });
+    setLastScanResult(res.data);
+    qc.invalidateQueries({ queryKey: ['opportunities'] });
+    refetch();
     setIsScanning(false);
     setScanStep('');
     setScanProgress(0);
   }
 
   async function handleQueueAutopilot(opp) {
-    await base44.entities.WorkOpportunity.update(opp.id, {
-      autopilot_queued: true,
-      status: 'evaluating',
-    }).catch(() => null);
+    await base44.entities.WorkOpportunity.update(opp.id, { autopilot_queued: true, status: 'evaluating' });
     qc.invalidateQueries({ queryKey: ['opportunities'] });
   }
 
@@ -266,19 +245,19 @@ export default function Discovery() {
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
 
-      {/* ── HEADER ── */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-            style={{ background: 'rgba(249,214,92,0.1)', border: '1px solid rgba(249,214,92,0.3)' }}>
-            <Search className="w-6 h-6 text-amber-400" />
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-2 h-8 rounded-full" style={{ background: 'linear-gradient(to bottom, #f59e0b, #f97316)' }} />
+            <div>
+              <h1 className="font-orbitron text-3xl font-bold text-white">DISCOVERY HUB</h1>
+              <p className="text-[10px] font-mono tracking-widest text-amber-400/70">VELO AI · AI: SCOUT</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-orbitron text-xl font-bold text-white tracking-widest">DISCOVERY ENGINE</h1>
-            <p className="text-xs text-slate-500 font-mono">30+ categories · LLM internet scan · Keyword expansion · Online-only · AI-ready</p>
-          </div>
+          <p className="text-slate-400 text-sm ml-5">30+ categories · LLM internet scan · Keyword expansion · Online-only · AI-ready</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <button onClick={() => setShowFilters(f => !f)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-orbitron transition-all"
             style={{
@@ -308,7 +287,18 @@ export default function Discovery() {
         </div>
       </div>
 
-      {/* ── SCAN STATUS (progress + results) ── */}
+      {/* SCOUT AI Status */}
+      <div className="rounded-2xl p-3 flex items-center gap-3 mb-5"
+        style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)' }}>
+        <Brain className="w-4 h-4 text-amber-400 shrink-0" />
+        <div>
+          <span className="text-xs font-orbitron text-amber-400 tracking-wider">SCOUT INTELLIGENCE ENGINE</span>
+          <p className="text-xs text-slate-500">Scanning 30+ categories · Sourcing opportunities · Syncing to Autopilot queue</p>
+        </div>
+        <span className="text-xs text-amber-400 font-mono px-2 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 shrink-0 ml-auto">ACTIVE</span>
+      </div>
+
+      {/* Scan Status */}
       <DiscoveryScanStatus
         isScanning={isScanning}
         progress={scanProgress}
@@ -317,13 +307,12 @@ export default function Discovery() {
         onDismiss={() => setLastScanResult(null)}
       />
 
-      {/* ── FILTER PANEL ── */}
+      {/* Filter Panel */}
       {showFilters && (
         <div className="mb-5 p-5 rounded-2xl space-y-4"
           style={{ background: 'rgba(10,15,42,0.8)', border: '1px solid rgba(168,85,247,0.2)' }}>
-          <div className="font-orbitron text-xs text-slate-400 tracking-widest mb-3">FILTER & SORT</div>
+          <div className="font-orbitron text-xs text-slate-400 tracking-widest mb-3">SCOUT FILTERS</div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* Sort */}
             <div>
               <label className="text-xs font-orbitron text-slate-500 tracking-widest mb-1 block">SORT BY</label>
               <select value={sortBy} onChange={e => setSortBy(e.target.value)}
@@ -335,7 +324,6 @@ export default function Discovery() {
                 <option value="new">Newest</option>
               </select>
             </div>
-            {/* Difficulty */}
             <div>
               <label className="text-xs font-orbitron text-slate-500 tracking-widest mb-1 block">DIFFICULTY</label>
               <select value={diffFilter} onChange={e => setDiffFilter(e.target.value)}
@@ -347,7 +335,6 @@ export default function Discovery() {
                 <option value="advanced">Advanced</option>
               </select>
             </div>
-            {/* Min Pay */}
             <div>
               <label className="text-xs font-orbitron text-slate-500 tracking-widest mb-1 block">
                 MIN PAY: <span className="text-emerald-400">${minPay}</span>
@@ -357,7 +344,6 @@ export default function Discovery() {
                 className="w-full h-1 rounded-full appearance-none cursor-pointer"
                 style={{ background: `linear-gradient(90deg, #10b981 ${minPay / 2}%, #1e293b ${minPay / 2}%)` }} />
             </div>
-            {/* Max Time */}
             <div>
               <label className="text-xs font-orbitron text-slate-500 tracking-widest mb-1 block">
                 MAX TIME: <span className="text-cyan-400">{maxTime >= 999 ? 'Any' : `${maxTime}m`}</span>
@@ -368,7 +354,6 @@ export default function Discovery() {
                 style={{ background: `linear-gradient(90deg, #00e8ff ${maxTime / 10}%, #1e293b ${maxTime / 10}%)` }} />
             </div>
           </div>
-          {/* AI toggle */}
           <div className="flex items-center gap-3">
             <button onClick={() => setAiOnly(v => !v)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-orbitron transition-all"
@@ -384,8 +369,7 @@ export default function Discovery() {
               Reset
             </button>
             {rawOpps.length > 0 && (
-              <button onClick={clearAll}
-                className="ml-auto text-xs text-red-800 hover:text-red-500 font-orbitron transition-colors">
+              <button onClick={clearAll} className="ml-auto text-xs text-red-800 hover:text-red-500 font-orbitron transition-colors">
                 Clear All
               </button>
             )}
@@ -393,10 +377,9 @@ export default function Discovery() {
         </div>
       )}
 
-      {/* ── SUMMARY STATS ── */}
       <SummaryBar opportunities={rawOpps} />
 
-      {/* ── CATEGORY PILLS ── */}
+      {/* Category Pills */}
       <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none">
         {activeCatList.map(([key, meta]) => (
           <button key={key} onClick={() => setCatFilter(key)}
@@ -414,7 +397,7 @@ export default function Discovery() {
         ))}
       </div>
 
-      {/* ── OPPORTUNITY GRID ── */}
+      {/* Opportunity Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
@@ -424,12 +407,12 @@ export default function Discovery() {
           <Globe className="w-16 h-16 text-slate-700 mx-auto mb-4" />
           <p className="font-orbitron text-lg text-slate-600 mb-2">No Opportunities Found</p>
           <p className="text-xs text-slate-700 mb-6 max-w-sm mx-auto">
-            Run a Full Scan to discover work across 25+ online categories — AI training, transcription, micro-tasks, writing, and more.
+            Run a Full Scan to let SCOUT discover work across 25+ online categories.
           </p>
           <button onClick={() => runFullScan()} disabled={isScanning}
             className="px-8 py-3 rounded-xl font-orbitron text-sm tracking-widest transition-all"
             style={{ background: 'linear-gradient(135deg, rgba(249,214,92,0.15), rgba(255,46,196,0.08))', border: '1px solid rgba(249,214,92,0.4)', color: '#f9d65c' }}>
-            <Sparkles className="w-4 h-4 inline mr-2" />LAUNCH DISCOVERY SCAN
+            <Sparkles className="w-4 h-4 inline mr-2" />LAUNCH SCOUT SCAN
           </button>
         </div>
       ) : (
@@ -440,11 +423,10 @@ export default function Discovery() {
         </div>
       )}
 
-      {/* ── CATEGORY LEGEND ── */}
       {rawOpps.length > 0 && (
         <div className="mt-8 p-5 rounded-2xl"
           style={{ background: 'rgba(10,15,42,0.5)', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="font-orbitron text-xs text-slate-600 tracking-widest mb-4">DISCOVERY COVERAGE — 25+ WORK CATEGORIES</div>
+          <div className="font-orbitron text-xs text-slate-600 tracking-widest mb-4">SCOUT COVERAGE — 25+ WORK CATEGORIES</div>
           <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2">
             {Object.entries(CATEGORIES).filter(([k]) => k !== 'all').map(([key, meta]) => (
               <div key={key} className="text-center p-2 rounded-xl cursor-pointer"

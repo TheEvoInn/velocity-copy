@@ -1,37 +1,40 @@
+/**
+ * AUTOPILOT HUB — VELO AI
+ * AI Assistant: APEX
+ * Master switch, task queue, execution logs, and workflow management
+ */
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Power, Zap, AlertTriangle, CheckCircle, Clock, XCircle, Cpu, LogOut, Settings, Plus } from 'lucide-react';
+import { Power, Zap, AlertTriangle, CheckCircle, Clock, XCircle, Cpu, Settings, Brain, Link } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { Link as RouterLink } from 'react-router-dom';
 
 export default function VeloAutopilotControl() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  useIdentitySyncAcrossApp(); // Real-time sync
+  useIdentitySyncAcrossApp();
 
   const [autopilotEnabled, setAutopilotEnabled] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // Fetch user goals (contains autopilot_enabled flag)
   const { data: goals } = useQuery({
     queryKey: ['userGoals', user?.email],
     queryFn: () => base44.entities.UserGoals.filter({ created_by: user?.email }).then(r => r[0]),
     enabled: !!user?.email,
   });
 
-  // Fetch all active tasks
   const { data: tasks = [], isLoading: loadingTasks } = useQuery({
     queryKey: ['aiTasks', user?.email],
     queryFn: () => base44.entities.AITask.filter({ created_by: user?.email }),
     enabled: !!user?.email,
   });
 
-  // Fetch task execution logs
   const { data: execLogs = [] } = useQuery({
     queryKey: ['taskExecutionLogs', user?.email],
     queryFn: () => base44.entities.EngineAuditLog.filter({ created_by: user?.email }),
@@ -39,9 +42,18 @@ export default function VeloAutopilotControl() {
     staleTime: 5000,
   });
 
-  // Toggle autopilot mutation
+  const { data: activeIdentity } = useQuery({
+    queryKey: ['activeIdentity', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return null;
+      const identities = await base44.entities.AIIdentity.filter({ user_email: user.email, is_active: true }, '-last_used_at', 1);
+      return identities.length > 0 ? identities[0] : null;
+    },
+    enabled: !!user?.email,
+  });
+
   const toggleAutopilotMutation = useMutation({
-    mutationFn: (enabled) => 
+    mutationFn: (enabled) =>
       base44.entities.UserGoals.update(goals?.id, { autopilot_enabled: enabled }),
     onSuccess: (_, enabled) => {
       setAutopilotEnabled(enabled);
@@ -50,34 +62,20 @@ export default function VeloAutopilotControl() {
   });
 
   useEffect(() => {
-    if (goals?.autopilot_enabled !== undefined) {
-      setAutopilotEnabled(goals.autopilot_enabled);
-    }
+    if (goals?.autopilot_enabled !== undefined) setAutopilotEnabled(goals.autopilot_enabled);
   }, [goals?.autopilot_enabled]);
 
-  // REAL-TIME SUBSCRIPTIONS: Listen for admin approvals and task updates
+  // Real-time subscriptions
   useEffect(() => {
     if (!user?.email) return;
-    const unsubscribeAITask = base44.entities.AITask.subscribe((event) => {
-      console.log('[VeloAutopilotControl] AITask update:', event.type);
-      qc.invalidateQueries({ queryKey: ['aiTasks', user?.email] });
-    });
-    const unsubscribeAudit = base44.entities.EngineAuditLog.subscribe((event) => {
-      console.log('[VeloAutopilotControl] Audit log update:', event.type);
-      qc.invalidateQueries({ queryKey: ['taskExecutionLogs', user?.email] });
-    });
-    const unsubscribeGoals = base44.entities.UserGoals.subscribe((event) => {
-      console.log('[VeloAutopilotControl] UserGoals update:', event.type);
-      qc.invalidateQueries({ queryKey: ['userGoals', user?.email] });
-    });
-    return () => {
-      unsubscribeAITask();
-      unsubscribeAudit();
-      unsubscribeGoals();
-    };
+    const u1 = base44.entities.AITask.subscribe(() => qc.invalidateQueries({ queryKey: ['aiTasks', user.email] }));
+    const u2 = base44.entities.EngineAuditLog.subscribe(() => qc.invalidateQueries({ queryKey: ['taskExecutionLogs', user.email] }));
+    const u3 = base44.entities.UserGoals.subscribe(() => qc.invalidateQueries({ queryKey: ['userGoals', user.email] }));
+    const u4 = base44.entities.AIIdentity.subscribe(() => qc.invalidateQueries({ queryKey: ['activeIdentity', user.email] }));
+    return () => { u1(); u2(); u3(); u4(); };
   }, [user?.email, qc]);
 
-  const getTaskStatusColor = (status) => {
+  const getStatusColor = (status) => {
     switch (status) {
       case 'completed': return 'text-emerald-400';
       case 'executing': return 'text-cyan-400';
@@ -92,54 +90,91 @@ export default function VeloAutopilotControl() {
       case 'completed': return <CheckCircle className="w-4 h-4" />;
       case 'executing': return <Cpu className="w-4 h-4 animate-spin" />;
       case 'failed': return <XCircle className="w-4 h-4" />;
-      case 'queued': return <Clock className="w-4 h-4" />;
       default: return <Clock className="w-4 h-4" />;
     }
   };
 
-  const filteredTasks = filterStatus === 'all' 
-    ? tasks 
-    : tasks.filter(t => t.status === filterStatus);
-
+  const filteredTasks = filterStatus === 'all' ? tasks : tasks.filter(t => t.status === filterStatus);
   const stats = {
     total: tasks.length,
     completed: tasks.filter(t => t.status === 'completed').length,
     executing: tasks.filter(t => t.status === 'executing').length,
     failed: tasks.filter(t => t.status === 'failed').length,
+    queued: tasks.filter(t => t.status === 'queued').length,
   };
 
   return (
     <div className="min-h-screen pt-20 pb-8 px-4 md:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
+      <div className="max-w-7xl mx-auto space-y-6">
+
         {/* Header */}
         <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <h1 className="font-orbitron text-4xl font-bold text-white flex items-center gap-3">
-              <Zap className="w-10 h-10 text-amber-400" />
-              VELO Autopilot Control
-            </h1>
-            <p className="text-slate-400">Master switch, task queue, and real-time execution hub</p>
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-2 h-8 rounded-full" style={{ background: 'linear-gradient(to bottom, #fbbf24, #f97316)' }} />
+              <div>
+                <h1 className="font-orbitron text-3xl font-bold text-white">AUTOPILOT HUB</h1>
+                <p className="text-[10px] font-mono tracking-widest text-amber-400/70">VELO AI · AI: APEX</p>
+              </div>
+            </div>
+            <p className="text-slate-400 text-sm ml-5">Master execution engine — tasks, workflows, strategies, and autonomous operations</p>
           </div>
+          {activeIdentity && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs"
+              style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)' }}>
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-amber-300 font-mono">Identity: {activeIdentity.name}</span>
+            </div>
+          )}
         </div>
 
+        {/* APEX AI Status */}
+        <div className="rounded-2xl p-4 flex items-center gap-3"
+          style={{ background: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.2)' }}>
+          <Brain className="w-5 h-5 text-amber-400 shrink-0" />
+          <div className="flex-1">
+            <span className="text-xs font-orbitron text-amber-400 tracking-wider">APEX EXECUTION ENGINE</span>
+            <p className="text-xs text-slate-500 mt-0.5">Managing task queue · Executing workflows · Syncing with Identity, Discovery, Finance · Reporting to Command Hub</p>
+          </div>
+          <span className={`text-xs font-mono px-2 py-1 rounded-lg border shrink-0 ${
+            autopilotEnabled ? 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10' : 'text-slate-500 border-slate-600/30 bg-slate-800/40'
+          }`}>{autopilotEnabled ? 'LIVE' : 'IDLE'}</span>
+        </div>
+
+        {/* Identity Check */}
+        {!activeIdentity && (
+          <div className="rounded-2xl p-4 flex items-center justify-between"
+            style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.3)' }}>
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-orange-400" />
+              <div>
+                <span className="text-orange-400 font-orbitron text-xs tracking-wider block">NO ACTIVE IDENTITY</span>
+                <p className="text-xs text-slate-500">Autopilot requires an active VELO AI identity to execute tasks</p>
+              </div>
+            </div>
+            <RouterLink to="/VeloIdentityHub">
+              <Button size="sm" variant="outline" className="text-orange-400 border-orange-400/40 text-xs">
+                Go to Identity Hub
+              </Button>
+            </RouterLink>
+          </div>
+        )}
+
         {/* Master Switch */}
-        <Card className={`glass-card border-2 transition-all ${
-          autopilotEnabled ? 'border-emerald-500/60' : 'border-slate-700/50'
-        }`}>
+        <Card className={`glass-card border-2 transition-all ${autopilotEnabled ? 'border-emerald-500/60' : 'border-slate-700/50'}`}>
           <CardContent className="p-8">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-orbitron text-2xl font-bold text-white mb-1">Master Autopilot Switch</h2>
-                <p className="text-slate-400">
-                  {autopilotEnabled 
-                    ? '✓ Autopilot is LIVE and executing tasks autonomously' 
-                    : '● Autopilot is OFF. Enable to start autonomous execution'}
+                <p className="text-slate-400 text-sm">
+                  {autopilotEnabled
+                    ? `✓ APEX is LIVE — Executing tasks autonomously using ${activeIdentity?.name || 'active identity'}`
+                    : '● APEX is IDLE — Enable to start autonomous task execution'}
                 </p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <div className={`text-3xl font-bold ${autopilotEnabled ? 'text-emerald-400' : 'text-slate-500'}`}>
+                  <div className={`text-3xl font-bold font-orbitron ${autopilotEnabled ? 'text-emerald-400' : 'text-slate-500'}`}>
                     {autopilotEnabled ? 'ON' : 'OFF'}
                   </div>
                   <div className={`text-xs font-orbitron tracking-wider ${autopilotEnabled ? 'text-emerald-500' : 'text-slate-500'}`}>
@@ -151,16 +186,14 @@ export default function VeloAutopilotControl() {
                   disabled={toggleAutopilotMutation.isPending || !goals?.id}
                   className="relative w-16 h-16 rounded-2xl flex items-center justify-center transition-all"
                   style={{
-                    background: autopilotEnabled 
+                    background: autopilotEnabled
                       ? 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05))'
                       : 'rgba(255,255,255,0.05)',
                     border: `2px solid ${autopilotEnabled ? 'rgba(16,185,129,0.6)' : 'rgba(255,255,255,0.1)'}`,
                     boxShadow: autopilotEnabled ? '0 0 20px rgba(16,185,129,0.3)' : 'none',
                   }}
                 >
-                  <Power className={`w-7 h-7 transition-all ${
-                    autopilotEnabled ? 'text-emerald-400' : 'text-slate-500'
-                  }`} />
+                  <Power className={`w-7 h-7 transition-all ${autopilotEnabled ? 'text-emerald-400' : 'text-slate-500'}`} />
                 </button>
               </div>
             </div>
@@ -168,55 +201,39 @@ export default function VeloAutopilotControl() {
         </Card>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="glass-card border-cyan-500/20">
-            <CardContent className="p-4">
-              <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Total Tasks</div>
-              <div className="text-3xl font-bold text-cyan-400">{stats.total}</div>
-            </CardContent>
-          </Card>
-          <Card className="glass-card border-emerald-500/20">
-            <CardContent className="p-4">
-              <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Completed</div>
-              <div className="text-3xl font-bold text-emerald-400">{stats.completed}</div>
-            </CardContent>
-          </Card>
-          <Card className="glass-card border-amber-500/20">
-            <CardContent className="p-4">
-              <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Executing</div>
-              <div className="text-3xl font-bold text-amber-400">{stats.executing}</div>
-            </CardContent>
-          </Card>
-          <Card className="glass-card border-red-500/20">
-            <CardContent className="p-4">
-              <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Failed</div>
-              <div className="text-3xl font-bold text-red-400">{stats.failed}</div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[
+            { label: 'Total Tasks', value: stats.total, color: '#818cf8' },
+            { label: 'Completed', value: stats.completed, color: '#10b981' },
+            { label: 'Executing', value: stats.executing, color: '#00e8ff' },
+            { label: 'Queued', value: stats.queued, color: '#fbbf24' },
+            { label: 'Failed', value: stats.failed, color: '#ef4444' },
+          ].map(s => (
+            <Card key={s.label} className="glass-card" style={{ borderColor: s.color + '30' }}>
+              <CardContent className="p-4">
+                <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">{s.label}</div>
+                <div className="text-3xl font-bold font-orbitron" style={{ color: s.color }}>{s.value}</div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Main Tabs */}
         <Tabs defaultValue="queue" className="space-y-4">
-          <TabsList className="glass-card">
+          <TabsList className="glass-card flex-wrap h-auto gap-1">
             <TabsTrigger value="queue">Task Queue ({filteredTasks.length})</TabsTrigger>
             <TabsTrigger value="logs">Execution Logs</TabsTrigger>
             <TabsTrigger value="policies">Policies & Rules</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
-          {/* Task Queue Tab */}
           <TabsContent value="queue" className="space-y-4">
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-4 flex-wrap">
               {['all', 'queued', 'executing', 'completed', 'failed'].map(status => (
-                <button
-                  key={status}
-                  onClick={() => setFilterStatus(status)}
+                <button key={status} onClick={() => setFilterStatus(status)}
                   className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                    filterStatus === status
-                      ? 'bg-violet-500 text-white'
-                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
-                  }`}
-                >
+                    filterStatus === status ? 'bg-amber-500 text-black' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                  }`}>
                   {status === 'all' ? 'All Tasks' : status.charAt(0).toUpperCase() + status.slice(1)}
                 </button>
               ))}
@@ -224,12 +241,14 @@ export default function VeloAutopilotControl() {
 
             {loadingTasks ? (
               <div className="flex justify-center py-8">
-                <div className="w-8 h-8 border-4 border-violet-500/20 border-t-violet-500 rounded-full animate-spin" />
+                <div className="w-8 h-8 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
               </div>
             ) : filteredTasks.length === 0 ? (
-              <Card className="glass-card text-center py-12">
-                <Cpu className="w-12 h-12 text-slate-600 mx-auto mb-4 opacity-50" />
-                <p className="text-slate-400">No tasks in this status.</p>
+              <Card className="glass-card">
+                <CardContent className="text-center py-12">
+                  <Cpu className="w-12 h-12 text-slate-600 mx-auto mb-4 opacity-50" />
+                  <p className="text-slate-400">No tasks in this status. {!autopilotEnabled && 'Enable Autopilot to begin.'}</p>
+                </CardContent>
               </Card>
             ) : (
               <div className="space-y-3">
@@ -239,21 +258,17 @@ export default function VeloAutopilotControl() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={`${getTaskStatusColor(task.status)} font-bold text-xs uppercase`}>
-                              {task.status}
-                            </span>
-                            <h4 className="font-orbitron text-white">{task.task_name || task.task_type}</h4>
+                            <span className={`${getStatusColor(task.status)} font-bold text-xs uppercase`}>{task.status}</span>
+                            <h4 className="font-orbitron text-white text-sm">{task.task_name || task.task_type}</h4>
                           </div>
                           <p className="text-xs text-slate-400 mb-2">{task.url || task.task_type}</p>
                           <div className="flex gap-4 text-xs text-slate-500">
                             <div>Priority: <span className="text-white">{task.priority || 50}</span></div>
                             <div>Retries: <span className="text-white">{task.retry_count || 0}</span></div>
-                            <div>Created: <span className="text-white">{new Date(task.created_at).toLocaleDateString()}</span></div>
+                            <div>Created: <span className="text-white">{task.created_at ? new Date(task.created_at).toLocaleDateString() : '—'}</span></div>
                           </div>
                         </div>
-                        <div className={`${getTaskStatusColor(task.status)}`}>
-                          {getStatusIcon(task.status)}
-                        </div>
+                        <div className={getStatusColor(task.status)}>{getStatusIcon(task.status)}</div>
                       </div>
                     </CardContent>
                   </Card>
@@ -262,90 +277,100 @@ export default function VeloAutopilotControl() {
             )}
           </TabsContent>
 
-          {/* Logs Tab */}
-          <TabsContent value="logs" className="space-y-4">
-            <div className="space-y-3">
-              {execLogs.slice(0, 20).map(log => (
-                <Card key={log.id} className="glass-card">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <div className="font-orbitron text-white text-sm mb-1">{log.action_type}</div>
-                        <p className="text-xs text-slate-400">{log.ai_reasoning || log.details || 'No details'}</p>
-                      </div>
-                      <span className={`text-xs font-bold ${
-                        log.status === 'success' ? 'text-emerald-400' :
-                        log.status === 'failed' ? 'text-red-400' :
-                        'text-amber-400'
-                      }`}>
-                        {log.status?.toUpperCase()}
-                      </span>
+          <TabsContent value="logs" className="space-y-3">
+            {execLogs.length === 0 ? (
+              <Card className="glass-card">
+                <CardContent className="text-center py-12">
+                  <p className="text-slate-400">No execution logs yet.</p>
+                </CardContent>
+              </Card>
+            ) : execLogs.slice(0, 20).map(log => (
+              <Card key={log.id} className="glass-card">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="font-orbitron text-white text-sm mb-1">{log.action_type}</div>
+                      <p className="text-xs text-slate-400">{log.ai_reasoning || log.details || 'No details'}</p>
                     </div>
-                    {log.amount && (
-                      <div className="text-sm font-semibold text-cyan-400 mb-2">
-                        ${log.amount.toFixed(2)}
-                      </div>
-                    )}
-                    <div className="text-[10px] text-slate-600">
-                      {new Date(log.created_date).toLocaleString()}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    <span className={`text-xs font-bold ${
+                      log.status === 'success' ? 'text-emerald-400' :
+                      log.status === 'failed' ? 'text-red-400' : 'text-amber-400'
+                    }`}>{log.status?.toUpperCase()}</span>
+                  </div>
+                  {log.amount && <div className="text-sm font-semibold text-cyan-400 mb-2">${log.amount.toFixed(2)}</div>}
+                  <div className="text-[10px] text-slate-600">{new Date(log.created_date).toLocaleString()}</div>
+                </CardContent>
+              </Card>
+            ))}
           </TabsContent>
 
-          {/* Policies Tab */}
           <TabsContent value="policies" className="space-y-4">
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle>Execution Policies</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-amber-400" />
+                  APEX Execution Policies
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50">
-                  <div className="text-sm font-semibold text-white mb-1">Auto-Queue Opportunities</div>
-                  <p className="text-xs text-slate-400 mb-3">Automatically add matching opportunities to the task queue</p>
-                  <Switch defaultChecked />
-                </div>
-                <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50">
-                  <div className="text-sm font-semibold text-white mb-1">Auto-Execute Ready Tasks</div>
-                  <p className="text-xs text-slate-400 mb-3">Execute tasks as soon as all dependencies are met</p>
-                  <Switch defaultChecked />
-                </div>
-                <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50">
-                  <div className="text-sm font-semibold text-white mb-1">Retry Failed Tasks</div>
-                  <p className="text-xs text-slate-400 mb-3">Automatically retry failed tasks up to N times</p>
-                  <Switch defaultChecked />
-                </div>
+                {[
+                  { title: 'Auto-Queue Opportunities', desc: 'Automatically add matching opportunities from Discovery Hub to the task queue' },
+                  { title: 'Auto-Execute Ready Tasks', desc: 'Execute tasks as soon as all dependencies are met' },
+                  { title: 'Retry Failed Tasks', desc: 'Automatically retry failed tasks up to 3 times with backoff' },
+                ].map(policy => (
+                  <div key={policy.title} className="p-4 rounded-xl bg-slate-900/50 border border-slate-700/50 flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-white mb-1">{policy.title}</div>
+                      <p className="text-xs text-slate-400">{policy.desc}</p>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-4">
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-violet-400" />
-                  Autopilot Settings
+                  <Brain className="w-5 h-5 text-amber-400" />
+                  APEX Configuration
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-semibold text-white block mb-2">Daily Profit Target</label>
-                  <input 
-                    type="number" 
-                    defaultValue={goals?.daily_target || 100}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/60 text-white text-sm"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-semibold text-white block mb-2">Daily Profit Target ($)</label>
+                    <input type="number" defaultValue={goals?.daily_target || 100}
+                      className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/60 text-white text-sm focus:border-amber-500/50 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-white block mb-2">Risk Tolerance</label>
+                    <select className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/60 text-white text-sm focus:border-amber-500/50 focus:outline-none">
+                      <option>Conservative</option>
+                      <option defaultValue={goals?.risk_tolerance === 'moderate'}>Moderate</option>
+                      <option>Aggressive</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-semibold text-white block mb-2">Risk Tolerance</label>
-                  <select className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/60 text-white text-sm">
-                    <option>Conservative</option>
-                    <option selected={goals?.risk_tolerance === 'moderate'}>Moderate</option>
-                    <option>Aggressive</option>
-                  </select>
+                <div className="border-t border-slate-700/50 pt-4">
+                  <p className="text-xs font-orbitron text-slate-600 tracking-widest mb-3">SYSTEM CONNECTIONS</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                    {[
+                      { label: 'Identity Hub', status: 'Synced', color: '#10b981' },
+                      { label: 'Discovery Hub', status: 'Synced', color: '#10b981' },
+                      { label: 'Finance Command', status: 'Synced', color: '#10b981' },
+                      { label: 'Credential Vault', status: 'Synced', color: '#10b981' },
+                      { label: 'Notification Center', status: 'Active', color: '#10b981' },
+                      { label: 'Command Hub', status: 'Reporting', color: '#10b981' },
+                    ].map(s => (
+                      <div key={s.label} className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700/40">
+                        <span className="text-slate-300">{s.label}</span>
+                        <span className="font-semibold" style={{ color: s.color }}>{s.status}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -182,6 +182,66 @@ export function useUserIdentities() {
   };
 }
 
+export function useActiveIdentity() {
+  const { data: user } = useCurrentUser();
+  const qc = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['activeIdentity', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return null;
+      const identities = await base44.entities.AIIdentity.filter(
+        { user_email: user.email, is_active: true },
+        '-last_used_at',
+        1
+      );
+      return identities.length > 0 ? identities[0] : null;
+    },
+    enabled: !!user?.email,
+    staleTime: 10000,
+  });
+
+  useEffect(() => {
+    if (!user?.email) return;
+    const unsub = base44.entities.AIIdentity.subscribe(() => {
+      qc.invalidateQueries({ queryKey: ['activeIdentity', user.email] });
+    });
+    return unsub;
+  }, [user?.email, qc]);
+
+  return { ...query, activeIdentity: query.data || null };
+}
+
+export function useUserGoals() {
+  const { data: user } = useCurrentUser();
+  const qc = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['userGoals', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return null;
+      const goals = await base44.entities.UserGoals.filter({ created_by: user.email }, '-created_date', 1);
+      return goals[0] || null;
+    },
+    enabled: !!user?.email,
+    staleTime: 15000,
+  });
+
+  const upsertMutation = useMutation({
+    mutationFn: async (data) => {
+      if (!user?.email) return;
+      if (query.data?.id) {
+        return base44.entities.UserGoals.update(query.data.id, data);
+      } else {
+        return base44.entities.UserGoals.create({ ...data, created_by: user.email });
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['userGoals', user?.email] }),
+  });
+
+  return { ...query, goals: query.data || null, upsert: upsertMutation.mutate, isUpdating: upsertMutation.isPending };
+}
+
 export function useIdentityCredentials(identityId) {
   return useQuery({
     queryKey: ['identityCredentials', identityId],

@@ -3,9 +3,10 @@
  * AI Assistant: MERCH
  * Autonomous digital storefronts, landing pages, and product commerce
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useActiveIdentity } from '@/hooks/useUserData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,30 +25,7 @@ export default function DigitalResellers() {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const queryClient = useQueryClient();
   const { user: authUser } = useAuth();
-
-  // Fetch active identity from SDK — NOT localStorage
-  const { data: activeIdentity } = useQuery({
-    queryKey: ['activeIdentity', authUser?.email],
-    queryFn: async () => {
-      if (!authUser?.email) return null;
-      const identities = await base44.entities.AIIdentity.filter(
-        { user_email: authUser.email, is_active: true },
-        '-last_used_at',
-        1
-      );
-      return identities.length > 0 ? identities[0] : null;
-    },
-    enabled: !!authUser?.email,
-  });
-
-  // Real-time identity sync
-  useEffect(() => {
-    if (!authUser?.email) return;
-    const unsub = base44.entities.AIIdentity.subscribe(() => {
-      queryClient.invalidateQueries({ queryKey: ['activeIdentity', authUser.email] });
-    });
-    return unsub;
-  }, [authUser?.email, queryClient]);
+  const { activeIdentity } = useActiveIdentity();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],

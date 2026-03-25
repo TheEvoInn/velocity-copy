@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { useCurrentUser, useUserProfile, useUserWallet, useUserTasks, useUserOpportunities } from '@/hooks/useUserData';
+import { useCurrentUser, useUserProfile, useUserWallet, useUserTasks, useUserOpportunities, useUserGoals, useActiveIdentity } from '@/hooks/useUserData';
 import {
   Bot, Target, Wallet, Search, Play, Shield, ShoppingCart,
   TrendingUp, Radio, ChevronRight, Cpu, Settings,
@@ -91,10 +91,11 @@ function ModuleCard({ to, icon: Icon, title, subtitle, color, stat, statLabel, a
 export default function Dashboard() {
   const navigate = useNavigate();
   const { data: user } = useCurrentUser();
-  const { data: profile, upsert: upsertProfile } = useUserProfile();
   const { balance, totalEarned, todayEarnings, weekEarnings } = useUserWallet();
   const { data: tasks = [] } = useUserTasks();
   const { data: opportunities = [] } = useUserOpportunities();
+  const { goals, upsert: upsertGoals } = useUserGoals();
+  const { activeIdentity } = useActiveIdentity();
 
   const [warpTarget, setWarpTarget] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -105,13 +106,7 @@ export default function Dashboard() {
   }, []);
 
   const activeTasks = tasks.filter(t => t.status === 'running').length;
-
-  const { data: goalsList = [] } = useQuery({
-    queryKey: ['userGoals'],
-    queryFn: () => base44.entities.UserGoals.list('-created_date', 1),
-    staleTime: 60000,
-  });
-  const isOnboarded = goalsList[0]?.onboarded === true;
+  const isOnboarded = goals?.onboarded === true;
 
   const { data: interventionData } = useQuery({
     queryKey: ['pendingInterventionsCount'],
@@ -124,7 +119,7 @@ export default function Dashboard() {
     t.status === 'completed' && new Date(t.created_date).toDateString() === new Date().toDateString()
   ).length;
   const newOpps = opportunities.filter(o => o.status === 'discovered').length;
-  const isAutopilotOn = profile?.autopilot_enabled;
+  const isAutopilotOn = goals?.autopilot_enabled;
 
   function handleWarp(path, name) {
     setWarpTarget(name);
@@ -132,7 +127,7 @@ export default function Dashboard() {
   }
 
   async function toggleAutopilot() {
-    upsertProfile({ autopilot_enabled: !isAutopilotOn });
+    upsertGoals({ autopilot_enabled: !isAutopilotOn });
   }
 
   // Six core department modules

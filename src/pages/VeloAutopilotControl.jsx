@@ -8,7 +8,8 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Power, Zap, AlertTriangle, CheckCircle, Clock, XCircle, Cpu, Settings, Brain, Link } from 'lucide-react';
+import { Power, Zap, AlertTriangle, CheckCircle, Clock, XCircle, Cpu, Settings, Brain } from 'lucide-react';
+import { useActiveIdentity } from '@/hooks/useUserData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,6 +23,7 @@ export default function VeloAutopilotControl() {
 
   const [autopilotEnabled, setAutopilotEnabled] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
+  const { activeIdentity } = useActiveIdentity();
 
   const { data: goals } = useQuery({
     queryKey: ['userGoals', user?.email],
@@ -40,16 +42,6 @@ export default function VeloAutopilotControl() {
     queryFn: () => base44.entities.EngineAuditLog.filter({ created_by: user?.email }),
     enabled: !!user?.email,
     staleTime: 5000,
-  });
-
-  const { data: activeIdentity } = useQuery({
-    queryKey: ['activeIdentity', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return null;
-      const identities = await base44.entities.AIIdentity.filter({ user_email: user.email, is_active: true }, '-last_used_at', 1);
-      return identities.length > 0 ? identities[0] : null;
-    },
-    enabled: !!user?.email,
   });
 
   const toggleAutopilotMutation = useMutation({
@@ -71,8 +63,7 @@ export default function VeloAutopilotControl() {
     const u1 = base44.entities.AITask.subscribe(() => qc.invalidateQueries({ queryKey: ['aiTasks', user.email] }));
     const u2 = base44.entities.EngineAuditLog.subscribe(() => qc.invalidateQueries({ queryKey: ['taskExecutionLogs', user.email] }));
     const u3 = base44.entities.UserGoals.subscribe(() => qc.invalidateQueries({ queryKey: ['userGoals', user.email] }));
-    const u4 = base44.entities.AIIdentity.subscribe(() => qc.invalidateQueries({ queryKey: ['activeIdentity', user.email] }));
-    return () => { u1(); u2(); u3(); u4(); };
+    return () => { u1(); u2(); u3(); };
   }, [user?.email, qc]);
 
   const getStatusColor = (status) => {

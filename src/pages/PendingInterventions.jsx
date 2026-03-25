@@ -25,10 +25,10 @@ export default function PendingInterventions() {
 
   const fetchInterventions = async () => {
     try {
-      const data = await base44.functions.invoke('userInterventionManager', {
+      const res = await base44.functions.invoke('userInterventionManager', {
         action: 'get_pending_interventions'
       });
-      setInterventions(data.interventions || []);
+      setInterventions(res.data?.interventions || []);
     } catch (err) {
       console.error('Failed to fetch interventions:', err);
     } finally {
@@ -37,16 +37,12 @@ export default function PendingInterventions() {
   };
 
   const handleReject = async (id) => {
-    try {
-      await base44.functions.invoke('userInterventionManager', {
-        action: 'reject_intervention',
-        intervention_id: id,
-        reason: 'User rejected'
-      });
-      fetchInterventions();
-    } catch (err) {
-      console.error('Failed to reject:', err);
-    }
+    await base44.functions.invoke('userInterventionManager', {
+      action: 'reject_intervention',
+      intervention_id: id,
+      reason: 'User rejected'
+    });
+    fetchInterventions();
   };
 
   const filtered = interventions.filter(i => {

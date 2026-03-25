@@ -46,7 +46,7 @@ export default function Chat() {
 
   // Command execution mutation
   const parseMutation = useMutation({
-    mutationFn: async (instruction, selectedAgent) => {
+    mutationFn: async ({ instruction, selectedAgent }) => {
       const res = await base44.functions.invoke('aiCommandConsole', {
         action: 'execute_command',
         instruction,
@@ -139,7 +139,7 @@ export default function Chat() {
   });
 
   const handleSendCommand = (instruction, selectedAgent) => {
-    parseMutation.mutate(instruction, selectedAgent);
+    parseMutation.mutate({ instruction, selectedAgent });
   };
 
   const handleConfirmExecution = (commandIdx) => {
@@ -163,7 +163,7 @@ export default function Chat() {
               <Bot className="w-6 h-6 text-violet-400" />
             </div>
             <div>
-              <h1 className="font-orbitron text-2xl font-bold text-white text-glow-violet">VELOCITY AI</h1>
+              <h1 className="font-orbitron text-2xl font-bold text-white text-glow-violet">VELO AI</h1>
               <p className="text-xs text-slate-400">Autonomous Agent Command Console</p>
             </div>
           </div>
@@ -224,8 +224,7 @@ export default function Chat() {
         {/* Help Section */}
         <div className="mt-4 p-3 rounded-lg bg-slate-900/50 border border-slate-800">
           <p className="text-xs text-slate-400">
-            💡 <strong>Tip:</strong> Natural language commands are automatically routed to the most appropriate agent (NED for crypto, Autopilot for execution, VIPZ for marketing). 
-            You can also manually select an agent above.
+            💡 <strong>Tip:</strong> Natural language commands are automatically routed to APEX (Autopilot), CIPHER (Crypto/NED), MERCH (Commerce), or SCOUT (Discovery). You can also manually target a department above.
           </p>
         </div>
       </div>

@@ -3,10 +3,14 @@
  * AI Assistant: APEX
  * Master switch, task queue, execution logs, and workflow management
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Power, Zap, AlertTriangle, CheckCircle, Clock, XCircle, Cpu, Settings, Brain, Play, RefreshCw, Globe } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
@@ -20,7 +24,7 @@ export default function VeloAutopilotControl() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [dailyTarget, setDailyTarget] = useState(100);
   const [riskTolerance, setRiskTolerance] = useState('moderate');
-  const { activeIdentity } = useActiveIdentity();
+  const activeIdentity = null; // Placeholder for active identity from sync hook
 
   const { data: goals } = useQuery({
     queryKey: ['userGoals', user?.email],
@@ -155,6 +159,14 @@ export default function VeloAutopilotControl() {
   }
 
   const filteredTasks = filterStatus === 'all' ? tasks : tasks.filter(t => t.status === filterStatus);
+
+  const stats = useMemo(() => ({
+    total: tasks.length,
+    completed: tasks.filter(t => t.status === 'completed').length,
+    executing: tasks.filter(t => t.status === 'executing').length,
+    queued: tasks.filter(t => t.status === 'queued').length,
+    failed: tasks.filter(t => t.status === 'failed').length,
+  }), [tasks]);
 
   return (
     <div className="min-h-screen pt-20 pb-8 px-4 md:px-8">

@@ -9,9 +9,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me().catch(() => null);
+    
+    // If no authenticated user, skip polling (RLS will block updates anyway)
+    if (!user) {
+      return jsonResponse({ polled: false, reason: 'No authenticated user' });
+    }
 
-    // Get all queued tasks
-    const queuedTasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+    // Get all queued tasks using user context (not service role) to respect RLS
+    const queuedTasks = await base44.entities.TaskExecutionQueue.filter(
       { status: 'queued' },
       '-priority',
       100
@@ -27,21 +33,24 @@ Deno.serve(async (req) => {
 
     for (const task of toExecute) {
       try {
-        // Mark as processing
-        await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
+        // Skip if task not created by current user (RLS will block update anyway)
+        if (task.created_by !== user.email) continue;
+
+        // Mark as processing using user context
+        await base44.entities.TaskExecutionQueue.update(task.id, {
           status: 'processing',
           started_processing_at: new Date().toISOString()
         }).catch(() => null);
 
         // Invoke Autopilot executor
-        await base44.asServiceRole.functions.invoke('unifiedAutopilot', {
+        await base44.functions.invoke('unifiedAutopilot', {
           task_id: task.id,
           action: 'execute_queued_task',
           opportunity_id: task.opportunity_id
         }).catch((e) => {
           console.error(`Task ${task.id} execution failed:`, e.message);
           // Revert to queued if execution fails
-          base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
+          base44.entities.TaskExecutionQueue.update(task.id, {
             status: 'queued'
           }).catch(() => null);
         });
@@ -53,7 +62,7 @@ Deno.serve(async (req) => {
     }
 
     // Log polling activity
-    await base44.asServiceRole.entities.ActivityLog.create({
+    await base44.entities.ActivityLog.create({
       action_type: 'system',
       message: `📋 Task queue poll: ${queuedTasks.length} queued, triggered ${triggered}`,
       severity: 'info',

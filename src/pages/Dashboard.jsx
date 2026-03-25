@@ -12,6 +12,7 @@ import {
   Power, Rocket, Lock, AlertTriangle, Zap, Users, Coins
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import DailyRecapWidget from '@/components/dashboard/DailyRecapWidget';
 
 function StatusPulse({ active, size = 3 }) {
   return (
@@ -343,6 +344,12 @@ export default function Dashboard() {
             <span>${weekEarnings.toFixed(0)} this week</span>
           </div>
         </div>
+
+        {/* ── DAILY RECAP WIDGET ── */}
+        <DailyRecapWidget />
+
+        {/* ── DAILY RECAP WIDGET ── */}
+        <DailyRecapWidget />
 
         {/* ── SIX DEPARTMENT MODULE GRID ── */}
         <div className="mb-2">

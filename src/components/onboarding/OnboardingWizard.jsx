@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { usePersistentUserData } from '@/hooks/usePersistentUserData';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
 
 import StepWelcome from './steps/StepWelcome';
 import StepIdentity from './steps/StepIdentity';
@@ -59,17 +59,21 @@ export default function OnboardingWizard({ onComplete }) {
   const queryClient = useQueryClient();
   const { updateField } = usePersistentUserData();
 
-  const forceSaveAndLaunch = async () => {
-    // Save current state to localStorage immediately
+  const saveDraft = () => {
     if (user?.email) {
       localStorage.setItem(`onboarding_identity_${user.email}`, JSON.stringify(identityData));
       localStorage.setItem(`onboarding_kyc_${user.email}`, JSON.stringify(kycData));
       localStorage.setItem(`onboarding_pref_${user.email}`, JSON.stringify(prefData));
       localStorage.setItem(`onboarding_banking_${user.email}`, JSON.stringify(bankingData));
       localStorage.setItem(`onboarding_workflow_${user.email}`, JSON.stringify(workflowData));
-      console.log('[Onboarding] Force saved all data to localStorage');
+      localStorage.setItem(`onboarding_step_${user.email}`, step.toString());
+      toast.success('✅ Draft saved successfully');
+      console.log('[Onboarding] Draft saved to localStorage');
     }
-    // Trigger launch with current data
+  };
+
+  const forceSaveAndLaunch = async () => {
+    saveDraft();
     await handleLaunch(true);
   };
 
@@ -285,6 +289,13 @@ export default function OnboardingWizard({ onComplete }) {
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 py-8">
+      {step > 0 && step < 6 && (
+        <div className="mb-4 flex justify-end">
+          <button onClick={saveDraft} className="flex items-center gap-2 px-3 py-1.5 text-xs bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 text-slate-300 transition-colors">
+            <Save className="w-3 h-3" /> Save Draft
+          </button>
+        </div>
+      )}
       {/* Progress bar */}
       {step > 0 && (
         <div className="mb-8">

@@ -19,10 +19,10 @@ export default function VeloIdentityHub() {
   const [editingIdentity, setEditingIdentity] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch all identities
+  // Fetch all identities — RLS is created_by
   const { data: identities = [], isLoading: loadingIdentities } = useQuery({
     queryKey: ['aiIdentities', user?.email],
-    queryFn: () => base44.entities.AIIdentity.filter({ user_email: user?.email }),
+    queryFn: () => base44.entities.AIIdentity.filter({ created_by: user?.email }, '-created_date', 50),
     enabled: !!user?.email,
   });
 
@@ -37,6 +37,13 @@ export default function VeloIdentityHub() {
   const { data: kycData } = useQuery({
     queryKey: ['kycVerification', user?.email],
     queryFn: () => base44.entities.KYCVerification.filter({ created_by: user?.email }).then(r => r[0]),
+    enabled: !!user?.email,
+  });
+
+  // Fetch credential vault entries for display
+  const { data: credentials = [] } = useQuery({
+    queryKey: ['credentialVault', user?.email],
+    queryFn: () => base44.entities.CredentialVault.filter({ created_by: user?.email }, '-created_date', 50),
     enabled: !!user?.email,
   });
 
@@ -94,8 +101,7 @@ export default function VeloIdentityHub() {
   const createIdentityMutation = useMutation({
     mutationFn: (data) => base44.entities.AIIdentity.create({
       ...data,
-      user_email: user?.email,
-      is_active: identities.length === 0,
+      is_active: identities.length === 0, // auto-activate first identity
     }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] }),
   });
@@ -453,20 +459,33 @@ export default function VeloIdentityHub() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Key className="w-5 h-5 text-amber-400" />
-                  Credential Vault Access
+                  Credential Vault ({credentials.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-slate-400 text-sm mb-4">Credentials are stored in the encrypted Credential Vault and accessed by Autopilot during execution.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {['Upwork', 'Fiverr', 'Freelancer', 'LinkedIn', 'GitHub', 'Amazon'].map(platform => (
-                    <div key={platform} className="flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/30">
-                      <span className="text-sm text-slate-300">{platform}</span>
-                      <span className="text-xs text-slate-500 px-2 py-0.5 rounded-lg bg-slate-800/60 border border-slate-700/40">Not linked</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-600 mt-4">Full credential management is available in the Credential Vault. Credentials auto-rotate via the Autopilot engine.</p>
+                <p className="text-slate-400 text-sm mb-4">Encrypted credentials accessed by Autopilot during execution. Stored in the secure vault.</p>
+                {credentials.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Key className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-500 text-sm">No credentials stored yet.</p>
+                    <p className="text-xs text-slate-600 mt-1">Credentials are added during onboarding or via the Autopilot credential engine.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {credentials.map(cred => (
+                      <div key={cred.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/30">
+                        <div>
+                          <span className="text-sm text-slate-200 capitalize">{cred.platform}</span>
+                          <div className="text-xs text-slate-500">{cred.credential_type}</div>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-lg border ${
+                          cred.is_active ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-slate-500 bg-slate-800/60 border-slate-700/40'
+                        }`}>{cred.is_active ? 'Active' : 'Inactive'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-slate-600 mt-4">Credentials auto-rotate via the Autopilot engine. Manage in full detail via the Admin panel.</p>
               </CardContent>
             </Card>
           </TabsContent>

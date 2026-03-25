@@ -53,11 +53,11 @@ export function useUserOpportunities(statusFilter) {
       if (!user?.email) return [];
       const filter = { created_by: user.email };
       if (statusFilter) filter.status = statusFilter;
-      // Try Opportunity first (primary entity), fallback to WorkOpportunity
+      // WorkOpportunity is the primary scan result entity used by Discovery
       try {
-        return await base44.entities.Opportunity.filter(filter, '-created_date', 50);
+        return await base44.entities.WorkOpportunity.filter(filter, '-created_date', 100);
       } catch (_) {
-        return base44.entities.WorkOpportunity.filter(filter, '-created_date', 50);
+        return base44.entities.Opportunity.filter(filter, '-created_date', 100);
       }
     },
     enabled: !!user?.email,

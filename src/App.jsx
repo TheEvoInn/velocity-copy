@@ -45,6 +45,7 @@ import VeloAutopilotControl from './pages/VeloAutopilotControl';
 import VeloFinanceCommand from './pages/VeloFinanceCommand';
 import VeloExecutionEngine from './pages/VeloExecutionEngine';
 import StrategySetupWizard from './pages/StrategySetupWizard';
+import RealTimeTestingMonitor from './pages/RealTimeTestingMonitor';
 
 
 const AuthenticatedApp = () => {
@@ -110,6 +111,7 @@ const AuthenticatedApp = () => {
         <Route path="/VeloFinanceCommand" element={<VeloFinanceCommand />} />
         <Route path="/VeloExecutionEngine" element={<VeloExecutionEngine />} />
         <Route path="/StrategySetupWizard" element={<StrategySetupWizard />} />
+        <Route path="/RealTimeTestingMonitor" element={<RealTimeTestingMonitor />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

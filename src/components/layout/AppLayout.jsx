@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   Zap, LayoutDashboard, Telescope, Landmark, ShoppingCart, Coins,
-  MessageSquare, ChevronRight, X, Menu, Shield, Settings, AlertTriangle, Users, Activity, Mail, Rocket
+  MessageSquare, ChevronRight, X, Menu, Shield, Settings, AlertTriangle, Users, Activity, Mail, Rocket, Gauge
 } from 'lucide-react';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
 import NotificationBell from '../notifications/NotificationBell';
@@ -340,6 +340,17 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
              <div>
                <p className="text-sm font-semibold text-slate-200">Strategy Wizard</p>
                <p className="text-xs text-slate-500">Bulk setup & automation</p>
+             </div>
+           </Link>
+
+          <Link to="/RealTimeTestingMonitor" onClick={onClose}
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-pink-500/30 hover:bg-pink-500/5 transition-all active:scale-[0.98]">
+             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-pink-500/10 border border-pink-500/20 shrink-0">
+               <Gauge className="w-4 h-4 text-pink-400" />
+             </div>
+             <div>
+               <p className="text-sm font-semibold text-slate-200">Live Testing</p>
+               <p className="text-xs text-slate-500">Real-time monitoring</p>
              </div>
            </Link>
 

@@ -46,6 +46,8 @@ import VeloFinanceCommand from './pages/VeloFinanceCommand';
 import VeloExecutionEngine from './pages/VeloExecutionEngine';
 import StrategySetupWizard from './pages/StrategySetupWizard';
 import RealTimeTestingMonitor from './pages/RealTimeTestingMonitor';
+import VeloIdentityHub from './pages/VeloIdentityHub';
+import VeloAutopilotControl from './pages/VeloAutopilotControl';
 
 
 const AuthenticatedApp = () => {

@@ -31,7 +31,7 @@ const DEPARTMENTS = [
   },
   {
     id: 'identity',
-    path: '/IdentityManager',
+    path: '/VeloIdentityHub',
     icon: Users,
     label: 'Identity',
     subtitle: 'Personas & Credentials',
@@ -59,7 +59,7 @@ const DEPARTMENTS = [
   },
   {
     id: 'autopilot',
-    path: '/AutoPilot',
+    path: '/VeloAutopilotControl',
     icon: Zap,
     label: 'Autopilot',
     subtitle: 'Execution & Workflows',

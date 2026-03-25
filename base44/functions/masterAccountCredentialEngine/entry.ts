@@ -34,16 +34,26 @@ Deno.serve(async (req) => {
 
       const identity = identities[0];
 
-      // Check KYC data completeness
+      // Check KYC data completeness — with multi-source email extraction
       const kyc = identity.kyc_verified_data || {};
-      const hasRequiredData = kyc.full_legal_name && kyc.email;
+      
+      // Terminology-aware email extraction (try multiple sources)
+      const extractedEmail = kyc.email 
+        || identity.email 
+        || (identity.onboarding_config ? tryParseOnboardingEmail(identity.onboarding_config) : null)
+        || user.email;
+      
+      const extractedName = kyc.full_legal_name 
+        || identity.name;
+      
+      const hasRequiredData = extractedName && extractedEmail;
 
       if (!hasRequiredData) {
-        // Create intervention request for missing KYC data
+        // Create intervention request for missing data
         const intervention = await base44.asServiceRole.entities.UserIntervention.create({
           user_email: user.email,
           requirement_type: 'missing_data',
-          required_data: 'Complete KYC profile (full legal name, email) to enable account creation',
+          required_data: 'Complete identity profile (name, email) to enable account creation',
           data_schema: {
             type: 'object',
             properties: {
@@ -57,19 +67,19 @@ Deno.serve(async (req) => {
 
         return Response.json({
           success: false,
-          error: 'Identity missing KYC data (full_legal_name, email)',
+          error: `Identity missing required data (name: ${!!extractedName}, email: ${!!extractedEmail})`,
           need_intervention: true,
           intervention_id: intervention?.id,
-          intervention_type: 'complete_kyc'
+          intervention_type: 'complete_identity'
         }, { status: 400 });
       }
 
-      // Return real credentials
+      // Return real credentials from extracted data
       return Response.json({
         success: true,
         credentials: {
-          email: kyc.email || identity.email,
-          full_name: kyc.full_legal_name || identity.name,
+          email: extractedEmail,
+          full_name: extractedName,
           phone: kyc.phone_number || '',
           identity_name: identity.name,
           identity_id: identity.id

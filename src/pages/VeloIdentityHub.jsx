@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, ChevronRight, Shield, Zap, Users, Eye, EyeOff, Trash2, Edit, Settings } from 'lucide-react';
+import { Plus, Shield, Zap, Users, Trash2, Edit, Settings, Brain, Key, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,12 +12,12 @@ import IdentityProfileEditor from '@/components/identity/IdentityProfileEditor';
 export default function VeloIdentityHub() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  useIdentitySyncAcrossApp(); // Real-time sync hook
+  useIdentitySyncAcrossApp();
   
   const [selectedIdentity, setSelectedIdentity] = useState(null);
-  const [showCreator, setShowCreator] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [editingIdentity, setEditingIdentity] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Fetch all identities
   const { data: identities = [], isLoading: loadingIdentities } = useQuery({
@@ -26,7 +26,7 @@ export default function VeloIdentityHub() {
     enabled: !!user?.email,
   });
 
-  // Fetch active identity
+  // Fetch user goals
   const { data: goals } = useQuery({
     queryKey: ['userGoals', user?.email],
     queryFn: () => base44.entities.UserGoals.filter({ created_by: user?.email }).then(r => r[0]),
@@ -40,119 +40,189 @@ export default function VeloIdentityHub() {
     enabled: !!user?.email,
   });
 
-  // REAL-TIME KYC SUBSCRIPTION: Listen for admin approvals and all KYC updates
+  // Real-time KYC subscription
   useEffect(() => {
     if (!user?.email) return;
-    const unsubscribe = base44.entities.KYCVerification.subscribe((event) => {
-      console.log('[VeloIdentityHub] KYC update event:', event.type, event.data?.kyc_tier, event.data?.verification_status);
-      // Invalidate ALL related queries to broadcast change across dashboard
+    const unsubscribe = base44.entities.KYCVerification.subscribe(() => {
       qc.invalidateQueries({ queryKey: ['kycVerification', user?.email] });
       qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
-      qc.invalidateQueries({ queryKey: ['userGoals'] });
+    });
+    return unsubscribe;
+  }, [user?.email, qc]);
+
+  // Real-time identity subscription
+  useEffect(() => {
+    if (!user?.email) return;
+    const unsubscribe = base44.entities.AIIdentity.subscribe(() => {
+      qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
     });
     return unsubscribe;
   }, [user?.email, qc]);
 
   // Switch active identity
   const switchIdentityMutation = useMutation({
-    mutationFn: (identityId) => 
-      base44.auth.updateMe({ active_identity_id: identityId })
-        .then(() => base44.entities.UserGoals.update(goals?.id, { identity_id: identityId })),
+    mutationFn: async (identityId) => {
+      await Promise.all(
+        identities.map(id =>
+          base44.entities.AIIdentity.update(id.id, { is_active: id.id === identityId })
+        )
+      );
+      if (goals?.id) {
+        await base44.entities.UserGoals.update(goals.id, { identity_id: identityId });
+      }
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['userGoals', 'aiIdentities'] });
+      qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
+      qc.invalidateQueries({ queryKey: ['userGoals', user?.email] });
     },
   });
 
-  // Save profile changes mutation
+  const deleteMutation = useMutation({
+    mutationFn: (identityId) => base44.entities.AIIdentity.delete(identityId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] }),
+  });
+
   const updateProfileMutation = useMutation({
-    mutationFn: (profileData) => 
-      base44.entities.AIIdentity.update(activeIdentity?.id, profileData),
+    mutationFn: ({ id, data }) => base44.entities.AIIdentity.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] });
       setShowProfileEditor(false);
+      setEditingIdentity(null);
     },
+  });
+
+  const createIdentityMutation = useMutation({
+    mutationFn: (data) => base44.entities.AIIdentity.create({
+      ...data,
+      user_email: user?.email,
+      is_active: identities.length === 0,
+    }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['aiIdentities', user?.email] }),
   });
 
   const activeIdentity = identities.find(id => id.is_active);
   const filteredIdentities = searchTerm 
-    ? identities.filter(id => id.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    ? identities.filter(id => id.name?.toLowerCase().includes(searchTerm.toLowerCase()))
     : identities;
+
+  function openEditor(identity) {
+    setEditingIdentity(identity);
+    setShowProfileEditor(true);
+  }
+
+  const kycColor = kycData?.kyc_tier === 'enhanced' ? 'text-emerald-400' :
+    kycData?.kyc_tier === 'standard' ? 'text-cyan-400' :
+    kycData?.kyc_tier === 'basic' ? 'text-amber-400' : 'text-slate-400';
 
   return (
     <div className="min-h-screen pt-20 pb-8 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header */}
-        <div className="space-y-2">
-          <h1 className="font-orbitron text-4xl font-bold text-white">VELO AI Identity Hub</h1>
-          <p className="text-slate-400">Manage AI identities, profiles, and autonomous personas</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-2 h-8 rounded-full" style={{ background: 'linear-gradient(to bottom, #818cf8, #06b6d4)' }} />
+              <div>
+                <h1 className="font-orbitron text-3xl font-bold text-white">IDENTITY HUB</h1>
+                <p className="text-[10px] font-mono tracking-widest text-indigo-400/70">VELO AI · AI: NEXUS</p>
+              </div>
+            </div>
+            <p className="text-slate-400 text-sm ml-5">All persona management, KYC, credentials, and account readiness</p>
+          </div>
+          <Button 
+            onClick={() => {
+              setEditingIdentity(null);
+              setShowProfileEditor(true);
+            }}
+            className="gap-2 shrink-0"
+            style={{ background: 'linear-gradient(135deg, #818cf8, #06b6d4)' }}
+          >
+            <Plus className="w-4 h-4" />
+            New Identity
+          </Button>
         </div>
 
         {/* Stats Bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="glass-card border-cyan-500/20">
-            <CardContent className="p-4">
-              <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Total Identities</div>
-              <div className="text-2xl font-bold text-cyan-400">{identities.length}</div>
-            </CardContent>
-          </Card>
-          <Card className="glass-card border-emerald-500/20">
-            <CardContent className="p-4">
-              <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Active</div>
-              <div className="text-2xl font-bold text-emerald-400">{activeIdentity ? 1 : 0}</div>
-            </CardContent>
-          </Card>
-          <Card className="glass-card border-amber-500/20">
-            <CardContent className="p-4">
-              <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">KYC Status</div>
-              <div className="text-2xl font-bold text-amber-400">{kycData?.kyc_tier || 'Pending'}</div>
-            </CardContent>
-          </Card>
-          <Card className="glass-card border-violet-500/20">
-            <CardContent className="p-4">
-              <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">Total Earned</div>
-              <div className="text-2xl font-bold text-violet-400">${identities.reduce((s, i) => s + (i.total_earned || 0), 0).toFixed(0)}</div>
-            </CardContent>
-          </Card>
+          {[
+            { label: 'Total Identities', value: identities.length, color: '#818cf8' },
+            { label: 'Active', value: activeIdentity ? 1 : 0, color: '#10b981' },
+            { label: 'KYC Tier', value: kycData?.kyc_tier || 'None', color: '#f59e0b' },
+            { label: 'Total Earned', value: `$${identities.reduce((s, i) => s + (i.total_earned || 0), 0).toFixed(0)}`, color: '#ec4899' },
+          ].map(stat => (
+            <Card key={stat.label} className="glass-card" style={{ borderColor: stat.color + '30' }}>
+              <CardContent className="p-4">
+                <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">{stat.label}</div>
+                <div className="text-2xl font-bold font-orbitron" style={{ color: stat.color }}>{stat.value}</div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
+
+        {/* Active Identity Banner */}
+        {activeIdentity && (
+          <div className="rounded-2xl p-4 flex items-center justify-between"
+            style={{ background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.3)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                style={{ background: activeIdentity.color ? activeIdentity.color + '25' : 'rgba(129,140,248,0.2)', border: '1px solid rgba(129,140,248,0.3)' }}>
+                {activeIdentity.icon || '👤'}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-orbitron text-sm font-bold text-white">{activeIdentity.name}</span>
+                  <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400">ACTIVE</span>
+                  {activeIdentity.onboarding_complete && (
+                    <CheckCircle className="w-3.5 h-3.5 text-cyan-400" />
+                  )}
+                </div>
+                <p className="text-xs text-slate-400">{activeIdentity.role_label || activeIdentity.tagline || 'No role set'}</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => openEditor(activeIdentity)}
+              className="gap-1.5 text-indigo-300 border-indigo-400/30 hover:border-indigo-400/60">
+              <Edit className="w-3.5 h-3.5" />
+              Edit Profile
+            </Button>
+          </div>
+        )}
 
         {/* Main Tabs */}
         <Tabs defaultValue="identities" className="space-y-4">
-          <TabsList className="glass-card">
-            <TabsTrigger value="identities">Identities ({identities.length})</TabsTrigger>
+          <TabsList className="glass-card flex-wrap h-auto gap-1">
+            <TabsTrigger value="identities">All Identities ({identities.length})</TabsTrigger>
             <TabsTrigger value="active">Active Profile</TabsTrigger>
             <TabsTrigger value="kyc">KYC & Verification</TabsTrigger>
-            <TabsTrigger value="settings">Hub Settings</TabsTrigger>
+            <TabsTrigger value="credentials">Credentials</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           {/* Identities Tab */}
           <TabsContent value="identities" className="space-y-4">
-            <div className="flex gap-3 mb-4">
-              <input
-                type="text"
-                placeholder="Search identities..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="flex-1 px-4 py-2 rounded-lg bg-slate-900/60 border border-slate-700/60 text-white placeholder-slate-500"
-              />
-              <Button 
-                onClick={() => setShowCreator(true)}
-                className="gap-2"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}
-              >
-                <Plus className="w-4 h-4" />
-                New Identity
-              </Button>
-            </div>
+            <input
+              type="text"
+              placeholder="Search identities..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg bg-slate-900/60 border border-slate-700/60 text-white placeholder-slate-500 focus:border-indigo-500/50 focus:outline-none"
+            />
 
             {loadingIdentities ? (
               <div className="flex justify-center py-8">
-                <div className="w-8 h-8 border-4 border-violet-500/20 border-t-violet-500 rounded-full animate-spin" />
+                <div className="w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
               </div>
             ) : filteredIdentities.length === 0 ? (
-              <Card className="glass-card text-center py-12">
-                <Users className="w-12 h-12 text-slate-600 mx-auto mb-4 opacity-50" />
-                <p className="text-slate-400">No identities found. Create your first AI persona.</p>
+              <Card className="glass-card">
+                <CardContent className="text-center py-12">
+                  <Users className="w-12 h-12 text-slate-600 mx-auto mb-4 opacity-50" />
+                  <p className="text-slate-400 mb-4">No identities yet. Create your first VELO AI persona.</p>
+                  <Button onClick={() => { setEditingIdentity(null); setShowProfileEditor(true); }}
+                    style={{ background: 'linear-gradient(135deg, #818cf8, #06b6d4)' }}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create First Identity
+                  </Button>
+                </CardContent>
               </Card>
             ) : (
               <div className="grid gap-4">
@@ -160,57 +230,62 @@ export default function VeloIdentityHub() {
                   <Card
                     key={identity.id}
                     className={`glass-card cursor-pointer transition-all ${
-                      selectedIdentity?.id === identity.id ? 'border-cyan-400/60' : 'hover:border-cyan-400/30'
+                      selectedIdentity?.id === identity.id ? 'border-indigo-400/60' : 'hover:border-indigo-400/30'
                     }`}
                     onClick={() => setSelectedIdentity(identity)}
                   >
                     <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
                             <h3 className="font-orbitron text-lg font-bold text-white">{identity.name}</h3>
                             {identity.is_active && (
-                              <span className="px-2 py-1 text-xs font-bold rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400">
-                                ACTIVE
-                              </span>
+                              <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400">ACTIVE</span>
                             )}
                             {identity.onboarding_complete && (
-                              <span className="px-2 py-1 text-xs font-bold rounded-full bg-cyan-500/20 border border-cyan-500/50 text-cyan-400">
-                                ONBOARDED
-                              </span>
+                              <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-cyan-500/20 border border-cyan-500/50 text-cyan-400">ONBOARDED</span>
+                            )}
+                            {identity.kyc_verified_data?.kyc_tier && identity.kyc_verified_data.kyc_tier !== 'none' && (
+                              <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-400">KYC: {identity.kyc_verified_data.kyc_tier}</span>
                             )}
                           </div>
-                          <p className="text-sm text-slate-400 mb-3">{identity.bio || identity.tagline || 'No bio'}</p>
-                          <div className="grid grid-cols-4 gap-2 text-xs">
+                          <p className="text-sm text-slate-400 mb-1">{identity.role_label || '—'}</p>
+                          <p className="text-xs text-slate-500 mb-3 truncate">{identity.bio || identity.tagline || 'No bio set'}</p>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                             <div>
-                              <div className="text-slate-500">Role</div>
-                              <div className="text-white font-semibold">{identity.role_label || '—'}</div>
+                              <div className="text-slate-600">Email</div>
+                              <div className="text-slate-300 truncate">{identity.email || '—'}</div>
                             </div>
                             <div>
-                              <div className="text-slate-500">Tasks</div>
+                              <div className="text-slate-600">Tasks Run</div>
                               <div className="text-white font-semibold">{identity.tasks_executed || 0}</div>
                             </div>
                             <div>
-                              <div className="text-slate-500">Earned</div>
-                              <div className="text-white font-semibold">${identity.total_earned?.toFixed(0) || 0}</div>
+                              <div className="text-slate-600">Total Earned</div>
+                              <div className="text-emerald-400 font-semibold">${identity.total_earned?.toFixed(0) || 0}</div>
                             </div>
                             <div>
-                              <div className="text-slate-500">Status</div>
-                              <div className={`font-semibold ${identity.is_active ? 'text-emerald-400' : 'text-slate-400'}`}>
-                                {identity.is_active ? 'Live' : 'Idle'}
-                              </div>
+                              <div className="text-slate-600">Tone</div>
+                              <div className="text-slate-300 capitalize">{identity.communication_tone || '—'}</div>
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); openEditor(identity); }}
+                            variant="outline"
+                            className="gap-1.5 text-indigo-300 border-indigo-400/30"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                            Edit
+                          </Button>
                           {!identity.is_active && (
                             <Button
                               size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                switchIdentityMutation.mutate(identity.id);
-                              }}
+                              onClick={(e) => { e.stopPropagation(); switchIdentityMutation.mutate(identity.id); }}
                               variant="outline"
+                              className="text-emerald-400 border-emerald-400/30"
                             >
                               Activate
                             </Button>
@@ -218,13 +293,10 @@ export default function VeloIdentityHub() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteMutation.mutate(identity.id);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(identity.id); }}
                             className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </div>
@@ -239,62 +311,89 @@ export default function VeloIdentityHub() {
           <TabsContent value="active" className="space-y-4">
             {activeIdentity ? (
               <Card className="glass-card">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Zap className="w-5 h-5 text-amber-400" />
                     {activeIdentity.name}
+                    <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400">LIVE</span>
                   </CardTitle>
+                  <Button size="sm" onClick={() => openEditor(activeIdentity)}
+                    style={{ background: 'linear-gradient(135deg, #818cf8, #06b6d4)' }}>
+                    <Edit className="w-4 h-4 mr-1.5" /> Edit Full Profile
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs text-slate-500 mb-1">Email</div>
-                      <div className="text-white font-mono">{activeIdentity.email || '—'}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-500 mb-1">Status</div>
-                      <div className="text-white">
-                        {activeIdentity.is_active ? (
-                          <span className="text-emerald-400">Active & Live</span>
-                        ) : (
-                          <span className="text-slate-400">Inactive</span>
-                        )}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    {[
+                      { label: 'Email', value: activeIdentity.email },
+                      { label: 'Phone', value: activeIdentity.phone },
+                      { label: 'Role', value: activeIdentity.role_label },
+                      { label: 'Tone', value: activeIdentity.communication_tone },
+                      { label: 'Spend Limit', value: activeIdentity.spending_limit_per_task ? `$${activeIdentity.spending_limit_per_task}` : null },
+                      { label: 'Tasks Run', value: activeIdentity.tasks_executed },
+                    ].map(f => (
+                      <div key={f.label}>
+                        <div className="text-xs text-slate-500 mb-0.5">{f.label}</div>
+                        <div className="text-white font-mono text-xs">{f.value || '—'}</div>
                       </div>
-                    </div>
+                    ))}
                   </div>
 
-                  <div className="border-t border-slate-700/50 pt-4">
-                    <h4 className="text-sm font-bold text-white mb-3">KYC Verified Data</h4>
-                    {activeIdentity.kyc_verified_data ? (
+                  {activeIdentity.bio && (
+                    <div className="border-t border-slate-700/50 pt-4">
+                      <div className="text-xs text-slate-500 mb-1">Bio</div>
+                      <p className="text-sm text-slate-300">{activeIdentity.bio}</p>
+                    </div>
+                  )}
+
+                  {activeIdentity.skills?.length > 0 && (
+                    <div className="border-t border-slate-700/50 pt-4">
+                      <div className="text-xs text-slate-500 mb-2">Skills</div>
+                      <div className="flex flex-wrap gap-2">
+                        {activeIdentity.skills.map(skill => (
+                          <span key={skill} className="px-2 py-1 text-xs rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">{skill}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeIdentity.kyc_verified_data && (
+                    <div className="border-t border-slate-700/50 pt-4">
+                      <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-cyan-400" />
+                        KYC Verified Data
+                      </h4>
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div>
                           <div className="text-slate-500">Legal Name</div>
                           <div className="text-white">{activeIdentity.kyc_verified_data.full_legal_name || '—'}</div>
                         </div>
                         <div>
+                          <div className="text-slate-500">KYC Tier</div>
+                          <div className={kycColor}>{activeIdentity.kyc_verified_data.kyc_tier || '—'}</div>
+                        </div>
+                        <div>
                           <div className="text-slate-500">ID Type</div>
                           <div className="text-white">{activeIdentity.kyc_verified_data.government_id_type || '—'}</div>
                         </div>
+                        <div>
+                          <div className="text-slate-500">Country</div>
+                          <div className="text-white">{activeIdentity.kyc_verified_data.country || '—'}</div>
+                        </div>
                       </div>
-                    ) : (
-                      <p className="text-slate-400 text-xs">KYC not completed</p>
-                    )}
-                  </div>
-
-                  <Button 
-                    onClick={() => setShowProfileEditor(true)}
-                    className="w-full" 
-                    style={{ background: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit Complete Profile
-                  </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : (
-              <Card className="glass-card text-center py-12">
-                <p className="text-slate-400 mb-4">No active identity. Select or create one.</p>
-                <Button onClick={() => setShowCreator(true)}>Create Identity</Button>
+              <Card className="glass-card">
+                <CardContent className="text-center py-12">
+                  <p className="text-slate-400 mb-4">No active identity. Create or activate one.</p>
+                  <Button onClick={() => { setEditingIdentity(null); setShowProfileEditor(true); }}
+                    style={{ background: 'linear-gradient(135deg, #818cf8, #06b6d4)' }}>
+                    Create Identity
+                  </Button>
+                </CardContent>
               </Card>
             )}
           </TabsContent>
@@ -305,36 +404,69 @@ export default function VeloIdentityHub() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="w-5 h-5 text-cyan-400" />
-                  KYC Verification Status
+                  KYC & Identity Verification
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {kycData ? (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <div>
-                        <div className="text-xs text-slate-500 mb-1">Tier</div>
-                        <div className={`text-lg font-bold ${
-                          kycData.kyc_tier === 'enhanced' ? 'text-emerald-400' :
-                          kycData.kyc_tier === 'standard' ? 'text-cyan-400' :
-                          kycData.kyc_tier === 'basic' ? 'text-amber-400' :
-                          'text-slate-400'
-                        }`}>
-                          {kycData.kyc_tier || 'None'}
-                        </div>
+                        <div className="text-xs text-slate-500 mb-1">KYC Tier</div>
+                        <div className={`text-xl font-bold font-orbitron ${kycColor}`}>{kycData.kyc_tier || 'None'}</div>
                       </div>
                       <div>
                         <div className="text-xs text-slate-500 mb-1">Status</div>
-                        <div className="text-white">{kycData.verification_status || 'Pending'}</div>
+                        <div className="text-white capitalize">{kycData.verification_status || 'Pending'}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500 mb-1">Last Updated</div>
+                        <div className="text-white text-xs">{kycData.updated_date ? new Date(kycData.updated_date).toLocaleDateString() : '—'}</div>
                       </div>
                     </div>
                     <div className="border-t border-slate-700/50 pt-4">
-                      <p className="text-sm text-slate-400">Last updated: {kycData.updated_date ? new Date(kycData.updated_date).toLocaleDateString() : '—'}</p>
+                      <p className="text-xs text-slate-500 mb-3">Autopilot Clearances</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {Object.entries(kycData.autopilot_clearance || {}).map(([key, val]) => (
+                          <div key={key} className={`flex items-center gap-2 p-2 rounded-lg text-xs ${val ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800/40 text-slate-500 border border-slate-700/40'}`}>
+                            {val ? <CheckCircle className="w-3 h-3 shrink-0" /> : <div className="w-3 h-3 rounded-full border border-slate-600 shrink-0" />}
+                            {key.replace('can_', '').replace(/_/g, ' ')}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </>
                 ) : (
-                  <p className="text-slate-400">No KYC data found. Complete onboarding to verify your identity.</p>
+                  <div className="text-center py-8">
+                    <Shield className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-400 mb-2">No KYC data found.</p>
+                    <p className="text-xs text-slate-500">Complete onboarding to verify your identity and unlock full Autopilot capabilities.</p>
+                  </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Credentials Tab */}
+          <TabsContent value="credentials" className="space-y-4">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="w-5 h-5 text-amber-400" />
+                  Credential Vault Access
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-400 text-sm mb-4">Credentials are stored in the encrypted Credential Vault and accessed by Autopilot during execution.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {['Upwork', 'Fiverr', 'Freelancer', 'LinkedIn', 'GitHub', 'Amazon'].map(platform => (
+                    <div key={platform} className="flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/30">
+                      <span className="text-sm text-slate-300">{platform}</span>
+                      <span className="text-xs text-slate-500 px-2 py-0.5 rounded-lg bg-slate-800/60 border border-slate-700/40">Not linked</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-600 mt-4">Full credential management is available in the Credential Vault. Credentials auto-rotate via the Autopilot engine.</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -344,15 +476,24 @@ export default function VeloIdentityHub() {
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-violet-400" />
-                  Hub Settings
+                  <Brain className="w-5 h-5 text-indigo-400" />
+                  NEXUS — Identity AI Assistant
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-white block">Auto-Sync Real-Time Updates</label>
-                  <p className="text-xs text-slate-400 mb-2">Identity changes sync instantly to all systems</p>
-                  <Button variant="outline" className="w-full">Enabled (All Systems)</Button>
+                <p className="text-sm text-slate-400">NEXUS manages your identity data, ensures sync integrity across all systems, and supports Autopilot with verified persona data.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  {[
+                    { label: 'Identity Sync', status: 'Active', color: '#10b981' },
+                    { label: 'KYC Monitoring', status: 'Active', color: '#10b981' },
+                    { label: 'Credential Rotation', status: 'Active', color: '#10b981' },
+                    { label: 'Cross-System Broadcast', status: 'Active', color: '#10b981' },
+                  ].map(s => (
+                    <div key={s.label} className="flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/30">
+                      <span className="text-slate-300">{s.label}</span>
+                      <span className="font-semibold" style={{ color: s.color }}>{s.status}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -360,11 +501,18 @@ export default function VeloIdentityHub() {
         </Tabs>
 
         {/* Comprehensive Profile Editor Modal */}
-        {showProfileEditor && activeIdentity && (
+        {showProfileEditor && (
           <IdentityProfileEditor
-            identity={activeIdentity}
-            onClose={() => setShowProfileEditor(false)}
-            onSave={(profileData) => updateProfileMutation.mutate(profileData)}
+            identity={editingIdentity}
+            onClose={() => { setShowProfileEditor(false); setEditingIdentity(null); }}
+            onSave={(profileData) => {
+              if (editingIdentity?.id) {
+                updateProfileMutation.mutate({ id: editingIdentity.id, data: profileData });
+              } else {
+                createIdentityMutation.mutate(profileData);
+                setShowProfileEditor(false);
+              }
+            }}
           />
         )}
       </div>

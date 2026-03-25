@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
-  Zap, LayoutDashboard, Telescope, Cpu, Landmark, SlidersHorizontal, ShoppingCart, Coins,
-  MessageSquare, ChevronRight, X, Menu, Shield, Settings, Target, AlertTriangle, Users, Activity
+  Zap, LayoutDashboard, Telescope, Landmark, ShoppingCart, Coins,
+  MessageSquare, ChevronRight, X, Menu, Shield, Settings, AlertTriangle, Users, Activity
 } from 'lucide-react';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
 import NotificationBell from '../notifications/NotificationBell';
@@ -13,131 +13,96 @@ import { useAuth } from '@/lib/AuthContext';
 import { useRealtimeEventBus } from '@/lib/realtimeEventBus';
 import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
 
+// ── Six Core Departments of VELO AI ──────────────────────────────────────────
 const DEPARTMENTS = [
   {
+    id: 'command',
     path: '/Dashboard',
     icon: LayoutDashboard,
     label: 'Command',
-    subtitle: 'Mission Control',
+    subtitle: 'Mission Control Center',
     color: '#06b6d4',
     glow: 'rgba(6,182,212,0.5)',
     gradient: 'from-cyan-500/20 to-blue-600/10',
     activeBorder: 'border-cyan-400/60',
     textActive: 'text-cyan-300',
     planet: '🌐',
+    ai: 'ARIA',
   },
   {
+    id: 'identity',
     path: '/VeloIdentityHub',
     icon: Users,
     label: 'Identity',
-    subtitle: 'VELO AI Personas',
-    color: '#06b6d4',
-    glow: 'rgba(6,182,212,0.5)',
-    gradient: 'from-cyan-500/20 to-blue-600/10',
-    activeBorder: 'border-cyan-400/60',
-    textActive: 'text-cyan-300',
+    subtitle: 'Personas & Credentials',
+    color: '#818cf8',
+    glow: 'rgba(129,140,248,0.5)',
+    gradient: 'from-indigo-500/20 to-violet-600/10',
+    activeBorder: 'border-indigo-400/60',
+    textActive: 'text-indigo-300',
     planet: '👤',
+    ai: 'NEXUS',
   },
   {
-    path: '/VeloAutopilotControl',
-    icon: Zap,
-    label: 'Autopilot',
-    subtitle: 'Master Control',
-    color: '#fbbf24',
-    glow: 'rgba(251,191,36,0.5)',
-    gradient: 'from-amber-500/20 to-yellow-600/10',
-    activeBorder: 'border-amber-400/60',
-    textActive: 'text-amber-300',
-    planet: '⚡',
-  },
-  {
+    id: 'discovery',
     path: '/Discovery',
     icon: Telescope,
-    label: 'Discover',
-    subtitle: 'Scan & Analyze',
+    label: 'Discovery',
+    subtitle: 'Scan, Scout & Source',
     color: '#f59e0b',
     glow: 'rgba(245,158,11,0.5)',
     gradient: 'from-amber-500/20 to-orange-600/10',
     activeBorder: 'border-amber-400/60',
     textActive: 'text-amber-300',
     planet: '🔭',
+    ai: 'SCOUT',
   },
   {
-    path: '/ProactiveScout',
-    icon: Telescope,
-    label: 'Scout',
-    subtitle: 'Pre-Opportunity Engine',
-    color: '#00e8ff',
-    glow: 'rgba(0,232,255,0.5)',
-    gradient: 'from-cyan-500/20 to-teal-600/10',
-    activeBorder: 'border-cyan-400/60',
-    textActive: 'text-cyan-300',
-    planet: '🔭',
+    id: 'autopilot',
+    path: '/VeloAutopilotControl',
+    icon: Zap,
+    label: 'Autopilot',
+    subtitle: 'Execution & Workflows',
+    color: '#fbbf24',
+    glow: 'rgba(251,191,36,0.5)',
+    gradient: 'from-amber-500/20 to-yellow-600/10',
+    activeBorder: 'border-amber-400/60',
+    textActive: 'text-amber-300',
+    planet: '⚡',
+    ai: 'APEX',
   },
   {
-    path: '/VeloExecutionEngine',
-    icon: Activity,
-    label: 'Execution',
-    subtitle: 'Task Workflows & Logs',
-    color: '#06b6d4',
-    glow: 'rgba(6,182,212,0.5)',
-    gradient: 'from-cyan-500/20 to-blue-600/10',
-    activeBorder: 'border-cyan-400/60',
-    textActive: 'text-cyan-300',
-    planet: '⚙️',
-  },
-  {
-    path: '/VeloFinanceCommand',
-    icon: Landmark,
-    label: 'Finance',
-    subtitle: 'VELO Financial Hub',
-    color: '#10b981',
-    glow: 'rgba(16,185,129,0.5)',
-    gradient: 'from-emerald-500/20 to-teal-600/10',
-    activeBorder: 'border-emerald-400/60',
-    textActive: 'text-emerald-300',
-    planet: '💰',
-  },
-  {
-    path: '/Control',
-    icon: SlidersHorizontal,
-    label: 'Control',
-    subtitle: 'Settings & Access',
-    color: '#a855f7',
-    glow: 'rgba(168,85,247,0.5)',
-    gradient: 'from-purple-500/20 to-violet-600/10',
-    activeBorder: 'border-purple-400/60',
-    textActive: 'text-purple-300',
-    planet: '⚙️',
-  },
-  {
+    id: 'commerce',
     path: '/DigitalResellers',
     icon: ShoppingCart,
     label: 'Commerce',
-    subtitle: 'Digital Storefronts',
+    subtitle: 'Products & Storefronts',
     color: '#ec4899',
     glow: 'rgba(236,72,153,0.5)',
     gradient: 'from-pink-500/20 to-rose-600/10',
     activeBorder: 'border-pink-400/60',
     textActive: 'text-pink-300',
     planet: '🛍️',
+    ai: 'MERCH',
   },
   {
+    id: 'crypto',
     path: '/CryptoAutomation',
     icon: Coins,
     label: 'Crypto',
-    subtitle: 'Yield & Mining',
-    color: '#06b6d4',
-    glow: 'rgba(6,182,212,0.5)',
-    gradient: 'from-cyan-500/20 to-blue-600/10',
-    activeBorder: 'border-cyan-400/60',
-    textActive: 'text-cyan-300',
+    subtitle: 'Wallets & Yield',
+    color: '#00ffd9',
+    glow: 'rgba(0,255,217,0.5)',
+    gradient: 'from-teal-500/20 to-emerald-600/10',
+    activeBorder: 'border-teal-400/60',
+    textActive: 'text-teal-300',
     planet: '🚀',
+    ai: 'CIPHER',
   },
 ];
 
-// Primary tabs shown in mobile bottom bar (most important 5)
-const MOBILE_PRIMARY_TABS = ['/Dashboard', '/Discovery', '/AutoPilot', '/Finance', '/Control'];
+// Mobile: show all 6 primary departments
+const MOBILE_PRIMARY_PATHS = DEPARTMENTS.map(d => d.path);
 
 // ─── Desktop Nav Item ─────────────────────────────────────────────────────────
 function NavItem({ dept, isActive }) {
@@ -155,7 +120,10 @@ function NavItem({ dept, isActive }) {
       style={isActive ? { boxShadow: `0 0 16px ${dept.glow}, 0 0 32px ${dept.glow.replace('0.5', '0.2')}` } : {}}
     >
       <span className="text-base leading-none">{dept.planet}</span>
-      <span className="hidden lg:block font-orbitron tracking-wide text-[10px]">{dept.label}</span>
+      <div className="hidden lg:block">
+        <span className="font-orbitron tracking-wide text-[10px] block">{dept.label}</span>
+        <span className="text-[8px] opacity-50 block" style={{ color: isActive ? dept.color : undefined }}>AI: {dept.ai}</span>
+      </div>
       {isActive && (
         <span
           className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full"
@@ -168,8 +136,8 @@ function NavItem({ dept, isActive }) {
 
 // ─── Mobile Bottom Tab Bar ────────────────────────────────────────────────────
 function MobileTabBar({ currentPath, onMoreClick }) {
-  const primaryDepts = DEPARTMENTS.filter(d => MOBILE_PRIMARY_TABS.includes(d.path));
-  const hasSecondaryActive = !MOBILE_PRIMARY_TABS.includes(currentPath) && currentPath !== '/';
+  // Show 5 on mobile bottom, "More" for extras
+  const primaryDepts = DEPARTMENTS.slice(0, 5);
 
   return (
     <nav
@@ -221,16 +189,8 @@ function MobileTabBar({ currentPath, onMoreClick }) {
         className="flex-1 flex flex-col items-center justify-center gap-1 transition-all duration-200 active:scale-95"
         style={{ minHeight: 60, paddingTop: 8, paddingBottom: 8 }}
       >
-        <Menu
-          className="w-5 h-5 transition-all duration-200"
-          style={{ color: hasSecondaryActive ? '#ec4899' : '#64748b' }}
-        />
-        <span
-          className="text-[10px] font-medium tracking-wide leading-none"
-          style={{ color: hasSecondaryActive ? '#ec4899' : '#64748b' }}
-        >
-          More
-        </span>
+        <Menu className="w-5 h-5" style={{ color: '#64748b' }} />
+        <span className="text-[10px] font-medium tracking-wide leading-none" style={{ color: '#64748b' }}>More</span>
       </button>
     </nav>
   );
@@ -239,7 +199,6 @@ function MobileTabBar({ currentPath, onMoreClick }) {
 // ─── Mobile More Drawer ───────────────────────────────────────────────────────
 function MobileDrawer({ isOpen, onClose, currentPath }) {
   if (!isOpen) return null;
-  const secondaryDepts = DEPARTMENTS.filter(d => !MOBILE_PRIMARY_TABS.includes(d.path));
 
   return (
     <div className="fixed inset-0 z-[60] md:hidden">
@@ -261,14 +220,19 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3">
-          <span className="font-orbitron text-sm text-white tracking-wider">ALL SECTIONS</span>
+          <div>
+            <span className="font-orbitron text-sm text-white tracking-wider">VELO AI</span>
+            <span className="text-xs text-slate-500 ml-2">Navigation</span>
+          </div>
           <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="overflow-y-auto px-4 pb-4 space-y-1">
-          {/* All departments */}
+          <p className="text-[9px] font-orbitron text-slate-600 tracking-widest px-1 py-1">CORE DEPARTMENTS</p>
+
+          {/* All 6 core departments */}
           {DEPARTMENTS.map(dept => {
             const Icon = dept.icon;
             const isActive = currentPath === dept.path ||
@@ -296,7 +260,12 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
                   <Icon className="w-4 h-4" style={{ color: isActive ? dept.color : '#94a3b8' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${isActive ? dept.textActive : 'text-slate-200'}`}>{dept.label}</p>
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-semibold ${isActive ? dept.textActive : 'text-slate-200'}`}>{dept.label}</p>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{ background: dept.color + '15', color: dept.color, border: `1px solid ${dept.color}30` }}>
+                      {dept.ai}
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-500 truncate">{dept.subtitle}</p>
                 </div>
                 {isActive && <ChevronRight className="w-4 h-4 shrink-0" style={{ color: dept.color }} />}
@@ -306,60 +275,16 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
 
           {/* Divider */}
           <div className="h-px bg-slate-800/80 my-2" />
+          <p className="text-[9px] font-orbitron text-slate-600 tracking-widest px-1 py-1">SYSTEM ACCESS</p>
 
-          {/* Extra links */}
-          <Link to="/Chat" onClick={onClose}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-violet-500/30 hover:bg-violet-500/5 transition-all active:scale-[0.98]">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-500/10 border border-violet-500/20 shrink-0">
-              <MessageSquare className="w-4 h-4 text-violet-400" />
+          <Link to="/VeloFinanceCommand" onClick={onClose}
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all active:scale-[0.98]">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20 shrink-0">
+              <Landmark className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-200">Velo AI</p>
-              <p className="text-xs text-slate-500">Chat & commands</p>
-            </div>
-          </Link>
-
-          <Link to="/IdentityManager" onClick={onClose}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all active:scale-[0.98]">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20 shrink-0">
-              <Target className="w-4 h-4 text-cyan-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-200">Identity Manager</p>
-              <p className="text-xs text-slate-500">AI personas & profiles</p>
-            </div>
-          </Link>
-
-          <Link to="/Onboarding" onClick={onClose}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-violet-500/30 hover:bg-violet-500/5 transition-all active:scale-[0.98]">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-500/10 border border-violet-500/20 shrink-0">
-              <Zap className="w-4 h-4 text-violet-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-200">Setup / Onboarding</p>
-              <p className="text-xs text-slate-500">Configure identity, KYC, autopilot &amp; banking</p>
-            </div>
-          </Link>
-
-          <Link to="/AccountCreationDashboard" onClick={onClose}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all active:scale-[0.98]">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20 shrink-0">
-              <Target className="w-4 h-4 text-cyan-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-200">Account Creation Engine</p>
-              <p className="text-xs text-slate-500">Autopilot accounts, emails &amp; master credentials</p>
-            </div>
-          </Link>
-
-          <Link to="/APIDiscoveryDashboard" onClick={onClose}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all active:scale-[0.98]">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20 shrink-0">
-              <Telescope className="w-4 h-4 text-cyan-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-200">API Discovery</p>
-              <p className="text-xs text-slate-500">Explore discovered APIs</p>
+              <p className="text-sm font-semibold text-slate-200">Finance Command</p>
+              <p className="text-xs text-slate-500">Wallet, earnings & payouts</p>
             </div>
           </Link>
 
@@ -369,8 +294,19 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
               <AlertTriangle className="w-4 h-4 text-orange-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-200">Pending Interventions</p>
-              <p className="text-xs text-slate-500">Review user actions needed</p>
+              <p className="text-sm font-semibold text-slate-200">Interventions</p>
+              <p className="text-xs text-slate-500">Actions requiring your input</p>
+            </div>
+          </Link>
+
+          <Link to="/Chat" onClick={onClose}
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-violet-500/30 hover:bg-violet-500/5 transition-all active:scale-[0.98]">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-500/10 border border-violet-500/20 shrink-0">
+              <MessageSquare className="w-4 h-4 text-violet-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-200">VELO AI Chat</p>
+              <p className="text-xs text-slate-500">Command console & AI assistant</p>
             </div>
           </Link>
 
@@ -394,9 +330,7 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
 
 // ─── Main Layout ──────────────────────────────────────────────────────────────
 export default function AppLayout() {
-  // ACTUAL FIX: Global real-time event subscription (runs on all pages)
   useRealtimeEventBus();
-  // Sync identity, KYC, preferences across all modules
   useIdentitySyncAcrossApp();
   
   const location = useLocation();
@@ -414,6 +348,7 @@ export default function AppLayout() {
 
   const currentDept = DEPARTMENTS.find(d =>
     location.pathname === d.path ||
+    (d.path === '/Dashboard' && location.pathname === '/') ||
     (d.path !== '/Dashboard' && location.pathname.startsWith(d.path))
   );
 
@@ -444,11 +379,12 @@ export default function AppLayout() {
             </div>
           </Link>
 
-          {/* Desktop nav */}
+          {/* Desktop nav — all 6 departments */}
           <div className="hidden md:block w-px h-6 bg-gradient-to-b from-transparent via-violet-500/40 to-transparent mx-1" />
           <nav className="hidden md:flex items-center gap-1 flex-1 relative z-30 pointer-events-auto">
             {DEPARTMENTS.map(dept => {
               const isActive = location.pathname === dept.path ||
+                (dept.path === '/Dashboard' && location.pathname === '/') ||
                 (dept.path !== '/Dashboard' && location.pathname.startsWith(dept.path));
               return <NavItem key={dept.path} dept={dept} isActive={isActive} />;
             })}
@@ -475,8 +411,7 @@ export default function AppLayout() {
                   location.pathname === '/AdminPanel'
                     ? 'border-red-500/50 text-red-300 bg-red-500/10'
                     : 'border-red-500/20 text-red-400/70 hover:text-red-300 hover:border-red-400/40 hover:bg-red-500/8'
-                }`}
-                style={{ boxShadow: location.pathname === '/AdminControlPanel' ? '0 0 12px rgba(239,68,68,0.2)' : 'none' }}>
+                }`}>
                 <Shield className="w-3.5 h-3.5" />
                 <span className="hidden lg:block font-orbitron text-[10px] tracking-wide">ADMIN</span>
               </Link>
@@ -515,9 +450,10 @@ export default function AppLayout() {
       <div className="fixed bottom-6 right-6 z-40 hidden md:flex flex-col gap-1.5 items-end pointer-events-auto">
         {DEPARTMENTS.map(dept => {
           const isActive = location.pathname === dept.path ||
+            (dept.path === '/Dashboard' && location.pathname === '/') ||
             (dept.path !== '/Dashboard' && location.pathname.startsWith(dept.path));
           return (
-            <Link key={dept.path} to={dept.path} title={dept.label}
+            <Link key={dept.path} to={dept.path} title={`${dept.label} — AI: ${dept.ai}`}
               className={`flex items-center gap-2 transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}>
               {isActive && (
                 <span className="text-[10px] font-orbitron tracking-wide px-2 py-0.5 rounded-full"
@@ -533,7 +469,7 @@ export default function AppLayout() {
       </div>
       </div>
     </CyberpunkCommandCenter>
-    {/* ── Mobile Bottom Tab Bar & Drawer — rendered outside pointer-events-none wrapper ── */}
+    {/* ── Mobile Bottom Tab Bar & Drawer ── */}
     <MobileTabBar currentPath={location.pathname} onMoreClick={() => setDrawerOpen(true)} />
     <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} currentPath={location.pathname} />
     </>

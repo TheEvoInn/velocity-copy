@@ -1,15 +1,15 @@
 /**
- * VELOCITY MASTER COMMAND CENTER
- * The main hub — per-user isolated, real-time autonomous profit engine
+ * VELO AI COMMAND HUB
+ * Six-department architecture — real-time autonomous profit engine
  */
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useCurrentUser, useUserProfile, useUserWallet, useUserTasks, useUserOpportunities } from '@/hooks/useUserData';
 import {
-  Bot, Target, Wallet, Search, Play, Shield, Workflow,
+  Bot, Target, Wallet, Search, Play, Shield, ShoppingCart,
   TrendingUp, Radio, ChevronRight, Cpu, Settings,
-  Power, Rocket, Lock, AlertTriangle, Zap
+  Power, Rocket, Lock, AlertTriangle, Zap, Users, Coins
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -27,7 +27,7 @@ function StatusPulse({ active, size = 3 }) {
   );
 }
 
-function ModuleCard({ to, icon: Icon, title, subtitle, color, stat, statLabel, active }) {
+function ModuleCard({ to, icon: Icon, title, subtitle, color, stat, statLabel, active, aiLabel }) {
   return (
     <Link to={to}>
       <div
@@ -48,11 +48,8 @@ function ModuleCard({ to, icon: Icon, title, subtitle, color, stat, statLabel, a
           e.currentTarget.style.transform = 'translateY(0)';
         }}
       >
-        {/* Glow bg */}
         <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
           style={{ background: `radial-gradient(ellipse at top left, ${color}08, transparent 60%)` }} />
-
-        {/* Top accent line */}
         <div className="absolute top-0 left-0 right-0 h-px rounded-t-2xl"
           style={{ background: `linear-gradient(90deg, transparent, ${color}60, transparent)` }} />
 
@@ -63,6 +60,12 @@ function ModuleCard({ to, icon: Icon, title, subtitle, color, stat, statLabel, a
               <Icon className="w-5 h-5" style={{ color }} />
             </div>
             <div className="flex items-center gap-1.5">
+              {aiLabel && (
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded hidden lg:block"
+                  style={{ background: color + '15', color, border: `1px solid ${color}30` }}>
+                  {aiLabel}
+                </span>
+              )}
               <StatusPulse active={active} size={2} />
               <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color }} />
             </div>
@@ -103,7 +106,6 @@ export default function Dashboard() {
 
   const activeTasks = tasks.filter(t => t.status === 'running').length;
 
-  // Check if onboarding is incomplete
   const { data: goalsList = [] } = useQuery({
     queryKey: ['userGoals'],
     queryFn: () => base44.entities.UserGoals.list('-created_date', 1),
@@ -111,7 +113,6 @@ export default function Dashboard() {
   });
   const isOnboarded = goalsList[0]?.onboarded === true;
 
-  // Live intervention count
   const { data: interventionData } = useQuery({
     queryKey: ['pendingInterventionsCount'],
     queryFn: () => base44.functions.invoke('userInterventionManager', { action: 'get_pending_interventions' }).then(r => r.data?.interventions || []),
@@ -134,58 +135,59 @@ export default function Dashboard() {
     upsertProfile({ autopilot_enabled: !isAutopilotOn });
   }
 
+  // Six core department modules
   const MODULES = [
     {
-      to: '/AutoPilot', icon: Bot, title: 'AUTOPILOT ENGINE',
-      subtitle: 'Autonomous 24/7 profit engine — searches, applies, executes, and earns',
-      color: '#00e8ff', stat: activeTasks > 0 ? activeTasks : (isAutopilotOn ? 'ON' : 'OFF'),
-      statLabel: activeTasks > 0 ? 'active tasks' : 'status', active: isAutopilotOn
+      to: '/VeloAutopilotControl', icon: Bot, title: 'AUTOPILOT HUB',
+      subtitle: 'Autonomous 24/7 execution — tasks, workflows, strategies, all in one',
+      color: '#fbbf24', stat: activeTasks > 0 ? activeTasks : (isAutopilotOn ? 'ON' : 'OFF'),
+      statLabel: activeTasks > 0 ? 'active tasks' : 'status', active: isAutopilotOn,
+      aiLabel: 'APEX',
     },
     {
-      to: '/Discovery', icon: Search, title: 'WORK DISCOVERY',
-      subtitle: 'AI-powered internet scanner — finds gigs, tasks, and hidden opportunities',
-      color: '#f9d65c', stat: newOpps, statLabel: 'new found', active: newOpps > 0
+      to: '/Discovery', icon: Search, title: 'DISCOVERY HUB',
+      subtitle: 'AI-powered scanners, scrapers, and opportunity intelligence',
+      color: '#f59e0b', stat: newOpps, statLabel: 'new found', active: newOpps > 0,
+      aiLabel: 'SCOUT',
     },
     {
-      to: '/Execution', icon: Play, title: 'TASK EXECUTION',
-      subtitle: 'Browser automation — fills forms, submits work, delivers results',
-      color: '#3b82f6', stat: queuedTasks, statLabel: 'in queue', active: activeTasks > 0
+      to: '/VeloIdentityHub', icon: Users, title: 'IDENTITY HUB',
+      subtitle: 'Personas, KYC, credentials, and platform account management',
+      color: '#818cf8', stat: null, statLabel: '', active: false,
+      aiLabel: 'NEXUS',
     },
     {
-      to: '/Finance', icon: Wallet, title: 'WALLET & EARNINGS',
-      subtitle: 'Real-time balance, transaction history, and payout management',
-      color: '#10b981', stat: `$${todayEarnings.toFixed(0)}`, statLabel: 'today', active: todayEarnings > 0
+      to: '/VeloFinanceCommand', icon: Wallet, title: 'FINANCE COMMAND',
+      subtitle: 'Real-time wallet, earnings, payouts, and transaction logs',
+      color: '#10b981', stat: `$${todayEarnings.toFixed(0)}`, statLabel: 'today', active: todayEarnings > 0,
+      aiLabel: 'VAULT',
     },
     {
-      to: '/IdentityManager', icon: Shield, title: 'IDENTITY VAULT',
-      subtitle: 'Manage AI personas, credentials, and external platform profiles',
-      color: '#a855f7', stat: null, statLabel: '', active: false
+      to: '/DigitalResellers', icon: ShoppingCart, title: 'COMMERCE HUB',
+      subtitle: 'Digital storefronts, product sourcing, and automated commerce',
+      color: '#ec4899', stat: null, statLabel: '', active: false,
+      aiLabel: 'MERCH',
     },
     {
-      to: '/Control', icon: Workflow, title: 'WORKFLOW ARCHITECT',
-      subtitle: 'Build automation chains, triggers, and multi-step execution flows',
-      color: '#ff2ec4', stat: null, statLabel: '', active: false
+      to: '/CryptoAutomation', icon: Coins, title: 'CRYPTO HUB',
+      subtitle: 'Wallets, NED integration, yield strategies, and crypto execution',
+      color: '#00ffd9', stat: null, statLabel: '', active: false,
+      aiLabel: 'CIPHER',
     },
     {
       to: '/StarshipBridge', icon: Rocket, title: 'STARSHIP BRIDGE',
-      subtitle: 'Immersive 3D cockpit — the full cinematic control experience',
-      color: '#b537f2', stat: null, statLabel: '', active: false
+      subtitle: 'Immersive 3D cockpit — the full cinematic VELO AI command experience',
+      color: '#b537f2', stat: null, statLabel: '', active: false,
     },
     {
       to: '/PendingInterventions', icon: AlertTriangle, title: 'INTERVENTIONS',
       subtitle: 'Autopilot blocked — provide missing data, credentials, or decisions',
-      color: '#f97316', stat: pendingInterventions, statLabel: 'pending', active: pendingInterventions > 0
-    },
-    {
-      to: '/admin', icon: Settings, title: 'ADMIN PANEL',
-      subtitle: 'User management, verification, approvals, and full platform control',
-      color: '#64748b', stat: null, statLabel: '', active: false
+      color: '#f97316', stat: pendingInterventions, statLabel: 'pending', active: pendingInterventions > 0,
     },
   ];
 
   return (
     <div className="min-h-screen galaxy-bg relative overflow-x-hidden">
-      {/* Warp transition */}
       {warpTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
           style={{ background: 'rgba(5,7,20,0.9)', animation: 'warp-jump 0.6s ease-in forwards' }}>
@@ -203,10 +205,13 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <div className="w-2 h-8 rounded-full" style={{ background: 'linear-gradient(to bottom, #00e8ff, #ff2ec4)' }} />
-              <h1 className="font-orbitron text-3xl md:text-4xl font-black text-white tracking-wider"
-                style={{ textShadow: '0 0 30px rgba(0,232,255,0.4)' }}>
-                VELOCITY
-              </h1>
+              <div>
+                <h1 className="font-orbitron text-3xl md:text-4xl font-black text-white tracking-wider"
+                  style={{ textShadow: '0 0 30px rgba(0,232,255,0.4)' }}>
+                  VELO AI
+                </h1>
+                <p className="text-[10px] text-slate-600 font-mono tracking-widest">COMMAND HUB · SIX DEPARTMENTS</p>
+              </div>
             </div>
             <p className="text-xs text-slate-500 ml-5 font-mono tracking-widest">
               AUTONOMOUS PROFIT ENGINE · {currentTime.toLocaleTimeString()}
@@ -214,7 +219,6 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Autopilot master switch */}
             <button
               onClick={toggleAutopilot}
               className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300"
@@ -232,7 +236,6 @@ export default function Dashboard() {
               <StatusPulse active={isAutopilotOn} size={2} />
             </button>
 
-            {/* User indicator */}
             {user && (
               <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl"
                 style={{ background: 'rgba(10,15,42,0.6)', border: '1px solid rgba(0,232,255,0.15)' }}>
@@ -247,7 +250,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           {[
             { label: 'WALLET BALANCE', value: `$${balance.toFixed(2)}`, color: '#10b981', icon: Wallet },
-            { label: 'TODAY\'S EARNINGS', value: `$${todayEarnings.toFixed(2)}`, color: '#f9d65c', icon: TrendingUp },
+            { label: "TODAY'S EARNINGS", value: `$${todayEarnings.toFixed(2)}`, color: '#f9d65c', icon: TrendingUp },
             { label: 'TASKS ACTIVE', value: activeTasks, color: '#00e8ff', icon: Cpu, pulse: activeTasks > 0 },
             { label: 'OPPORTUNITIES', value: newOpps, color: '#a855f7', icon: Target },
           ].map(item => (
@@ -295,7 +298,7 @@ export default function Dashboard() {
                   <Zap className="w-4 h-4 text-violet-300" />
                 </div>
                 <div>
-                  <span className="font-orbitron text-xs tracking-widest text-violet-300 block">SETUP REQUIRED — COMPLETE YOUR ONBOARDING</span>
+                  <span className="font-orbitron text-xs tracking-widest text-violet-300 block">SETUP REQUIRED — COMPLETE YOUR VELO AI ONBOARDING</span>
                   <span className="text-[10px] text-slate-500">Identity · KYC · Autopilot · Banking — 5 minutes to activate the full platform</span>
                 </div>
               </div>
@@ -325,9 +328,7 @@ export default function Dashboard() {
         {/* ── STATUS BANNER ── */}
         <div className="mb-8 px-5 py-3 rounded-2xl flex items-center justify-between"
           style={{
-            background: isAutopilotOn
-              ? 'rgba(0,232,255,0.05)'
-              : 'rgba(51,65,85,0.2)',
+            background: isAutopilotOn ? 'rgba(0,232,255,0.05)' : 'rgba(51,65,85,0.2)',
             border: `1px solid ${isAutopilotOn ? '#00e8ff25' : '#33415530'}`,
           }}>
           <div className="flex items-center gap-3">
@@ -336,8 +337,8 @@ export default function Dashboard() {
               <span className="font-orbitron text-xs tracking-widest"
                 style={{ color: isAutopilotOn ? '#00e8ff' : '#475569' }}>
                 {isAutopilotOn
-                  ? `ENGINE ACTIVE — Scanning, executing, and earning for ${user?.full_name || 'you'}`
-                  : 'ENGINE STANDBY — Activate Autopilot to begin autonomous profit generation'}
+                  ? `VELO AI ACTIVE — Scanning, executing, and earning for ${user?.full_name || 'you'}`
+                  : 'VELO AI STANDBY — Activate Autopilot to begin autonomous profit generation'}
               </span>
             </div>
           </div>
@@ -348,7 +349,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── MODULE GRID ── */}
+        {/* ── SIX DEPARTMENT MODULE GRID ── */}
+        <div className="mb-2">
+          <p className="font-orbitron text-[10px] tracking-[0.3em] text-slate-600 mb-4">CORE DEPARTMENTS</p>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {MODULES.map(mod => (
             <ModuleCard key={mod.to} {...mod} />
@@ -394,12 +398,12 @@ export default function Dashboard() {
             </div>
             <div className="p-4 space-y-2.5">
               {[
-                { to: '/AutoPilot', label: 'Configure Autopilot Engine', color: '#00e8ff', icon: Bot },
-                { to: '/PendingInterventions', label: `Resolve Autopilot Blocks${pendingInterventions > 0 ? ` (${pendingInterventions})` : ''}`, color: '#f97316', icon: AlertTriangle },
-                { to: '/Discovery', label: 'Scan for New Work', color: '#f9d65c', icon: Search },
-                { to: '/Finance', label: 'View Wallet & Earnings', color: '#10b981', icon: Wallet },
-                { to: '/IdentityManager', label: 'Manage AI Identities', color: '#a855f7', icon: Shield },
-                { to: '/StarshipBridge', label: 'Enter 3D Cockpit', color: '#b537f2', icon: Rocket },
+                { to: '/VeloAutopilotControl', label: 'Autopilot Hub — Configure Engine', color: '#fbbf24', icon: Bot },
+                { to: '/PendingInterventions', label: `Resolve Interventions${pendingInterventions > 0 ? ` (${pendingInterventions})` : ''}`, color: '#f97316', icon: AlertTriangle },
+                { to: '/Discovery', label: 'Discovery Hub — Scan for Opportunities', color: '#f59e0b', icon: Search },
+                { to: '/VeloFinanceCommand', label: 'Finance Command — Wallet & Earnings', color: '#10b981', icon: Wallet },
+                { to: '/VeloIdentityHub', label: 'Identity Hub — Personas & KYC', color: '#818cf8', icon: Users },
+                { to: '/StarshipBridge', label: 'Starship Bridge — 3D Cockpit', color: '#b537f2', icon: Rocket },
               ].map(action => (
                 <Link key={action.to} to={action.to}>
                   <div className="flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 group"
@@ -426,7 +430,7 @@ export default function Dashboard() {
 
         {/* ── FOOTER ── */}
         <div className="mt-8 flex items-center justify-between text-xs font-mono text-slate-700">
-          <span>VELOCITY ENGINE v2.0 · Multi-User Isolated · Per-User Autonomous</span>
+          <span>VELO AI ENGINE v3.0 · Six-Department Architecture · Per-User Autonomous</span>
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>ALL SYSTEMS OPERATIONAL</span>

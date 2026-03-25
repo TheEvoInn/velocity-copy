@@ -205,20 +205,10 @@ Deno.serve(async (req) => {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
-    // 9. SCHEDULE INITIAL DISCOVERY SCAN
+    // 9. NOTE: DISCOVERY HAPPENS VIA autopilotActivationTrigger
     // ═══════════════════════════════════════════════════════════════════════════════
-    try {
-      // Queue initial opportunity discovery scan immediately
-      await base44.functions.invoke('globalOpportunityDiscovery', {
-        user_email: user.email,
-        identity_id,
-        initial_scan: true,
-        preferred_categories: preferred_categories || [],
-      });
-      console.log(`[Onboarding Launch] ✓ Initial opportunity discovery queued`);
-    } catch (err) {
-      console.warn(`[Onboarding Launch] Discovery scan will run next cycle:`, err.message);
-    }
+    // globalOpportunityDiscovery is called by autopilotActivationTrigger via scanOpportunities
+    // No need to invoke separately
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // 10. RETURN LAUNCH CONFIRMATION WITH SYNC STATUS

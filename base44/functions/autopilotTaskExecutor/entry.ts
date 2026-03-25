@@ -53,6 +53,12 @@ async function executeNextTask(base44, user) {
 
     if (tasksArray.length === 0) {
       result.steps.push('No queued tasks found');
+      // Log idle state
+      await base44.asServiceRole.entities.ActivityLog.create({
+        action_type: 'system',
+        message: '✓ Autopilot: No pending tasks',
+        severity: 'info'
+      }).catch(() => null);
       return Response.json({ success: true, result });
     }
 
@@ -67,6 +73,34 @@ async function executeNextTask(base44, user) {
       }).catch(e => {
         result.steps.push(`Error: ${e.message}`);
       });
+
+      // ─── PHASE -1: Validate task state & credentials ─────────────────────
+      result.steps.push('Validating task credentials...');
+      const credCheck = await base44.asServiceRole.entities.CredentialVault.filter(
+        { email_address: task.identity_id, is_active: true },
+        '-updated_date',
+        1
+      ).catch(() => []);
+
+      if (!credCheck || credCheck.length === 0) {
+        result.steps.push('⚠️ No active credentials found — requesting user intervention');
+        await base44.asServiceRole.entities.UserIntervention.create({
+          type: 'missing_credentials',
+          priority: 'high',
+          title: 'Missing Credentials for Task Execution',
+          description: `Task ${task.id} requires active credentials for identity ${task.identity_id}`,
+          required_action: 'Add credentials to Credential Vault',
+          data: { task_id: task.id, identity_id: task.identity_id }
+        }).catch(() => null);
+        
+        await base44.entities.TaskExecutionQueue.update(task.id, {
+          status: 'queued',
+          error_message: 'Missing credentials — waiting for user to add credentials'
+        }).catch(() => null);
+        
+        return Response.json({ success: true, result, queued: true });
+      }
+      result.steps.push('✓ Credentials validated');
 
       // ─── PHASE 0: Acquire execution lock ────────────────────────────
       result.steps.push('Acquiring task execution lock...');
@@ -237,9 +271,19 @@ async function executeNextTask(base44, user) {
     ];
 
     // Mark task as completed (only if execution succeeded)
-    result.steps.push('Finalizing completion...');
-    const finalStatus = executionResult.data?.success ? 'completed' : 'failed';
-    const finalSubmissionStatus = executionResult.data?.success ? true : false;
+     result.steps.push('Finalizing completion...');
+     const finalStatus = executionResult.data?.success ? 'completed' : 'failed';
+     const finalSubmissionStatus = executionResult.data?.success ? true : false;
+
+     // Track execution metadata for health monitoring
+     const executionTime = Math.round((Date.now() - new Date(task.queue_timestamp).getTime()) / 1000);
+     const executionMetadata = {
+       duration_seconds: executionTime,
+       identity_used: selectedIdentity,
+       lock_held: true,
+       real_execution: true,
+       credential_lifecycle: 'valid_at_execution'
+     };
 
     await base44.entities.TaskExecutionQueue.update(task.id, {
       status: finalStatus,
@@ -248,11 +292,22 @@ async function executeNextTask(base44, user) {
       confirmation_number: executionResult.data?.execution?.confirmation?.text,
       confirmation_text: executionResult.data?.execution?.confirmation?.text,
       execution_steps: executionSteps,
-      execution_time_seconds: Math.round((Date.now() - new Date(task.queue_timestamp).getTime()) / 1000),
-      error_message: executionResult.data?.error
+      execution_time_seconds: executionMetadata.duration_seconds,
+      error_message: executionResult.data?.error,
+      retry_count: task.retry_count || 0
     }).catch(e => {
       result.steps.push(`Error: ${e.message}`);
     });
+
+    // Record execution state in health metrics for system monitor
+    await base44.asServiceRole.entities.SystemMetrics.create({
+      metric_type: 'task_execution',
+      timestamp: new Date().toISOString(),
+      source: 'autopilotTaskExecutor',
+      status: finalSubmissionStatus ? 'success' : 'failed',
+      duration_seconds: executionMetadata.duration_seconds,
+      data: { task_id: task.id, platform: task.platform, ...executionMetadata }
+    }).catch(() => null);
 
     // Update related opportunity (only mark as completed if submission succeeded)
     if (task.opportunity_id && finalSubmissionStatus) {
@@ -291,45 +346,64 @@ async function executeNextTask(base44, user) {
       }
     }
 
-    // Log execution with identity tracking
+    // Log execution with full metadata
     await base44.entities.ActivityLog.create({
       action_type: 'execution',
-      message: `✅ Task completed for "${task.platform}" opportunity`,
-      severity: 'success',
+      message: `✅ Task ${task.id} completed on "${task.platform}" in ${executionMetadata.duration_seconds}s`,
+      severity: finalSubmissionStatus ? 'success' : 'warning',
       metadata: {
         task_id: task.id,
         opportunity_id: task.opportunity_id,
         identity_id: selectedIdentity,
         value: task.estimated_value,
-        compliance_passed: true
+        compliance_passed: finalSubmissionStatus,
+        ...executionMetadata
       }
     }).catch(() => {});
 
-    // Release execution lock
-    if (result.lock_token) {
-      await base44.functions.invoke('taskExecutionLockManager', {
-        action: 'release_lock',
-        lockToken: result.lock_token
-      }).catch(() => null);
-      result.steps.push('✓ Execution lock released');
-    }
+    // Release execution lock and finalize
+     if (result.lock_token) {
+       await base44.functions.invoke('taskExecutionLockManager', {
+         action: 'release_lock',
+         lockToken: result.lock_token
+       }).catch(() => null);
+       result.steps.push('✓ Execution lock released');
+     }
+
+     // Trigger system health check if execution failed
+     if (!finalSubmissionStatus) {
+       await base44.asServiceRole.functions.invoke('systemHealthMonitor', {
+         action: 'diagnose_failure',
+         task_id: task.id,
+         error_type: executionResult.data?.error_type
+       }).catch(() => null);
+     }
 
     result.executed = true;
     return Response.json({ success: true, result });
 
   } catch (e) {
-    result.steps.push(`Fatal error: ${e.message}`);
-    
-    // Release lock on fatal error
-    if (result.lock_token) {
-      await base44.functions.invoke('taskExecutionLockManager', {
-        action: 'release_lock',
-        lockToken: result.lock_token
-      }).catch(() => null);
-    }
+     result.steps.push(`Fatal error: ${e.message}`);
 
-    return Response.json({ success: false, result }, { status: 500 });
-  }
+     // Record fatal error for recovery
+     if (result.task_id) {
+       await base44.asServiceRole.entities.TaskExecutionQueue.update(result.task_id, {
+         status: 'failed',
+         error_message: `Fatal: ${e.message}`,
+         error_type: 'system_error'
+       }).catch(() => null);
+     }
+
+     // Release lock on fatal error
+     if (result.lock_token) {
+       await base44.functions.invoke('taskExecutionLockManager', {
+         action: 'release_lock',
+         lockToken: result.lock_token
+       }).catch(() => null);
+     }
+
+     return Response.json({ success: false, result }, { status: 500 });
+   }
 }
 
 async function executeBatch(base44, user) {

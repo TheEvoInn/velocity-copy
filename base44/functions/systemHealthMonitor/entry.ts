@@ -27,7 +27,10 @@ Deno.serve(async (req) => {
       module_health: {},
       data_integrity: {},
       task_health: {},
-      overall_status: 'healthy'
+      credential_health: {},
+      retry_health: {},
+      overall_status: 'healthy',
+      diagnostic_mode: action === 'diagnose_failure'
     };
 
     // ── MODULE CONNECTIVITY CHECK ──
@@ -58,12 +61,58 @@ Deno.serve(async (req) => {
     }
     report.checks_performed++;
 
-    // ── DATA INTEGRITY CHECKS ──
-    
-    // Check for orphaned tasks (stuck in 'executing' > 6h)
-    const staleTasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
-      { status: 'executing' }
+    // ── CREDENTIAL HEALTH CHECK ──
+    const credVault = await base44.asServiceRole.entities.CredentialVault.list('-updated_date', 100).catch(() => []);
+    const credVaultArray = Array.isArray(credVault) ? credVault : [];
+
+    let expiredCreds = 0;
+    let inactiveCreds = 0;
+    for (const cred of credVaultArray) {
+      if (!cred.is_active) {
+        inactiveCreds++;
+      }
+      if (cred.expiry_date && new Date(cred.expiry_date) < new Date()) {
+        expiredCreds++;
+        report.issues_found.push({
+          severity: 'warning',
+          type: 'expired_credential',
+          credential_id: cred.id,
+          email: cred.email_address
+        });
+      }
+    }
+    report.credential_health = { total: credVaultArray.length, inactive: inactiveCreds, expired: expiredCreds };
+    report.checks_performed++;
+
+    // ── RETRY & RECOVERY HEALTH ──
+    const recentRetries = await base44.asServiceRole.entities.RetryHistory.filter(
+      { timestamp: { $gte: new Date(Date.now() - 3600000).toISOString() } },
+      '-timestamp',
+      50
     ).catch(() => []);
+
+    const retriesArray = Array.isArray(recentRetries) ? recentRetries : [];
+    let abandonedRetries = 0;
+    for (const retry of retriesArray) {
+      if (retry.status === 'abandoned') {
+        abandonedRetries++;
+        report.issues_found.push({
+          severity: 'info',
+          type: 'abandoned_retry',
+          task_id: retry.task_id,
+          attempts: retry.attempt_number
+        });
+      }
+    }
+    report.retry_health = { total_retries: retriesArray.length, abandoned: abandonedRetries };
+    report.checks_performed++;
+
+    // ── DATA INTEGRITY CHECKS ──
+
+     // Check for orphaned tasks (stuck in 'processing' > 6h)
+     const staleTasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+       { status: 'processing' }
+     ).catch(() => []);
 
     const now = new Date();
     for (const task of staleTasks) {
@@ -74,18 +123,27 @@ Deno.serve(async (req) => {
           type: 'stale_task',
           task_id: task.id,
           age_hours: age.toFixed(1),
-          issue: 'Task executing for >6 hours'
+          issue: 'Task processing for >6 hours'
         });
 
-        // Auto-repair: transition to needs_review
+        // Auto-repair: attempt recovery via errorRecoveryOrchestrator
+        const recoveryRes = await base44.asServiceRole.functions.invoke('errorRecoveryOrchestrator', {
+          task_id: task.id,
+          error_type: 'timeout_stale_execution',
+          attempt: (task.retry_count || 0) + 1,
+          max_retries: task.max_retries || 2,
+          should_preserve_state: true
+        }).catch(e => ({ success: false, error: e.message }));
+
         await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
-          status: 'needs_review'
+          status: recoveryRes.success ? 'queued' : 'needs_review',
+          error_type: 'timeout_recovered'
         }).catch(() => {});
 
         report.auto_repairs.push({
           type: 'stale_task',
           task_id: task.id,
-          action: 'Transitioned to needs_review'
+          action: recoveryRes.success ? 'Queued for retry via errorRecoveryOrchestrator' : 'Marked for manual review'
         });
       }
     }

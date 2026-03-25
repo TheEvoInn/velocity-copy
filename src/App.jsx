@@ -44,6 +44,7 @@ import VeloIdentityHub from './pages/VeloIdentityHub';
 import VeloAutopilotControl from './pages/VeloAutopilotControl';
 import VeloFinanceCommand from './pages/VeloFinanceCommand';
 import VeloExecutionEngine from './pages/VeloExecutionEngine';
+import StrategySetupWizard from './pages/StrategySetupWizard';
 
 
 const AuthenticatedApp = () => {
@@ -108,6 +109,7 @@ const AuthenticatedApp = () => {
         <Route path="/VeloAutopilotControl" element={<VeloAutopilotControl />} />
         <Route path="/VeloFinanceCommand" element={<VeloFinanceCommand />} />
         <Route path="/VeloExecutionEngine" element={<VeloExecutionEngine />} />
+        <Route path="/StrategySetupWizard" element={<StrategySetupWizard />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

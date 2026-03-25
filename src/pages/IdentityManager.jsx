@@ -88,27 +88,23 @@ export default function IdentityManager() {
     if (!onboardingIdentity) return;
     update({ id: onboardingIdentity.id, data: onboardingData });
     setOnboardingIdentity(null);
-    refetch();
-  }
 
-  function handleResumeOnboarding(identity) {
-    setOnboardingIdentity(identity);
-  }
-
-  function handleEdit(identity) {
-    setEditingIdentity(identity);
-    setShowForm(true);
-  }
-
-  async function handleSwitch(id) {
-    switchTo(id);
-    // Also propagate via identityEngine for full sync
+    // Trigger cross-module sync to all engines
     try {
-      await base44.functions.invoke('identityEngine', { action: 'switch_identity', identity_id: id });
-      qc.invalidateQueries({ queryKey: ['identities'] });
-      qc.invalidateQueries({ queryKey: ['active_identity'] });
-    } catch {}
-  }
+      await base44.functions.invoke('identityOnboardingCompleteSync', {
+        identity_id: onboardingIdentity.id
+      });
+    } catch (e) {
+      console.error('Sync failed:', e);
+    }
+
+    // Refetch all data to reflect sync
+    refetch();
+    qc.invalidateQueries({ queryKey: ['identities'] });
+    } catch (e) {
+    console.error('Sync failed:', e);
+    }
+    }
 
   async function handleDelete(id) {
     if (!id) return;

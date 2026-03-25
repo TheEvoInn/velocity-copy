@@ -545,7 +545,25 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
           onboarding_complete: true,
           onboarding_status: 'complete',
         });
-        qc.invalidateQueries({ queryKey: ['identities', 'kycVerification', 'userGoals', 'withdrawalPolicy'] });
+
+        // Trigger cross-module sync to Autopilot, Goals, Policies, etc.
+        try {
+          await base44.functions.invoke('identityOnboardingCompleteSync', {
+            identity_id: identityId
+          });
+        } catch (syncError) {
+          console.error('Cross-module sync failed:', syncError);
+        }
+
+        // Invalidate all related queries for real-time UI update
+        qc.invalidateQueries({ queryKey: ['identities'] });
+        qc.invalidateQueries({ queryKey: ['kycVerification'] });
+        qc.invalidateQueries({ queryKey: ['userGoals'] });
+        qc.invalidateQueries({ queryKey: ['withdrawalPolicy'] });
+        qc.invalidateQueries({ queryKey: ['spendingPolicy'] });
+        qc.invalidateQueries({ queryKey: ['active_identity'] });
+        qc.invalidateQueries({ queryKey: ['platformState'] });
+
         onComplete?.();
       } else {
         setCurrentStep((prev) => prev + 1);

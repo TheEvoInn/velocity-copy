@@ -14,12 +14,15 @@ Deno.serve(async (req) => {
 
     if (action === 'discover_all') {
       // Run both discovery sources in parallel
-      const [githubResult, webResult] = await Promise.all([
+      const results = await Promise.allSettled([
         base44.functions.invoke('githubOpportunitiesDiscovery', {}),
         base44.functions.invoke('webSearchOpportunitiesDiscovery', {})
       ]);
 
-      const totalDiscovered = (githubResult.data?.discovered || 0) + (webResult.data?.discovered || 0);
+      const githubResult = results[0].status === 'fulfilled' ? results[0].value : null;
+      const webResult = results[1].status === 'fulfilled' ? results[1].value : null;
+
+      const totalDiscovered = (githubResult?.data?.discovered || 0) + (webResult?.data?.discovered || 0);
 
       // Fetch all new opportunities
       const opportunities = await base44.asServiceRole.entities.Opportunity.filter({
@@ -34,8 +37,12 @@ Deno.serve(async (req) => {
         discovered: totalDiscovered,
         queued: queuedCount,
         sources: {
-          github: githubResult.data?.discovered || 0,
-          web_search: webResult.data?.discovered || 0
+          github: githubResult?.data?.discovered || 0,
+          web_search: webResult?.data?.discovered || 0
+        },
+        errors: {
+          github: results[0].status === 'rejected' ? results[0].reason?.message : null,
+          web: results[1].status === 'rejected' ? results[1].reason?.message : null
         }
       });
     }
@@ -48,6 +55,14 @@ Deno.serve(async (req) => {
 
 async function scoreAndQueueOpportunities(base44, opportunities) {
   let queued = 0;
+
+  // Get or create a default identity for queuing
+  const identities = await base44.asServiceRole.entities.AIIdentity.filter({ is_active: true }, '-created_date', 1);
+  const identityId = identities[0]?.id;
+  
+  if (!identityId) {
+    throw new Error('No active AI identity found. Create one first.');
+  }
 
   for (const opp of opportunities) {
     // Simple scoring: velocity + profit + feasibility
@@ -69,6 +84,7 @@ async function scoreAndQueueOpportunities(base44, opportunities) {
       url: opp.url,
       opportunity_type: opp.opportunity_type,
       platform: opp.platform,
+      identity_id: identityId,
       status: 'queued',
       priority: Math.min(100, totalScore),
       estimated_value: opp.profit_estimate_high,

@@ -493,7 +493,7 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
           onboarding_config: JSON.stringify({...formData, step: 'identity'}),
         });
       } else if (step.id === 'kyc') {
-        // Create KYC record with actual submitted data
+        // Create KYC record with actual submitted data + uploaded document URLs
         if (Object.values(formData).some(v => !!v)) {
           const kycs = await base44.entities.KYCVerification.filter({ user_email: user?.email }, '-created_date', 1);
           const kycId = kycs[0]?.id;
@@ -508,6 +508,20 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
             fullName = formData.full_legal_name || '';
           }
           
+          // Retrieve uploaded document URLs from localStorage
+          let idFrontUrl = '';
+          let idBackUrl = '';
+          let selfieUrl = '';
+          let proofOfAddressUrl = '';
+          try {
+            idFrontUrl = localStorage.getItem(`onboarding_${identityId}_id_document_front`) || '';
+            idBackUrl = localStorage.getItem(`onboarding_${identityId}_id_document_back`) || '';
+            selfieUrl = localStorage.getItem(`onboarding_${identityId}_selfie`) || '';
+            proofOfAddressUrl = localStorage.getItem(`onboarding_${identityId}_proof_of_address`) || '';
+          } catch (e) {
+            console.warn('Could not retrieve file URLs from localStorage:', e);
+          }
+          
           const kycUpdate = {
             full_legal_name: fullName || formData.full_legal_name || '',
             government_id_type: formData.government_id_type || '',
@@ -520,6 +534,10 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
             postal_code: formData.postal_code || '',
             country: formData.country || '',
             phone_number: formData.phone || '',
+            id_document_front_url: idFrontUrl || '',
+            id_document_back_url: idBackUrl || '',
+            selfie_url: selfieUrl || '',
+            proof_of_address_url: proofOfAddressUrl || '',
             kyc_tier: 'basic',
             verification_status: 'pending',
             submitted_at: new Date().toISOString(),

@@ -8,12 +8,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Power, Zap, AlertTriangle, CheckCircle, Clock, XCircle, Cpu, Settings, Brain } from 'lucide-react';
-import { useActiveIdentity } from '@/hooks/useUserData';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
+import { Power, Zap, AlertTriangle, CheckCircle, Clock, XCircle, Cpu, Settings, Brain, Play, RefreshCw, Globe } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 
 export default function VeloAutopilotControl() {
@@ -97,14 +92,69 @@ export default function VeloAutopilotControl() {
     }
   };
 
+  // Queued discoveries — WorkOpportunity records pending execution
+  const { data: queuedDiscoveries = [], refetch: refetchDiscoveries } = useQuery({
+    queryKey: ['queuedDiscoveries', user?.email],
+    queryFn: () => base44.entities.WorkOpportunity.filter(
+      { created_by: user?.email, autopilot_queued: true },
+      '-created_date', 50
+    ).catch(() => []),
+    enabled: !!user?.email,
+    refetchInterval: 10000,
+  });
+
+  const [executing, setExecuting] = useState(false);
+  const [execResult, setExecResult] = useState(null);
+
+  // Real-time sub for WorkOpportunity
+  useEffect(() => {
+    if (!user?.email) return;
+    const u4 = base44.entities.WorkOpportunity.subscribe(() => {
+      qc.invalidateQueries({ queryKey: ['queuedDiscoveries', user.email] });
+    });
+    return () => u4();
+  }, [user?.email, qc]);
+
+  async function executeQueuedOpportunities() {
+    setExecuting(true);
+    setExecResult(null);
+    // Convert each queued opportunity to an AITask and trigger execution
+    let dispatched = 0;
+    for (const opp of queuedDiscoveries.slice(0, 10)) {
+      // Create AITask from opportunity
+      await base44.entities.AITask.create({
+        task_type: 'url_analysis',
+        task_name: opp.title,
+        url: opp.url || '',
+        status: 'queued',
+        priority: opp.score || 50,
+        analysis_config: { analyze_forms: true, detect_captcha: true, extract_metadata: true, ai_enabled: true },
+        config: {
+          opportunity_id: opp.id,
+          category: opp.category,
+          platform: opp.platform,
+          estimated_pay: opp.estimated_pay,
+          can_ai_complete: opp.can_ai_complete,
+        },
+        created_at: new Date().toISOString(),
+      }).catch(() => null);
+      // Mark opportunity as executing
+      await base44.entities.WorkOpportunity.update(opp.id, { status: 'executing', autopilot_queued: false }).catch(() => null);
+      dispatched++;
+    }
+    // Trigger the autopilot cycle to pick up the new tasks
+    const res = await base44.functions.invoke('autopilotCycle', {
+      action: 'process_queue',
+      user_email: user?.email,
+    }).catch(() => null);
+    setExecResult({ dispatched, engine_response: res?.data });
+    qc.invalidateQueries({ queryKey: ['aiTasks', user?.email] });
+    qc.invalidateQueries({ queryKey: ['queuedDiscoveries', user?.email] });
+    refetchDiscoveries();
+    setExecuting(false);
+  }
+
   const filteredTasks = filterStatus === 'all' ? tasks : tasks.filter(t => t.status === filterStatus);
-  const stats = {
-    total: tasks.length,
-    completed: tasks.filter(t => t.status === 'completed').length,
-    executing: tasks.filter(t => t.status === 'executing').length,
-    failed: tasks.filter(t => t.status === 'failed').length,
-    queued: tasks.filter(t => t.status === 'queued').length,
-  };
 
   return (
     <div className="min-h-screen pt-20 pb-8 px-4 md:px-8">
@@ -203,6 +253,59 @@ export default function VeloAutopilotControl() {
           </CardContent>
         </Card>
 
+        {/* Queued Discoveries Ready for Execution */}
+        {queuedDiscoveries.length > 0 && (
+          <div className="rounded-2xl p-4"
+            style={{ background: 'rgba(249,214,92,0.04)', border: '1px solid rgba(249,214,92,0.3)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-amber-400" />
+                <span className="font-orbitron text-amber-400 text-sm tracking-wider">QUEUED DISCOVERIES</span>
+                <span className="text-xs px-2 py-0.5 rounded-full font-orbitron font-bold"
+                  style={{ background: 'rgba(249,214,92,0.15)', color: '#f9d65c', border: '1px solid rgba(249,214,92,0.3)' }}>
+                  {queuedDiscoveries.length}
+                </span>
+              </div>
+              <button
+                onClick={executeQueuedOpportunities}
+                disabled={executing || !autopilotEnabled}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-orbitron tracking-wide transition-all disabled:opacity-40"
+                style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981' }}>
+                {executing
+                  ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Dispatching...</>
+                  : <><Play className="w-3.5 h-3.5" /> Execute All Now</>}
+              </button>
+            </div>
+            {!autopilotEnabled && (
+              <p className="text-xs text-orange-400 mb-3">⚠️ Enable Autopilot above to execute queued discoveries</p>
+            )}
+            {execResult && (
+              <div className="mb-3 px-3 py-2 rounded-xl text-xs font-orbitron"
+                style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', color: '#10b981' }}>
+                ✓ {execResult.dispatched} tasks dispatched to APEX execution engine
+              </div>
+            )}
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {queuedDiscoveries.map(opp => (
+                <div key={opp.id} className="flex items-center justify-between px-3 py-2 rounded-xl"
+                  style={{ background: 'rgba(10,15,42,0.7)', border: '1px solid rgba(249,214,92,0.1)' }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-white font-medium truncate">{opp.title}</div>
+                    <div className="text-[10px] text-slate-500">{opp.platform} · {opp.category?.replace(/_/g, ' ')} · ${opp.estimated_pay || 0}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    {opp.can_ai_complete && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-orbitron"
+                        style={{ background: 'rgba(168,85,247,0.1)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}>AI</span>
+                    )}
+                    <span className="text-[10px] font-orbitron text-amber-400">{opp.score || 0}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
@@ -221,7 +324,7 @@ export default function VeloAutopilotControl() {
           ))}
         </div>
 
-        {/* Main Tabs */}
+
         <Tabs defaultValue="queue" className="space-y-4">
           <TabsList className="glass-card flex-wrap h-auto gap-1">
             <TabsTrigger value="queue">Task Queue ({filteredTasks.length})</TabsTrigger>

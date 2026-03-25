@@ -116,8 +116,8 @@ async function provideMissingData(base44, user, interventionId, data) {
       rotateIdentity = true;
     }
 
-    // Update intervention: mark as RESOLVED with user data
-    await base44.asServiceRole.entities.UserIntervention?.update?.(interventionId, {
+    // Update intervention: mark as RESOLVED with user data (use user-scoped auth for RLS)
+    await base44.entities.UserIntervention?.update?.(interventionId, {
       status: 'resolved',
       user_response: data,
       resolved_at: new Date().toISOString(),
@@ -236,8 +236,8 @@ async function approveIntervention(base44, user, interventionId) {
       return jsonResponse({ error: 'Unauthorized access to intervention' }, 403);
     }
 
-    // Mark as approved and resume task
-    await base44.asServiceRole.entities.UserIntervention?.update?.(interventionId, {
+    // Mark as approved and resume task (use user-scoped auth for RLS)
+    await base44.entities.UserIntervention?.update?.(interventionId, {
       status: 'resolved',
       approved_at: new Date().toISOString()
     }).catch(() => null);
@@ -293,8 +293,8 @@ async function rejectIntervention(base44, user, interventionId, reason = '') {
       return jsonResponse({ error: 'Unauthorized access to intervention' }, 403);
     }
 
-    // Mark as resolved (rejected)
-    await base44.asServiceRole.entities.UserIntervention?.update?.(interventionId, {
+    // Mark as resolved (rejected) (use user-scoped auth for RLS)
+    await base44.entities.UserIntervention?.update?.(interventionId, {
       status: 'resolved',
       rejection_reason: reason,
       rejected_at: new Date().toISOString()

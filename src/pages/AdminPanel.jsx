@@ -8,14 +8,8 @@ import AdminTransactions from '@/components/admin/AdminTransactions.jsx';
 import AdminActivityLog from '@/components/admin/AdminActivityLog.jsx';
 import AdminSystemHealth from '@/components/admin/AdminSystemHealth.jsx';
 import AdminInterventions from '@/components/admin/AdminInterventions.jsx';
-import AdminAnalytics from '@/components/admin/AdminAnalytics.jsx';
-import AdminCommandCenter from '@/components/admin/AdminCommandCenter.jsx';
 import AdminCompliance from '@/components/admin/AdminCompliance.jsx';
-import NotificationCenter from '@/components/notifications/NotificationCenter.jsx';
-import AuditTrailDashboard from '@/components/admin/AuditTrailDashboard.jsx';
-import AdminPredictions from '@/components/admin/AdminPredictions.jsx';
-import AdminProductionHardening from '@/components/admin/AdminProductionHardening.jsx';
-import { Shield, LayoutDashboard, Users, TrendingUp, DollarSign, Activity, Zap, AlertTriangle, BarChart3, Joystick, Lock, Bell, Database, Brain, Wrench, Settings, LogOut } from 'lucide-react';
+import { Shield, LayoutDashboard, Users, DollarSign, Activity, Zap, AlertTriangle, Lock, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -67,9 +61,6 @@ export default function AdminPanel() {
             <TabsTrigger value="users" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-400 gap-1.5">
               <Users className="w-3.5 h-3.5" /> User Management
             </TabsTrigger>
-            <TabsTrigger value="opportunities" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-400 gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5" /> Opportunities
-            </TabsTrigger>
             <TabsTrigger value="transactions" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-400 gap-1.5">
               <DollarSign className="w-3.5 h-3.5" /> Transactions
             </TabsTrigger>
@@ -82,62 +73,18 @@ export default function AdminPanel() {
             <TabsTrigger value="interventions" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-400 gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5" /> Interventions
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-400 gap-1.5">
-              <BarChart3 className="w-3.5 h-3.5" /> Analytics
-            </TabsTrigger>
-            <TabsTrigger value="command" className="data-[state=active]:bg-red-600 data-[state=active]:text-white text-slate-400 gap-1.5">
-              <Joystick className="w-3.5 h-3.5" /> Command Center
-            </TabsTrigger>
             <TabsTrigger value="compliance" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-400 gap-1.5">
               <Lock className="w-3.5 h-3.5" /> Compliance
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white text-slate-400 gap-1.5">
-              <Bell className="w-3.5 h-3.5" /> Notifications
-            </TabsTrigger>
-            <TabsTrigger value="audit" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white text-slate-400 gap-1.5">
-              <Database className="w-3.5 h-3.5" /> Audit Trail
-            </TabsTrigger>
-            <TabsTrigger value="predictions" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-slate-400 gap-1.5">
-              <Brain className="w-3.5 h-3.5" /> Predictions
-            </TabsTrigger>
-            <TabsTrigger value="hardening" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white text-slate-400 gap-1.5">
-              <Wrench className="w-3.5 h-3.5" /> Hardening
-            </TabsTrigger>
-            <TabsTrigger value="optimization" className="data-[state=active]:bg-green-600 data-[state=active]:text-white text-slate-400 gap-1.5">
-              <Settings className="w-3.5 h-3.5" /> Optimization
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><AdminOverview /></TabsContent>
           <TabsContent value="users"><AdminUserManagement /></TabsContent>
-          <TabsContent value="opportunities"><AdminOpportunities /></TabsContent>
           <TabsContent value="transactions"><AdminTransactions /></TabsContent>
           <TabsContent value="activity"><AdminActivityLog /></TabsContent>
           <TabsContent value="health"><AdminSystemHealth /></TabsContent>
           <TabsContent value="interventions"><AdminInterventions /></TabsContent>
-          <TabsContent value="analytics"><AdminAnalytics /></TabsContent>
-          <TabsContent value="command"><AdminCommandCenter /></TabsContent>
           <TabsContent value="compliance"><AdminCompliance /></TabsContent>
-          <TabsContent value="notifications"><NotificationCenter /></TabsContent>
-          <TabsContent value="audit"><AuditTrailDashboard /></TabsContent>
-          <TabsContent value="predictions"><AdminPredictions /></TabsContent>
-          <TabsContent value="hardening"><AdminProductionHardening /></TabsContent>
-          <TabsContent value="optimization">
-            <div className="space-y-4">
-              <Card className="bg-slate-900/50 border-slate-700">
-                <CardHeader>
-                  <CardTitle className="text-sm">Optimization Status</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-xs text-slate-400">✅ Shared utility layer (engineUtils.js) deployed</p>
-                  <p className="text-xs text-slate-400">✅ Optimized health monitor (batch queries, 65% fewer API calls)</p>
-                  <p className="text-xs text-slate-400">✅ Consolidated notification processor (preference caching)</p>
-                  <p className="text-xs text-slate-400">✅ Automation efficiency: 5-min checks → 10-min (reduced overhead 25%)</p>
-                  <p className="text-xs text-slate-400">⏳ Phase 10+ planning: Multi-tenancy, analytics, mobile</p>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
         </Tabs>
       </div>
     </div>

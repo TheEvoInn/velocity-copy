@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   Zap, LayoutDashboard, Telescope, Landmark, ShoppingCart, Coins,
-  MessageSquare, ChevronRight, X, Menu, Shield, Settings, AlertTriangle, Users, Activity
+  MessageSquare, ChevronRight, X, Menu, Shield, Settings, AlertTriangle, Users, Activity, Mail
 } from 'lucide-react';
 import ActiveIdentityBanner from '../identity/ActiveIdentityBanner';
 import NotificationBell from '../notifications/NotificationBell';
@@ -318,6 +318,17 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
             <div>
               <p className="text-sm font-semibold text-slate-200">VELO AI Chat</p>
               <p className="text-xs text-slate-500">Command console & AI assistant</p>
+            </div>
+          </Link>
+
+          <Link to="/EmailManagementHub" onClick={onClose}
+           className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all active:scale-[0.98]">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20 shrink-0">
+              <Mail className="w-4 h-4 text-cyan-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-200">Email Management</p>
+              <p className="text-xs text-slate-500">Mailbox & account creation</p>
             </div>
           </Link>
 

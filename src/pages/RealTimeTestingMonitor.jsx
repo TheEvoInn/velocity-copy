@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { TrendingUp, Activity, AlertCircle, CheckCircle2, Clock, DollarSign } from 'lucide-react';
+import { TrendingUp, Activity, AlertCircle, CheckCircle2, Clock, DollarSign, Zap, Bug, Shield } from 'lucide-react';
+
+const TEST_USER_EMAIL = 'dawnvernor@yahoo.com';
 
 export default function RealTimeTestingMonitor() {
   const queryClient = useQueryClient();
@@ -58,6 +60,45 @@ export default function RealTimeTestingMonitor() {
     staleTime: 0,
   });
 
+  const { data: systemErrors } = useQuery({
+    queryKey: ['systemErrors'],
+    queryFn: async () => {
+      return await base44.entities.ActivityLog.filter(
+        { severity: { $in: ['critical', 'warning'] } },
+        '-created_date',
+        20
+      );
+    },
+    refetchInterval: autoRefresh ? 5000 : false,
+    staleTime: 0,
+  });
+
+  const { data: allIdentities } = useQuery({
+    queryKey: ['allIdentities'],
+    queryFn: async () => {
+      return await base44.entities.AIIdentity.filter(
+        { is_active: true },
+        '-created_date',
+        5
+      );
+    },
+    refetchInterval: autoRefresh ? 15000 : false,
+    staleTime: 0,
+  });
+
+  const { data: credentialVault } = useQuery({
+    queryKey: ['credentialVault'],
+    queryFn: async () => {
+      return await base44.entities.CredentialVault.filter(
+        {},
+        '-created_date',
+        10
+      );
+    },
+    refetchInterval: autoRefresh ? 20000 : false,
+    staleTime: 0,
+  });
+
   const { data: taskQueue } = useQuery({
     queryKey: ['taskQueue'],
     queryFn: async () => {
@@ -105,6 +146,9 @@ export default function RealTimeTestingMonitor() {
   const txArray = Array.isArray(recentTransactions) ? recentTransactions : [];
   const oppArray = Array.isArray(activeOpportunities) ? activeOpportunities : [];
   const actArray = Array.isArray(recentActivities) ? recentActivities : [];
+  const errArray = Array.isArray(systemErrors) ? systemErrors : [];
+  const idArray = Array.isArray(allIdentities) ? allIdentities : [];
+  const credArray = Array.isArray(credentialVault) ? credentialVault : [];
   const taskArray = Array.isArray(taskQueue) ? taskQueue : [];
 
   return (
@@ -303,9 +347,88 @@ export default function RealTimeTestingMonitor() {
           </div>
         </div>
 
+        {/* Issues & Errors Panel */}
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="glass-card-bright p-6 rounded-xl">
+            <h3 className="font-orbitron text-sm font-bold text-red-300 uppercase mb-3 flex items-center gap-2">
+              <Bug className="w-4 h-4" />
+              Real-Time Issues
+            </h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {errArray.length > 0 ? (
+                errArray.map(err => (
+                  <div key={err.id} className={`p-3 rounded-lg border ${
+                    err.severity === 'critical' 
+                      ? 'border-red-500/30 bg-red-500/10' 
+                      : 'border-orange-500/30 bg-orange-500/10'
+                  }`}>
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className={`w-4 h-4 mt-0.5 shrink-0 ${
+                        err.severity === 'critical' ? 'text-red-400' : 'text-orange-400'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-200 font-medium">{err.message}</p>
+                        <p className="text-xs text-slate-500 mt-1">{new Date(err.created_date).toLocaleTimeString()}</p>
+                        {err.metadata && (
+                          <p className="text-xs text-slate-600 mt-1 font-mono">
+                            {JSON.stringify(err.metadata).slice(0, 60)}...
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500 text-center py-6">✓ No issues detected</p>
+              )}
+            </div>
+          </div>
+
+          <div className="glass-card-bright p-6 rounded-xl">
+            <h3 className="font-orbitron text-sm font-bold text-violet-300 uppercase mb-3 flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Identity & Credentials
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Active Identities ({idArray.length})</p>
+                {idArray.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {idArray.map(id => (
+                      <div key={id.id} className="p-2 bg-slate-800/40 rounded text-xs">
+                        <p className="text-slate-200 font-medium">{id.name}</p>
+                        <p className="text-slate-500">{id.role_label}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">No active identities</p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Credentials ({credArray.length})</p>
+                {credArray.length > 0 ? (
+                  <div className="space-y-1 max-h-24 overflow-y-auto">
+                    {credArray.map(cred => (
+                      <div key={cred.id} className="p-2 bg-slate-800/40 rounded text-xs flex justify-between">
+                        <span className="text-slate-300 truncate">{cred.platform || 'unknown'}</span>
+                        <span className={cred.is_active ? 'text-green-400' : 'text-red-400'}>
+                          {cred.is_active ? '●' : '○'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">No credentials configured</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Testing Instructions */}
         <div className="mt-8 border border-cyan-500/20 rounded-xl p-6 bg-cyan-500/5">
-          <h3 className="font-orbitron text-sm font-bold text-cyan-300 uppercase mb-3">Live Testing Protocol</h3>
+          <h3 className="font-orbitron text-sm font-bold text-cyan-300 uppercase mb-3">Live Testing: {TEST_USER_EMAIL}</h3>
           <ul className="text-xs text-slate-300 space-y-2">
             <li>✓ Real user credentials active in Credential Vault</li>
             <li>✓ Live opportunities scanning every 15 minutes (discoveryEngine)</li>
@@ -313,7 +436,8 @@ export default function RealTimeTestingMonitor() {
             <li>✓ All transactions confirmed with platform records</li>
             <li>✓ Error recovery active (rate-limit, auth, transient)</li>
             <li>✓ User interventions auto-resolve after data submission</li>
-            <li className="text-orange-400">⚠ Monitor for rate-limiting → identity rotation triggers</li>
+            <li className="text-orange-400">⚠ Monitoring: Issues appear in red panel above</li>
+            <li className="text-violet-400">⚠ Identity rotation triggers on rate-limit detection</li>
           </ul>
         </div>
       </div>

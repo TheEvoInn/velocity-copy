@@ -289,18 +289,29 @@ function MobileDrawer({ isOpen, onClose, currentPath }) {
           </Link>
 
           <Link to="/PendingInterventions" onClick={onClose}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-orange-500/30 hover:bg-orange-500/5 transition-all active:scale-[0.98]">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-orange-500/10 border border-orange-500/20 shrink-0">
-              <AlertTriangle className="w-4 h-4 text-orange-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-200">Interventions</p>
-              <p className="text-xs text-slate-500">Actions requiring your input</p>
-            </div>
+           className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-orange-500/30 hover:bg-orange-500/5 transition-all active:scale-[0.98]">
+           <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-orange-500/10 border border-orange-500/20 shrink-0">
+             <AlertTriangle className="w-4 h-4 text-orange-400" />
+           </div>
+           <div>
+             <p className="text-sm font-semibold text-slate-200">Interventions</p>
+             <p className="text-xs text-slate-500">Actions requiring your input</p>
+           </div>
+          </Link>
+
+          <Link to="/PlatformReadinessDashboard" onClick={onClose}
+           className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all active:scale-[0.98]">
+           <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20 shrink-0">
+             <Activity className="w-4 h-4 text-cyan-400" />
+           </div>
+           <div>
+             <p className="text-sm font-semibold text-slate-200">Platform Health</p>
+             <p className="text-xs text-slate-500">System metrics & API status</p>
+           </div>
           </Link>
 
           <Link to="/Chat" onClick={onClose}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-violet-500/30 hover:bg-violet-500/5 transition-all active:scale-[0.98]">
+           className="flex items-center gap-3 p-3.5 rounded-xl border border-transparent hover:border-violet-500/30 hover:bg-violet-500/5 transition-all active:scale-[0.98]">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-500/10 border border-violet-500/20 shrink-0">
               <MessageSquare className="w-4 h-4 text-violet-400" />
             </div>

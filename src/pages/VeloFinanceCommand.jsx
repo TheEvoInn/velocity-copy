@@ -14,36 +14,46 @@ export default function VeloFinanceCommand() {
 
   const [filterType, setFilterType] = useState('all');
 
-  // Fetch user goals (financial data)
+  // Fetch user goals (financial data + daily target + AI/user split)
   const { data: goals } = useQuery({
     queryKey: ['userGoals', user?.email],
-    queryFn: () => base44.entities.UserGoals.filter({ created_by: user?.email }).then(r => r[0]),
+    queryFn: () => base44.entities.UserGoals.filter({ created_by: user?.email }, '-created_date', 1).then(r => r[0]),
     enabled: !!user?.email,
   });
 
-  // Fetch all transactions
+  // Fetch all transactions — sorted newest first
   const { data: transactions = [], isLoading: loadingTransactions } = useQuery({
     queryKey: ['transactions', user?.email],
-    queryFn: () => base44.entities.Transaction.filter({ created_by: user?.email }),
+    queryFn: () => base44.entities.Transaction.filter({ created_by: user?.email }, '-created_date', 200),
     enabled: !!user?.email,
   });
 
-  // Fetch earning goals
+  // Fetch earning goals — active first
   const { data: earningGoals = [] } = useQuery({
     queryKey: ['earningGoals', user?.email],
-    queryFn: () => base44.entities.EarningGoal.filter({ created_by: user?.email }),
+    queryFn: () => base44.entities.EarningGoal.filter({ created_by: user?.email }, '-created_date', 20),
     enabled: !!user?.email,
   });
 
-  // Calculate financial metrics
+  // Financial metrics from goals (authoritative source) + transactions
   const totalEarned = goals?.total_earned || 0;
   const walletBalance = goals?.wallet_balance || 0;
+  const dailyTarget = goals?.daily_target || 0;
+  const aiTotalEarned = goals?.ai_total_earned || 0;
+  const userTotalEarned = goals?.user_total_earned || 0;
   const incomeTransactions = transactions.filter(t => t.type === 'income');
   const expenseTransactions = transactions.filter(t => t.type === 'expense');
   
-  // Prefer net_amount (after fees) for income display, gross for expense
+  // net_amount preferred (post-fee), fallback to gross
   const totalIncome = incomeTransactions.reduce((sum, t) => sum + (t.net_amount || t.amount || 0), 0);
   const totalExpense = expenseTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+
+  // Today's earnings from transactions
+  const todayStr = new Date().toDateString();
+  const todayEarnings = incomeTransactions
+    .filter(t => new Date(t.created_date).toDateString() === todayStr)
+    .reduce((sum, t) => sum + (t.net_amount || t.amount || 0), 0);
+  const dailyProgress = dailyTarget > 0 ? Math.min(100, (todayEarnings / dailyTarget) * 100) : 0;
 
   const filteredTransactions = filterType === 'all' 
     ? transactions 
@@ -85,6 +95,32 @@ export default function VeloFinanceCommand() {
           </h1>
           <p className="text-slate-400">Real-time financial dashboard, earnings, and transaction hub</p>
         </div>
+
+        {/* Daily Target Progress */}
+        {dailyTarget > 0 && (
+          <Card className="glass-card border-amber-500/20">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Today's Progress vs Daily Target</div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-amber-400">${todayEarnings.toFixed(2)}</span>
+                    <span className="text-slate-500 text-sm">/ ${dailyTarget.toFixed(0)} target</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-orbitron font-bold" style={{ color: dailyProgress >= 100 ? '#10b981' : '#fbbf24' }}>
+                    {dailyProgress.toFixed(0)}%
+                  </div>
+                </div>
+              </div>
+              <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${dailyProgress}%`, background: dailyProgress >= 100 ? 'linear-gradient(90deg, #10b981, #06b6d4)' : 'linear-gradient(90deg, #fbbf24, #f97316)' }} />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Primary KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -130,6 +166,26 @@ export default function VeloFinanceCommand() {
             </CardContent>
           </Card>
         </div>
+
+        {/* AI vs User Earnings Split */}
+        {(aiTotalEarned > 0 || userTotalEarned > 0) && (
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="glass-card border-cyan-500/20">
+              <CardContent className="p-4">
+                <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">AI Generated</div>
+                <div className="text-2xl font-bold text-cyan-400">${aiTotalEarned.toFixed(2)}</div>
+                <div className="text-xs text-slate-600 mt-1">Autonomous — APEX engine</div>
+              </CardContent>
+            </Card>
+            <Card className="glass-card border-violet-500/20">
+              <CardContent className="p-4">
+                <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">User Generated</div>
+                <div className="text-2xl font-bold text-violet-400">${userTotalEarned.toFixed(2)}</div>
+                <div className="text-xs text-slate-600 mt-1">Manual completion</div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Active Goal Status */}
         {currentGoal && (
@@ -231,7 +287,7 @@ export default function VeloFinanceCommand() {
                           <div className={`text-lg font-bold ${
                             tx.type === 'income' ? 'text-emerald-400' : 'text-red-400'
                           }`}>
-                            {tx.type === 'income' ? '+' : '-'}${(tx.amount || 0).toFixed(2)}
+                            {tx.type === 'income' ? '+' : '-'}${(tx.net_amount || tx.amount || 0).toFixed(2)}
                           </div>
                           <div className="text-xs text-slate-500">
                             {tx.payout_status && `[${tx.payout_status}]`}

@@ -6,7 +6,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useCurrentUser, useUserOpportunities } from '@/hooks/useUserData';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   Search, RefreshCw, Sparkles, Filter, Zap, Globe,
   CheckCircle, Bot, Clock, DollarSign, Target, ChevronDown, ChevronUp, Radio, Brain
@@ -174,6 +174,13 @@ export default function Discovery() {
   const { data: rawOpps = [], refetch, isLoading } = useUserOpportunities();
   const qc = useQueryClient();
 
+  // Load user goals for personalized scan parameters
+  const { data: userGoals } = useQuery({
+    queryKey: ['userGoals', user?.email],
+    queryFn: () => base44.entities.UserGoals.filter({ created_by: user?.email }, '-created_date', 1).then(r => r[0]),
+    enabled: !!user?.email,
+  });
+
   const [isScanning, setIsScanning] = useState(false);
   const [scanStep, setScanStep] = useState('');
   const [scanProgress, setScanProgress] = useState(0);
@@ -215,9 +222,15 @@ export default function Discovery() {
       setScanProgress(Math.round(((i + 1) / SCAN_STEPS.length) * 100));
       await new Promise(r => setTimeout(r, 450));
     }
+    // Feed user goals/skills/preferences into scan for personalized results
     const res = await base44.functions.invoke('discoveryEngine', {
       action: 'full_scan',
       user_email: user?.email,
+      user_skills: userGoals?.skills || [],
+      preferred_categories: userGoals?.preferred_categories || [],
+      risk_tolerance: userGoals?.risk_tolerance || 'moderate',
+      daily_target: userGoals?.daily_target || 100,
+      hours_per_day: userGoals?.hours_per_day || 8,
       filters: filtersPayload,
     });
     setLastScanResult(res.data);
@@ -288,7 +301,7 @@ export default function Discovery() {
       </div>
 
       {/* SCOUT AI Status */}
-      <div className="rounded-2xl p-3 flex items-center gap-3 mb-5"
+      <div className="rounded-2xl p-3 flex items-center gap-3 mb-3"
         style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)' }}>
         <Brain className="w-4 h-4 text-amber-400 shrink-0" />
         <div>
@@ -297,6 +310,26 @@ export default function Discovery() {
         </div>
         <span className="text-xs text-amber-400 font-mono px-2 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 shrink-0 ml-auto">ACTIVE</span>
       </div>
+
+      {/* Personalization Context Banner */}
+      {userGoals && (userGoals.skills?.length > 0 || userGoals.preferred_categories?.length > 0) && (
+        <div className="rounded-xl p-3 flex items-center gap-3 mb-5 flex-wrap"
+          style={{ background: 'rgba(129,140,248,0.06)', border: '1px solid rgba(129,140,248,0.2)' }}>
+          <Target className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+          <span className="text-xs text-indigo-400 font-orbitron tracking-wider">PERSONALIZED SCAN</span>
+          <div className="flex flex-wrap gap-1.5 ml-1">
+            {userGoals.skills?.slice(0, 5).map(s => (
+              <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300">{s}</span>
+            ))}
+            {userGoals.risk_tolerance && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300 capitalize">{userGoals.risk_tolerance} risk</span>
+            )}
+            {userGoals.daily_target > 0 && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300">${userGoals.daily_target}/day target</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Scan Status */}
       <DiscoveryScanStatus

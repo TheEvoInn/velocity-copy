@@ -13,10 +13,10 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { action, identityId, opportunity } = body;
+    const { action, identityId, masterCredentials, opportunity } = body;
 
     if (action === 'auto_create_account') {
-      return await executeAccountCreation(base44, user, identityId, opportunity);
+      return await executeAccountCreation(base44, user, identityId, opportunity, masterCredentials);
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
@@ -26,29 +26,37 @@ Deno.serve(async (req) => {
   }
 });
 
-async function executeAccountCreation(base44, user, identityId, opportunity) {
+async function executeAccountCreation(base44, user, identityId, opportunity, masterCredentials = null) {
   const steps = [];
 
   try {
-    // Step 1: Get real credentials
-    steps.push('Fetching verified credentials...');
-    const credResult = await base44.asServiceRole.functions.invoke('masterAccountCredentialEngine', {
-      action: 'get_master_credentials',
-      identity_id: identityId
-    });
+    let credentials;
+    
+    // Use pre-fetched credentials if provided (avoid double-fetch)
+    if (masterCredentials) {
+      steps.push(`✓ Using verified credentials: ${masterCredentials.email}`);
+      credentials = masterCredentials;
+    } else {
+      // Step 1: Get real credentials if not passed
+      steps.push('Fetching verified credentials...');
+      const credResult = await base44.asServiceRole.functions.invoke('masterAccountCredentialEngine', {
+        action: 'get_master_credentials',
+        identity_id: identityId
+      });
 
-    if (!credResult.data?.success) {
-      steps.push(`❌ ${credResult.data?.error}`);
-      return {
-        success: false,
-        steps,
-        error: credResult.data?.error,
-        intervention_needed: credResult.data?.need_intervention,
-        intervention_id: credResult.data?.intervention_id
-      };
+      if (!credResult.data?.success) {
+        steps.push(`❌ ${credResult.data?.error}`);
+        return {
+          success: false,
+          steps,
+          error: credResult.data?.error,
+          intervention_needed: credResult.data?.need_intervention,
+          intervention_id: credResult.data?.intervention_id
+        };
+      }
+
+      credentials = credResult.data.credentials;
     }
-
-    const credentials = credResult.data.credentials;
     const generatedPassword = generateSecurePassword();
     steps.push(`✓ Credentials loaded: ${credentials.email}`);
 

@@ -250,10 +250,11 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Delegate to autonomous engine for real account creation
+        // Delegate to autonomous engine for real account creation (pass verified credentials)
         const creationResult = await base44.functions.invoke('autonomousAccountCreationEngine', {
           action: 'auto_create_account',
           identityId: identity_id,
+          masterCredentials: masterCreds,
           opportunity: {
             platform,
             url: `https://${platform}.com/signup`,

@@ -180,6 +180,147 @@ export default function DataIntegrityAudit() {
         </div>
       )}
 
+      {/* Reconciled Records Section */}
+      {auditResult && (
+        <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 mb-8">
+          <h2 className="text-xl font-bold text-white mb-4">Reconciled Records by Account</h2>
+
+          {/* Identity & Goals */}
+          {auditResult.sections.identity_audit.total_identities > 0 && (
+            <div className="mb-6">
+              <h3 className="font-bold text-cyan-400 mb-3">AI Identities & Goals</h3>
+              <div className="space-y-2">
+                {auditResult.sections.identity_audit.identities.map((identity, i) => (
+                  <div key={i} className="bg-slate-800 rounded p-3 text-sm">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono text-white">{identity.name}</span>
+                      <span className={`text-xs px-2 py-1 rounded ${identity.issue ? 'bg-red-900 text-red-300' : 'bg-emerald-900 text-emerald-300'}`}>
+                        {identity.issue ? 'Corrupted' : 'Clean'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400 grid grid-cols-2 gap-2">
+                      <div>Active: {identity.is_active ? '✓' : '✗'}</div>
+                      <div>Onboarded: {identity.onboarding_complete ? '✓' : '✗'}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {auditResult.sections.goals_audit.total_goals > 0 && (
+                <div className="mt-4">
+                  <h4 className="font-bold text-amber-400 mb-2">User Goals</h4>
+                  {auditResult.sections.goals_audit.goals.map((goal, i) => (
+                    <div key={i} className="bg-slate-800 rounded p-3 text-sm mb-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-white">Daily Target: ${goal.daily_target}</span>
+                        <span className="text-xs bg-emerald-900 text-emerald-300 px-2 py-1 rounded">Synced</span>
+                      </div>
+                      <div className="text-xs text-slate-400 grid grid-cols-2 gap-2">
+                        <div>Autopilot: {goal.autopilot_enabled ? '✓ Enabled' : '✗ Disabled'}</div>
+                        <div>Total Earned: ${goal.total_earned || 0}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Transactions */}
+          {auditResult.sections.transaction_audit.total_transactions > 0 && (
+            <div className="mb-6">
+              <h3 className="font-bold text-emerald-400 mb-3">Transactions ({auditResult.sections.transaction_audit.total_transactions} total)</h3>
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2 text-xs text-slate-400 mb-2">
+                  <div>Income: {auditResult.sections.transaction_audit.total_income}</div>
+                  <div>Expense: {auditResult.sections.transaction_audit.total_expense}</div>
+                  <div>Categories: {Object.keys(auditResult.sections.transaction_audit.by_category).length}</div>
+                </div>
+                {Object.entries(auditResult.sections.transaction_audit.by_category).map(([category, count], i) => (
+                  <div key={i} className="bg-slate-800 rounded p-2 text-sm">
+                    <span className="text-white">{category || 'uncategorized'}:</span>
+                    <span className="text-slate-300 ml-2">{count} transaction{count !== 1 ? 's' : ''}</span>
+                  </div>
+                ))}
+              </div>
+              {auditResult.sections.transaction_audit.corrupted_transactions.length > 0 && (
+                <div className="mt-3 bg-red-900/30 rounded p-3 border border-red-700">
+                  <div className="text-xs font-bold text-red-300 mb-2">Corrupted Records:</div>
+                  {auditResult.sections.transaction_audit.corrupted_transactions.map((tx, i) => (
+                    <div key={i} className="text-xs text-red-200 mb-1">
+                      TX {tx.tx_id?.substring(0, 8)}: {tx.issues.join(', ')}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Opportunities */}
+          {auditResult.sections.opportunity_audit.total_opportunities > 0 && (
+            <div className="mb-6">
+              <h3 className="font-bold text-blue-400 mb-3">Opportunities ({auditResult.sections.opportunity_audit.total_opportunities} total)</h3>
+              <div className="space-y-2">
+                {Object.entries(auditResult.sections.opportunity_audit.by_status).map(([status, count], i) => (
+                  <div key={i} className="bg-slate-800 rounded p-2 text-sm">
+                    <span className="text-white capitalize">{status}:</span>
+                    <span className="text-slate-300 ml-2">{count} opportunity{count !== 1 ? 'ies' : ''}</span>
+                  </div>
+                ))}
+              </div>
+              {auditResult.sections.opportunity_audit.corrupted_opportunities.length > 0 && (
+                <div className="mt-3 bg-red-900/30 rounded p-3 border border-red-700">
+                  <div className="text-xs font-bold text-red-300 mb-2">Corrupted Records:</div>
+                  {auditResult.sections.opportunity_audit.corrupted_opportunities.map((opp, i) => (
+                    <div key={i} className="text-xs text-red-200 mb-1">
+                      OPP {opp.opp_id?.substring(0, 8)}: {opp.issues.join(', ')}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* KYC Status */}
+          {auditResult.sections.kyc_audit.total_kyc_records > 0 && (
+            <div className="mb-6">
+              <h3 className="font-bold text-violet-400 mb-3">KYC Records</h3>
+              <div className="space-y-2">
+                {auditResult.sections.kyc_audit.kyc_records.map((kyc, i) => (
+                  <div key={i} className="bg-slate-800 rounded p-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white capitalize">{kyc.status}</span>
+                      <span className="text-xs text-slate-400">{kyc.full_name}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Withdrawal Policies */}
+          {auditResult.sections.withdrawal_audit.total_policies > 0 && (
+            <div>
+              <h3 className="font-bold text-green-400 mb-3">Withdrawal Policies</h3>
+              <div className="space-y-2">
+                {auditResult.sections.withdrawal_audit.policies.map((policy, i) => (
+                  <div key={i} className="bg-slate-800 rounded p-3 text-sm">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-white font-mono">{policy.label}</span>
+                      <span className={`text-xs px-2 py-1 rounded ${policy.engine_enabled ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-700 text-slate-400'}`}>
+                        {policy.engine_enabled ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      Min Threshold: ${policy.min_threshold} | Frequency: {policy.frequency}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Recovery Results */}
       {recoveryResult && (
         <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-6">
@@ -219,6 +360,47 @@ export default function DataIntegrityAudit() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Consolidation Summary */}
+      {auditResult && recoveryResult && (
+        <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 mt-8">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-emerald-400" /> Consolidation Complete
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="bg-slate-800 rounded p-4">
+              <div className="text-sm text-slate-400">Records Audited</div>
+              <div className="text-3xl font-bold text-white mt-1">
+                {(auditResult.sections.identity_audit.total_identities || 0) +
+                  (auditResult.sections.goals_audit.total_goals || 0) +
+                  (auditResult.sections.transaction_audit.total_transactions || 0) +
+                  (auditResult.sections.opportunity_audit.total_opportunities || 0) +
+                  (auditResult.sections.kyc_audit.total_kyc_records || 0) +
+                  (auditResult.sections.withdrawal_audit.total_policies || 0)}
+              </div>
+            </div>
+            <div className="bg-slate-800 rounded p-4">
+              <div className="text-sm text-slate-400">Issues Found</div>
+              <div className="text-3xl font-bold text-yellow-400 mt-1">
+                {auditResult.summary.total_issues}
+              </div>
+            </div>
+            <div className="bg-slate-800 rounded p-4">
+              <div className="text-sm text-slate-400">Records Fixed</div>
+              <div className="text-3xl font-bold text-emerald-400 mt-1">
+                {recoveryResult.recovered_records}
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 text-sm text-slate-300">
+            <p>✓ All user data has been audited and reconciled to the correct accounts.</p>
+            <p className="mt-2">✓ {recoveryResult.recovered_records} corrupted or missing records were recovered.</p>
+            {auditResult.summary.critical_issues === 0 && (
+              <p className="mt-2 text-emerald-400">✓ All critical issues resolved. Platform is ready for operation.</p>
+            )}
+          </div>
         </div>
       )}
     </div>

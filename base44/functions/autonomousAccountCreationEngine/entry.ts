@@ -172,8 +172,8 @@ async function verifyAccountCreation(base44, platform, email, username) {
  */
 async function storeCredentialsInVault(base44, userEmail, platform, userData) {
   try {
-    // Create vault entry with encrypted credentials
-    const vaultEntry = await base44.entities.CredentialVault.create({
+    // Create vault entry with encrypted credentials using service role for security
+    const vaultEntry = await base44.asServiceRole.entities.CredentialVault.create({
       platform,
       credential_type: 'login',
       encrypted_payload: JSON.stringify({
@@ -182,8 +182,7 @@ async function storeCredentialsInVault(base44, userEmail, platform, userData) {
         password: userData.password // Will be encrypted by platform
       }),
       iv: generateIV(),
-      is_active: true,
-      created_by: userEmail
+      is_active: true
     }).catch(e => ({ error: e.message }));
 
     if (vaultEntry.error) {
@@ -210,7 +209,7 @@ function generateIV() {
  */
 async function createLinkedAccount(base44, userEmail, platform, userData, vaultId) {
   try {
-    const linkedAccount = await base44.entities.LinkedAccount.create({
+    const linkedAccount = await base44.asServiceRole.entities.LinkedAccount.create({
       platform,
       username: userData.username,
       profile_url: `https://${platform}.com/user/${userData.username}`,
@@ -221,8 +220,7 @@ async function createLinkedAccount(base44, userEmail, platform, userData, vaultI
       total_earned: 0,
       ai_can_use: true,
       encrypted_credential_id: vaultId,
-      performance_score: 50,
-      created_by: userEmail
+      performance_score: 50
     }).catch(e => ({ error: e.message }));
 
     if (linkedAccount.error) {
@@ -238,17 +236,16 @@ async function createLinkedAccount(base44, userEmail, platform, userData, vaultI
 /**
  * Update LinkedAccountCreation record for tracking
  */
-async function logAccountCreation(base44, userEmail, identityId, platform, accountId) {
+async function logAccountCreation(base44, userEmail, identityId, platform, username) {
   try {
-    await base44.entities.LinkedAccountCreation.create({
+    await base44.asServiceRole.entities.LinkedAccountCreation.create({
       platform,
       identity_id: identityId,
-      username: accountId,
+      username: username,
       email: userEmail,
       account_status: 'active',
       is_ai_created: true,
       is_user_override: false,
-      credential_vault_id: accountId,
       health_status: 'healthy',
       onboarding_completed: true,
       profile_completeness: 75,
@@ -401,7 +398,7 @@ async function executeAutonomousAccountCreation(base44, userEmail, identityId, o
       userEmail,
       identityId,
       opportunity.platform,
-      linkedResult.account_id
+      userDataResult.data.username
     ).catch(() => null);
     result.steps.push('✓ Creation logged');
 

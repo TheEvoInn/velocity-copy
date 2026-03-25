@@ -105,8 +105,9 @@ Deno.serve(async (req) => {
           existingPlatforms.add(platform);
 
           // ── SYNC 1: Register in LinkedAccount ──
+          let linkedAccount = null;
           try {
-            const linkedAccount = await base44.asServiceRole.entities.LinkedAccount.create({
+            linkedAccount = await base44.asServiceRole.entities.LinkedAccount.create({
               platform,
               username: accountData.username,
               profile_url: `https://${platform}.com/user/${accountData.username}`,
@@ -117,35 +118,46 @@ Deno.serve(async (req) => {
             });
             syncResults.push({ system: 'LinkedAccount', platform, status: 'synced', id: linkedAccount.id });
           } catch (e) {
+            console.error(`[AutoAccountCreation] LinkedAccount sync failed for ${platform}:`, e.message);
             syncResults.push({ system: 'LinkedAccount', platform, status: 'failed', error: e.message });
           }
 
           // ── SYNC 2: Update Identity with linked account ──
-          try {
-            const identity = await base44.entities.AIIdentity.get(identity_id);
-            const updatedLinkedIds = [...(identity.linked_account_ids || []), linkedAccount?.id].filter(Boolean);
-            await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
-              linked_account_ids: updatedLinkedIds,
-            });
-            syncResults.push({ system: 'AIIdentity', platform, status: 'synced' });
-          } catch (e) {
-            syncResults.push({ system: 'AIIdentity', platform, status: 'failed', error: e.message });
+          if (linkedAccount?.id) {
+            try {
+              const identity = await base44.entities.AIIdentity.get(identity_id);
+              const updatedLinkedIds = [...(identity.linked_account_ids || []), linkedAccount.id];
+              await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
+                linked_account_ids: updatedLinkedIds,
+              });
+              syncResults.push({ system: 'AIIdentity', platform, status: 'synced' });
+            } catch (e) {
+              console.error(`[AutoAccountCreation] AIIdentity sync failed for ${platform}:`, e.message);
+              syncResults.push({ system: 'AIIdentity', platform, status: 'failed', error: e.message });
+            }
+          } else {
+            syncResults.push({ system: 'AIIdentity', platform, status: 'skipped', reason: 'LinkedAccount creation failed' });
           }
 
           // ── SYNC 3: Create credential vault entry ──
-          try {
-            await base44.asServiceRole.entities.CredentialVault.create({
-              platform,
-              credential_type: 'login',
-              encrypted_payload: JSON.stringify({ username: accountData.username, email: accountData.email }),
-              iv: 'auto',
-              linked_account_id: linkedAccount?.id,
-              is_active: true,
-              access_count: 0,
-            });
-            syncResults.push({ system: 'CredentialVault', platform, status: 'synced' });
-          } catch (e) {
-            syncResults.push({ system: 'CredentialVault', platform, status: 'failed', error: e.message });
+          if (linkedAccount?.id) {
+            try {
+              await base44.asServiceRole.entities.CredentialVault.create({
+                platform,
+                credential_type: 'login',
+                encrypted_payload: JSON.stringify({ username: accountData.username, email: accountData.email }),
+                iv: 'auto',
+                linked_account_id: linkedAccount.id,
+                is_active: true,
+                access_count: 0,
+              });
+              syncResults.push({ system: 'CredentialVault', platform, status: 'synced' });
+            } catch (e) {
+              console.error(`[AutoAccountCreation] CredentialVault sync failed for ${platform}:`, e.message);
+              syncResults.push({ system: 'CredentialVault', platform, status: 'failed', error: e.message });
+            }
+          } else {
+            syncResults.push({ system: 'CredentialVault', platform, status: 'skipped', reason: 'LinkedAccount creation failed' });
           }
 
           // ── SYNC 4: Log in SecretAuditLog ──
@@ -164,6 +176,7 @@ Deno.serve(async (req) => {
             });
             syncResults.push({ system: 'SecretAuditLog', platform, status: 'synced' });
           } catch (e) {
+            console.error(`[AutoAccountCreation] SecretAuditLog sync failed for ${platform}:`, e.message);
             syncResults.push({ system: 'SecretAuditLog', platform, status: 'failed', error: e.message });
           }
         } else {

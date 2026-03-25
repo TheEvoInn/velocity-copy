@@ -102,15 +102,39 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'required_fields array required' }, { status: 400 });
       }
 
-      // Get master credentials
-      const credResult = await base44.functions.invoke('masterAccountCredentialEngine', {
-        action: 'get_master_credentials',
-        identity_id
-      }).catch(e => ({ data: { success: false, error: e.message } }));
+      if (!identity_id) {
+        return Response.json({ error: 'identity_id required' }, { status: 400 });
+      }
 
-      const masterCreds = credResult.data?.credentials;
-      if (!masterCreds) {
-        return Response.json({ success: false, error: 'Could not resolve master credentials' });
+      // Get identity directly to avoid recursion
+      const identities = await base44.asServiceRole.entities.AIIdentity.filter(
+        { id: identity_id }, null, 1
+      ).catch(() => []);
+
+      if (!identities.length) {
+        return Response.json({ success: false, error: 'Identity not found', requires_intervention: true });
+      }
+
+      const identity = identities[0];
+      const kyc = identity.kyc_verified_data || {};
+
+      const masterCreds = {
+        full_name: kyc.full_legal_name || identity.name || null,
+        email: kyc.email || identity.email || null,
+        phone: kyc.phone_number || identity.phone || null,
+        date_of_birth: kyc.date_of_birth || null,
+        address: kyc.residential_address || null,
+        city: kyc.city || null,
+        state: kyc.state || null,
+        postal_code: kyc.postal_code || null,
+        country: kyc.country || null,
+        bio: identity.bio || null,
+        tagline: identity.tagline || null,
+        skills: identity.skills || []
+      };
+
+      if (!masterCreds.full_name || !masterCreds.email) {
+        return Response.json({ success: false, error: 'Missing required identity data: full_name and email required', requires_intervention: true });
       }
 
       // Field mapping table: maps common form field names to credential keys
@@ -171,7 +195,9 @@ Deno.serve(async (req) => {
         matched,
         unmatched,
         match_rate_pct: Math.round((Object.keys(matched).length / required_fields.length) * 100),
-        requires_intervention: unmatched.length > 0
+        requires_intervention: unmatched.length > 0,
+        identity_id,
+        platform
       });
     }
 
@@ -201,6 +227,9 @@ Deno.serve(async (req) => {
       if (!identity_id || !field_updates) {
         return Response.json({ error: 'identity_id and field_updates required' }, { status: 400 });
       }
+      if (typeof identity_id !== 'string' || identity_id.length < 10) {
+        return Response.json({ error: 'Invalid identity_id format' }, { status: 400 });
+      }
 
       const identities = await base44.asServiceRole.entities.AIIdentity.filter(
         { id: identity_id }, null, 1
@@ -211,27 +240,36 @@ Deno.serve(async (req) => {
       const identity = identities[0];
       const existingKyc = identity.kyc_verified_data || {};
 
-      // Merge field updates into kyc_verified_data
+      // Merge field updates into kyc_verified_data (only allow safe fields)
+      const safeUpdates = {};
+      const ALLOWED_KYC_FIELDS = ['full_legal_name', 'date_of_birth', 'residential_address', 'city', 'state', 'postal_code', 'country', 'phone_number', 'government_id_type', 'government_id_number'];
+      
+      for (const [key, value] of Object.entries(field_updates)) {
+        if (ALLOWED_KYC_FIELDS.includes(key)) {
+          safeUpdates[key] = value;
+        }
+      }
+
       await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
-        kyc_verified_data: { ...existingKyc, ...field_updates, updated_at: new Date().toISOString() }
+        kyc_verified_data: { ...existingKyc, ...safeUpdates, updated_at: new Date().toISOString() }
       });
 
       await base44.asServiceRole.entities.ActivityLog.create({
         action_type: 'system',
         message: `🔄 Master credentials updated for identity "${identity.name}"`,
         severity: 'info',
-        metadata: { identity_id, fields_updated: Object.keys(field_updates) }
+        metadata: { identity_id, fields_updated: Object.keys(safeUpdates) }
       }).catch(() => null);
 
-      return Response.json({ success: true, fields_updated: Object.keys(field_updates) });
+      return Response.json({ success: true, fields_updated: Object.keys(safeUpdates), ignored_fields: Object.keys(field_updates).filter(k => !ALLOWED_KYC_FIELDS.includes(k)) });
     }
 
     // ── get_all_accounts_status ───────────────────────────────────────────────
     if (action === 'get_all_accounts_status') {
       const [identities, linkedAccounts, linkedCreations] = await Promise.all([
-        base44.asServiceRole.entities.AIIdentity.filter({ user_email: user.email }).catch(() => []),
-        base44.asServiceRole.entities.LinkedAccount.filter({}).catch(() => []),
-        base44.asServiceRole.entities.LinkedAccountCreation.filter({}).catch(() => [])
+        base44.asServiceRole.entities.AIIdentity.filter({ user_email: user.email }, '-created_date', 100).catch(() => []),
+        base44.asServiceRole.entities.LinkedAccount.filter({ created_by: user.email }, '-created_date', 200).catch(() => []),
+        base44.asServiceRole.entities.LinkedAccountCreation.filter({ created_by: user.email }, '-created_date', 200).catch(() => [])
       ]);
 
       const report = identities.map(identity => {

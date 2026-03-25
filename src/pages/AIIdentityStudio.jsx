@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 
 import IdentityProfileBuilder from '../components/identity/IdentityProfileBuilder';
+import AIIdentityWizard from '../components/identity/AIIdentityWizard';
 import CredentialKeyManager from '../components/identity/CredentialKeyManager';
 import IdentityDataExplorer from '../components/identity/IdentityDataExplorer';
 import LinkedAccountsManager from '../components/identity/LinkedAccountsManager';

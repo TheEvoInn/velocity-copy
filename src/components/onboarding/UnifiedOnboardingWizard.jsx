@@ -427,6 +427,7 @@ const ONBOARDING_STEPS = [
         label: 'I accept the terms of service',
         type: 'checkbox',
         required: true,
+        validate: (v) => v === 'on' || v === true || 'You must accept the terms to continue',
       },
       {
         id: 'enable_autopilot',
@@ -563,12 +564,30 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
           });
         }
       } else if (step.id === 'banking') {
-        // Record banking info (encrypted via credential vault would be preferred in production)
-        await base44.entities.WithdrawalPolicy.filter({ created_by: user?.email }, '-created_date', 1);
+       // Save banking info to WithdrawalPolicy
+       const policies = await base44.entities.WithdrawalPolicy.filter({ created_by: user?.email }, '-created_date', 1);
+       const policyData = {
+         label: `Payout ${formData.payout_frequency || 'weekly'}`,
+         min_withdrawal_threshold: formData.min_payout_amount ? Number(formData.min_payout_amount) : 10,
+         auto_transfer_frequency: formData.payout_frequency || 'weekly',
+       };
+       if (policies[0]) {
+         await base44.entities.WithdrawalPolicy.update(policies[0].id, policyData);
+       } else {
+         await base44.entities.WithdrawalPolicy.create(policyData);
+       }
+      } else if (step.id === 'confirmation') {
+       // Confirmation step just marks acceptance, no additional data to save
+       if (formData.accept_terms !== 'on' && formData.accept_terms !== true) {
+         throw new Error('You must accept the terms to continue');
+       }
       }
 
-      // Mark step as complete
+      // Mark step as complete with timestamp for UI feedback
       setCompletedSteps((prev) => new Set([...prev, step.id]));
+      
+      // Show brief success indicator
+      setError('');
 
       // If last step, mark full onboarding complete
       if (currentStep === ONBOARDING_STEPS.length - 1) {
@@ -666,6 +685,14 @@ export default function UnifiedOnboardingWizard({ identityId, onComplete }) {
         onSkip={step.skippable ? handleSkipWithAutopilot : null}
         skipLabel={step.skipLabel}
       />
+      
+      {/* Auto-save success indicator */}
+      {completedSteps.has(step.id) && !isLoading && (
+        <div className="mt-4 p-3 rounded-lg bg-emerald-950/30 border border-emerald-700 flex items-center gap-2 text-xs text-emerald-300">
+          <CheckCircle className="w-4 h-4 shrink-0" />
+          Step saved — you can leave and resume anytime
+        </div>
+      )}
     </div>
   );
 }

@@ -143,7 +143,14 @@ export default function OnboardingFieldGroup({
               <input
                 type="file"
                 accept={fieldConfig?.accept || '*'}
-                onChange={handleFileUpload}
+                onChange={(e) => {
+                  try {
+                    handleFileUpload(e);
+                  } catch (err) {
+                    console.error('File upload failed:', err);
+                    alert(`Upload error: ${err.message}. Try again.`);
+                  }
+                }}
                 disabled={isUploading}
                 className="hidden"
                 tabIndex={tabIndex}

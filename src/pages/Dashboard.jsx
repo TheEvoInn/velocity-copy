@@ -100,21 +100,33 @@ export default function Dashboard() {
 
   const [warpTarget, setWarpTarget] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [interventionCount, setInterventionCount] = useState(0);
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
+  // Real-time intervention subscription
+  useEffect(() => {
+    const unsubscribe = base44.entities.UserIntervention.subscribe((event) => {
+      if (event.type === 'create' || event.type === 'update' || event.type === 'delete') {
+        base44.entities.UserIntervention.filter(
+          { status: { $in: ['pending', 'in_progress'] } },
+          '-created_date',
+          100
+        ).then(res => {
+          setInterventionCount(Array.isArray(res) ? res.length : 0);
+        }).catch(() => null);
+      }
+    });
+    return () => unsubscribe?.();
+  }, []);
+
   const activeTasks = tasks.filter(t => t.status === 'executing' || t.status === 'running').length;
   const isOnboarded = goals?.onboarded === true;
 
-  const { data: interventionData } = useQuery({
-    queryKey: ['pendingInterventionsCount'],
-    queryFn: () => base44.functions.invoke('userInterventionManager', { action: 'get_pending_interventions' }).then(r => r.data?.interventions || []),
-    refetchInterval: 30000,
-  });
-  const pendingInterventions = interventionData?.length || 0;
+  const pendingInterventions = interventionCount;
   const queuedTasks = tasks.filter(t => t.status === 'queued').length;
   const todayStr = new Date().toDateString();
   const completedToday = tasks.filter(t =>

@@ -3,11 +3,12 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Shield, Zap, Users, Trash2, Edit, Settings, Brain, Key, CheckCircle } from 'lucide-react';
+import { Plus, Shield, Zap, Users, Trash2, Edit, Brain, Key, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IdentityProfileEditor from '@/components/identity/IdentityProfileEditor';
+import PersonaWorkflowGenerator from '@/components/identity/PersonaWorkflowGenerator';
 
 export default function VeloIdentityHub() {
   const { user } = useAuth();
@@ -199,6 +200,10 @@ export default function VeloIdentityHub() {
           <TabsList className="glass-card flex-wrap h-auto gap-1">
             <TabsTrigger value="identities">All Identities ({identities.length})</TabsTrigger>
             <TabsTrigger value="active">Active Profile</TabsTrigger>
+            <TabsTrigger value="workflows" className="relative">
+              Workflows
+              {activeIdentity && <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 font-bold">AI</span>}
+            </TabsTrigger>
             <TabsTrigger value="kyc">KYC & Verification</TabsTrigger>
             <TabsTrigger value="credentials">Credentials</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -402,6 +407,19 @@ export default function VeloIdentityHub() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Persona Workflow Generator Tab */}
+          <TabsContent value="workflows" className="space-y-4">
+            <div className="rounded-xl p-4 mb-2"
+              style={{ background: 'rgba(0,232,255,0.04)', border: '1px solid rgba(0,232,255,0.15)' }}>
+              <h3 className="font-orbitron text-xs tracking-widest text-cyan-400 mb-1">NEXUS — PERSONA WORKFLOW GENERATOR</h3>
+              <p className="text-xs text-slate-500">
+                Analyzes your active persona's bio and skills to generate specialized Autopilot workflows.
+                Generated templates are saved to the Templates Library and can be deployed with one click.
+              </p>
+            </div>
+            <PersonaWorkflowGenerator activeIdentity={activeIdentity} />
           </TabsContent>
 
           {/* KYC Tab */}

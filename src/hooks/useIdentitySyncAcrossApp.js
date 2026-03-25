@@ -12,7 +12,7 @@ export function useIdentitySyncAcrossApp() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // AIIdentity — affects identity hub, autopilot, active identity banner, discovery personalization
+    // AIIdentity — affects identity hub, autopilot, active identity banner, discovery personalization, persona workflows
     const unsubAI = base44.entities.AIIdentity.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['identities'] });
       queryClient.invalidateQueries({ queryKey: ['activeIdentity'] });
@@ -20,6 +20,7 @@ export function useIdentitySyncAcrossApp() {
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });
       queryClient.invalidateQueries({ queryKey: ['kycVerification'] });
       queryClient.invalidateQueries({ queryKey: ['credentialVault'] });
+      queryClient.invalidateQueries({ queryKey: ['workflowTemplates'] }); // sync persona workflows
     });
 
     // KYCVerification — affects identity hub, autopilot clearances, task eligibility
@@ -57,6 +58,11 @@ export function useIdentitySyncAcrossApp() {
       queryClient.invalidateQueries({ queryKey: ['executionTasks'] });
     });
 
+    // WorkflowTemplate — sync across Identity Hub and Templates Library
+    const unsubWfTemplates = base44.entities.WorkflowTemplate.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['workflowTemplates'] });
+    });
+
     // Transaction — affects finance command, wallet balance, dashboard earnings
     const unsubTx = base44.entities.Transaction.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -71,6 +77,7 @@ export function useIdentitySyncAcrossApp() {
       unsubPolicy?.();
       unsubCreds?.();
       unsubTasks?.();
+      unsubWfTemplates?.();
       unsubTx?.();
     };
   }, [queryClient]);

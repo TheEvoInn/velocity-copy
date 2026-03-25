@@ -244,7 +244,12 @@ export default function OnboardingWizard({ onComplete }) {
       queryClient.invalidateQueries({ queryKey: ['userDataStore'] });
 
       toast.success('🚀 VELOCITY activated! Autopilot is now running.');
-      onComplete();
+      setIsLaunching(false);
+      setTimeout(() => {
+        if (onComplete && typeof onComplete === 'function') {
+          onComplete();
+        }
+      }, 500);
     } catch (err) {
       console.error('[Onboarding] Launch failed:', err);
       toast.error(`❌ ${err.message}`);

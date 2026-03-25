@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       });
 
       try {
-        // Get identity credentials
+        // Get identity & KYC data
         const identities = await base44.asServiceRole.entities.AIIdentity.filter(
           { id: task.identity_id },
           null,
@@ -64,82 +64,107 @@ Deno.serve(async (req) => {
         }
 
         const identity = identities[0];
-        if (!identity.kyc_verified_data?.full_legal_name) {
-          throw new Error('Identity missing KYC data');
-        }
+        const kyc = identity.kyc_verified_data || {};
 
-        const kyc = identity.kyc_verified_data;
-
-        // Route to browser automation for account creation
+        // Route to real browser automation for signup
         if (task.opportunity_type === 'signup') {
           try {
+            // Invoke Playwright for autonomous browser execution
             const browserRes = await base44.asServiceRole.functions.invoke('playwrightBrowserAutomation', {
               action: 'execute_signup_autonomous',
               url: task.url,
               email: kyc.email || identity.email,
               password: generatePassword(),
-              full_name: kyc.full_legal_name
-            });
+              full_name: kyc.full_legal_name || identity.name
+            }).catch(e => ({ data: { success: false, error: e.message } }));
 
-            if (!browserRes.data?.success) {
-              // Browser automation failed — request user intervention
-              const intervention = await base44.asServiceRole.entities.UserIntervention.create({
-                user_email: identity.user_email,
-                task_id: task.id,
-                requirement_type: 'manual_review',
-                required_data: `Complete account creation at ${task.url}`,
-                direct_link: task.url,
-                status: 'pending',
-                priority: 90
+            if (browserRes.data?.success) {
+              // Autonomous execution succeeded
+              await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
+                status: 'completed',
+                completion_timestamp: new Date().toISOString(),
+                submission_success: true,
+                screenshot_url: browserRes.data?.screenshot
+              });
+
+              if (task.opportunity_id) {
+                await base44.asServiceRole.entities.Opportunity.update(task.opportunity_id, {
+                  status: 'completed',
+                  submission_confirmed: true,
+                  submission_timestamp: new Date().toISOString()
+                }).catch(() => null);
+              }
+
+              await base44.asServiceRole.entities.ActivityLog.create({
+                action_type: 'system',
+                message: `✅ Account created autonomously via browser automation`,
+                severity: 'success',
+                metadata: { task_id: task.id, opportunity_id: task.opportunity_id }
               }).catch(() => null);
 
-              await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
-                status: 'needs_review',
-                error_message: browserRes.data?.error || 'Browser automation failed',
-                completion_timestamp: new Date().toISOString()
-              });
-
-              return Response.json({
-                success: false,
-                error: 'User intervention required',
-                intervention_id: intervention?.id
-              });
+              return Response.json({ success: true, task: { id: task.id, status: 'completed' } });
             }
-          } catch (browserError) {
-            console.error('[AgentWorker] Browser automation error:', browserError.message);
-            // Fallback: request user intervention
+
+            // Browser automation failed — fallback to guided user intervention
             const intervention = await base44.asServiceRole.entities.UserIntervention.create({
-              user_email: identity.user_email,
+              user_email: identity.user_email || user.email,
               task_id: task.id,
               requirement_type: 'manual_review',
               required_data: `Complete account creation at ${task.url}`,
               direct_link: task.url,
               status: 'pending',
-              priority: 85
+              priority: 85,
+              notes: `Email: ${kyc.email || identity.email}\nPassword: [SECURE]\nFull Name: ${kyc.full_legal_name || identity.name}`
             }).catch(() => null);
 
             await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
               status: 'needs_review',
-              error_message: 'Browser automation unavailable, manual completion requested',
+              error_message: browserRes.data?.error || 'Browser automation fallback triggered',
               completion_timestamp: new Date().toISOString()
             });
 
             return Response.json({
               success: false,
-              error: 'Fallback to user intervention',
-              intervention_id: intervention?.id
+              intervention_required: true,
+              intervention_id: intervention?.id,
+              task_id: task.id
+            });
+
+          } catch (browserError) {
+            console.error('[AgentWorker] Browser automation error:', browserError.message);
+            // Graceful fallback to user intervention
+            const intervention = await base44.asServiceRole.entities.UserIntervention.create({
+              user_email: identity.user_email || user.email,
+              task_id: task.id,
+              requirement_type: 'manual_review',
+              required_data: `Complete signup on ${task.platform || 'platform'}: ${task.url}`,
+              direct_link: task.url,
+              status: 'pending',
+              priority: 80
+            }).catch(() => null);
+
+            await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
+              status: 'needs_review',
+              error_message: `Browser automation unavailable: ${browserError.message}`,
+              completion_timestamp: new Date().toISOString()
+            });
+
+            return Response.json({
+              success: false,
+              intervention_required: true,
+              intervention_id: intervention?.id,
+              task_id: task.id
             });
           }
         }
 
-        // Mark as completed
+        // Non-signup tasks marked complete
         await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
           status: 'completed',
           completion_timestamp: new Date().toISOString(),
           submission_success: true
         });
 
-        // Update opportunity status
         if (task.opportunity_id) {
           await base44.asServiceRole.entities.Opportunity.update(task.opportunity_id, {
             status: 'completed',

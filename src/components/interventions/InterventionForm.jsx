@@ -43,9 +43,10 @@ export default function InterventionForm({ intervention, onSubmit, onClose }) {
 
     try {
       const res = await base44.functions.invoke('accountCreationEngine', {
-        user_email: intervention.user_email,
-        intervention_id: intervention.id,
-        requirement_type: intervention.requirement_type,
+        action: 'check_and_create_account',
+        platform: intervention.requirement_type === 'missing_data' ? 'generic' : 'upwork',
+        identity_id: intervention.opportunity_id || 'autopilot-default',
+        on_demand: true
       });
 
       if (res.data?.success) {

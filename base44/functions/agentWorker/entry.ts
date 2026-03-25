@@ -9,8 +9,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // Auth optional for agent worker — can run as service role
+    const user = await base44.auth.me().catch(() => null);
 
     const body = await req.json();
     const { action } = body;
@@ -65,6 +65,7 @@ Deno.serve(async (req) => {
 
         const identity = identities[0];
         const kyc = identity.kyc_verified_data || {};
+        const userEmail = identity.user_email || user?.email || 'system@velo.ai';
 
         // Route to real browser automation for signup
         if (task.opportunity_type === 'signup') {
@@ -107,7 +108,7 @@ Deno.serve(async (req) => {
 
             // Browser automation failed — fallback to guided user intervention
             const intervention = await base44.asServiceRole.entities.UserIntervention.create({
-              user_email: identity.user_email || user.email,
+              user_email: userEmail,
               task_id: task.id,
               requirement_type: 'manual_review',
               required_data: `Complete account creation at ${task.url}`,
@@ -134,7 +135,7 @@ Deno.serve(async (req) => {
             console.error('[AgentWorker] Browser automation error:', browserError.message);
             // Graceful fallback to user intervention
             const intervention = await base44.asServiceRole.entities.UserIntervention.create({
-              user_email: identity.user_email || user.email,
+              user_email: userEmail,
               task_id: task.id,
               requirement_type: 'manual_review',
               required_data: `Complete signup on ${task.platform || 'platform'}: ${task.url}`,

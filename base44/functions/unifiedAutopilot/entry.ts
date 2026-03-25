@@ -104,7 +104,15 @@ Deno.serve(async (req) => {
       // Use bulk queue executor
       const queueRes = await base44.asServiceRole.functions.invoke('autopilotTaskExecutor', {
         action: 'queue_bulk_tasks',
-        opportunities: toExecute
+        opportunities: toExecute.map(o => ({
+          id: o.id,
+          url: o.url,
+          title: o.title,
+          opportunity_type: o.opportunity_type,
+          platform: o.platform,
+          overall_score: o.overall_score,
+          profit_estimate_high: o.profit_estimate_high
+        }))
       }).catch(e => ({ data: { success: false, error: e.message, queued: 0 } }));
 
       const queued = queueRes.data?.queued || 0;

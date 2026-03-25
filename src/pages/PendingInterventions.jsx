@@ -25,10 +25,13 @@ export default function PendingInterventions() {
 
   const fetchInterventions = async () => {
     try {
-      const res = await base44.functions.invoke('userInterventionManager', {
-        action: 'get_pending_interventions'
-      });
-      setInterventions(res.data?.interventions || []);
+      // Query UserIntervention directly — no function call needed
+      const pending = await base44.entities.UserIntervention.filter(
+        { status: { $in: ['pending', 'in_progress'] } },
+        '-priority',
+        50
+      );
+      setInterventions(Array.isArray(pending) ? pending : []);
     } catch (err) {
       console.error('Failed to fetch interventions:', err);
     } finally {

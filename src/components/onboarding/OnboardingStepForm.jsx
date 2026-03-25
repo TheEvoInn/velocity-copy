@@ -43,11 +43,14 @@ export default function OnboardingStepForm({
   // Update validation state
   useEffect(() => {
     const allValid = fields.every((f) => {
-      if (f.required) return validFields[f.id] === true;
-      return true;
+      if (!f.required) return true;
+      // For required fields, check if value exists OR field is marked valid
+      const hasValue = !!formData[f.id];
+      const isFieldValid = validFields[f.id] === true;
+      return hasValue || isFieldValid;
     });
     setIsValid(allValid);
-  }, [validFields, fields]);
+  }, [validFields, fields, formData]);
 
   const handleFieldChange = (fieldId, value) => {
     setFormData((prev) => ({ ...prev, [fieldId]: value }));
@@ -58,8 +61,13 @@ export default function OnboardingStepForm({
   };
 
   const handleComplete = async () => {
-    // Allow progression even if not all required fields are filled — just warn user
-    onComplete?.(formData);
+    if (isLoading) return;
+    try {
+      await onComplete?.(formData);
+    } catch (err) {
+      console.error('Submit failed:', err);
+      alert(`Failed to save: ${err.message}`);
+    }
   };
 
   return (

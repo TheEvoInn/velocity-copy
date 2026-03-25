@@ -191,6 +191,28 @@ export default function OnboardingFieldGroup({
             </option>
           ))}
         </select>
+      ) : type === 'checkbox' ? (
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id={fieldId}
+            checked={value === 'on' || value === true}
+            onChange={(e) => {
+              const newVal = e.target.checked ? 'on' : '';
+              onChange?.(newVal);
+              if (validation) {
+                const result = validation(newVal);
+                // Validation will be handled by parent
+              }
+            }}
+            className="w-4 h-4 rounded accent-cyan-500 cursor-pointer"
+            tabIndex={tabIndex}
+          />
+          <label htmlFor={fieldId} className="text-sm text-slate-300 cursor-pointer flex-1">
+            {label}
+            {required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+        </div>
       ) : type === 'password' ? (
        <div className="relative">
          <input

@@ -30,6 +30,7 @@ import AutopilotLogs from './pages/AutopilotLogs';
 import AIIdentityStudio from './pages/AIIdentityStudio';
 import TemplatesLibrary from './pages/TemplatesLibrary';
 import UserAccessPage from './pages/UserAccessPage';
+import TerminologyLibraryPage from './pages/TerminologyLibraryPage';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import BankSettings from './pages/BankSettings';
 import AutomationManager from './pages/AutomationManager';
@@ -95,6 +96,7 @@ const AuthenticatedApp = () => {
         <Route path="/AdminPanel" element={<AdminPanel />} />
         <Route path="/AdminInterventions" element={<AdminInterventions />} />
         <Route path="/AutopilotLogs" element={<AutopilotLogs />} />
+        <Route path="/TerminologyLibraryPage" element={<TerminologyLibraryPage />} />
         <Route path="/AIIdentityStudio" element={<AIIdentityStudio />} />
         <Route path="/TemplatesLibrary" element={<TemplatesLibrary />} />
         <Route path="/UserAccessPage" element={<UserAccessPage />} />

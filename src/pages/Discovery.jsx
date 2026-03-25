@@ -217,6 +217,23 @@ export default function Discovery() {
   const [minPay, setMinPay] = useState(0);
   const [maxTime, setMaxTime] = useState(999);
   const [lastScanResult, setLastScanResult] = useState(null);
+  const [scanningCategory, setScanningCategory] = useState(null);
+  const [categoryResults, setCategoryResults] = useState({});
+
+  async function scanCategory(categoryKey) {
+    if (scanningCategory) return;
+    setScanningCategory(categoryKey);
+    setCategoryResults(prev => ({ ...prev, [categoryKey]: null }));
+    const res = await base44.functions.invoke('discoveryEngine', {
+      action: 'scan_category',
+      category: categoryKey,
+    });
+    setScanningCategory(null);
+    setCategoryResults(prev => ({ ...prev, [categoryKey]: res.data }));
+    setCatFilter(categoryKey);
+    qc.invalidateQueries({ queryKey: ['opportunities'] });
+    refetch();
+  }
 
   const opportunities = useMemo(() => {
     let opps = [...rawOpps];
@@ -484,33 +501,49 @@ export default function Discovery() {
         </div>
       )}
 
-      {rawOpps.length > 0 && (
-        <div className="mt-8 p-5 rounded-2xl"
-          style={{ background: 'rgba(10,15,42,0.5)', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="font-orbitron text-xs text-slate-600 tracking-widest mb-4">SCOUT COVERAGE — 25+ WORK CATEGORIES</div>
-          <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2">
-            {Object.entries(CATEGORIES).filter(([k]) => k !== 'all').map(([key, meta]) => (
-              <div key={key} className="text-center p-2 rounded-xl cursor-pointer"
-                onClick={() => setCatFilter(key)}
+      {/* Category Coverage Grid */}
+      <div className="mt-8 p-5 rounded-2xl"
+        style={{ background: 'rgba(10,15,42,0.5)', border: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="font-orbitron text-xs text-slate-600 tracking-widest mb-1">SCOUT COVERAGE — 45 CATEGORIES</div>
+        <p className="text-xs text-slate-700 mb-4">Click any category to instantly launch a deep scan &amp; expand results</p>
+        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2">
+          {Object.entries(CATEGORIES).filter(([k]) => k !== 'all').map(([key, meta]) => {
+            const isThisScanning = scanningCategory === key;
+            const justScanned = categoryResults[key];
+            return (
+              <div key={key}
+                className="text-center p-2 rounded-xl cursor-pointer transition-all duration-200"
+                onClick={() => isThisScanning ? null : catCounts[key] ? setCatFilter(key) : scanCategory(key)}
                 style={{
-                  background: catCounts[key] ? `${meta.color}08` : 'rgba(255,255,255,0.01)',
-                  border: `1px solid ${catCounts[key] ? `${meta.color}25` : 'rgba(255,255,255,0.04)'}`,
-                  opacity: catCounts[key] ? 1 : 0.4,
+                  background: isThisScanning ? `${meta.color}15` : catCounts[key] ? `${meta.color}08` : 'rgba(255,255,255,0.01)',
+                  border: `1px solid ${isThisScanning ? `${meta.color}55` : catCounts[key] ? `${meta.color}25` : 'rgba(255,255,255,0.04)'}`,
+                  opacity: isThisScanning ? 1 : catCounts[key] ? 1 : 0.5,
+                  boxShadow: isThisScanning ? `0 0 12px ${meta.color}33` : justScanned ? `0 0 8px ${meta.color}22` : 'none',
+                  transform: isThisScanning ? 'scale(1.04)' : 'scale(1)',
                 }}>
-                <div className="text-lg mb-0.5">{meta.emoji}</div>
-                <div className="text-xs leading-tight" style={{ color: catCounts[key] ? meta.color : '#475569' }}>
+                <div className="text-lg mb-0.5">
+                  {isThisScanning ? <span className="inline-block animate-spin">⚙️</span> : meta.emoji}
+                </div>
+                <div className="text-xs leading-tight" style={{ color: isThisScanning ? meta.color : catCounts[key] ? meta.color : '#475569' }}>
                   {meta.label}
                 </div>
-                {catCounts[key] > 0 && (
-                  <div className="text-xs font-orbitron font-bold mt-0.5" style={{ color: meta.color }}>
-                    {catCounts[key]}
-                  </div>
+                {catCounts[key] > 0 && !isThisScanning && (
+                  <div className="text-xs font-orbitron font-bold mt-0.5" style={{ color: meta.color }}>{catCounts[key]}</div>
+                )}
+                {isThisScanning && (
+                  <div className="text-xs font-orbitron mt-0.5" style={{ color: meta.color }}>SCANNING</div>
+                )}
+                {justScanned && !isThisScanning && (
+                  <div className="text-xs font-orbitron mt-0.5 text-emerald-400">+{justScanned.created || 0} new</div>
+                )}
+                {!catCounts[key] && !isThisScanning && !justScanned && (
+                  <div className="text-[9px] text-slate-700 mt-0.5">tap scan</div>
                 )}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 }

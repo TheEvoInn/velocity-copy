@@ -86,6 +86,7 @@ export default function UnifiedAutopilot() {
   const [isManualRunning, setIsManualRunning] = useState(false);
   const [isScanRunning, setIsScanRunning] = useState(false);
   const [isForceRunning, setIsForceRunning] = useState(false);
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [lastRunResult, setLastRunResult] = useState(null);
   const [executionFilter, setExecutionFilter] = useState('active');
   
@@ -160,6 +161,47 @@ export default function UnifiedAutopilot() {
       refetchState();
     } finally {
       setIsForceRunning(false);
+    }
+  };
+
+  const createAccountAutonomously = async () => {
+    setIsCreatingAccount(true);
+    try {
+      // Get first active identity
+      const identities = await base44.entities.AIIdentity.filter({ is_active: true }, null, 1).catch(() => []);
+      if (!identities.length) {
+        alert('No active AI identity found. Create one in Identity Manager.');
+        return;
+      }
+
+      const identity = identities[0];
+
+      // Create test opportunity for account creation
+      const opportunity = {
+        title: 'Auto-Create Account - Upwork',
+        platform: 'upwork',
+        url: 'https://www.upwork.com/signup',
+        opportunity_type: 'signup',
+        category: 'service'
+      };
+
+      // Invoke account creation engine
+      const result = await base44.functions.invoke('autonomousAccountCreationEngine', {
+        action: 'auto_create_account',
+        identityId: identity.id,
+        opportunity
+      });
+
+      if (result.data?.success) {
+        setLastRunResult({ success: true, message: '✅ Account created successfully', account: result.data.account });
+        await invalidateAll();
+      } else {
+        setLastRunResult({ success: false, message: '❌ Account creation failed: ' + result.data?.error });
+      }
+    } catch (error) {
+      setLastRunResult({ success: false, message: '❌ Error: ' + error.message });
+    } finally {
+      setIsCreatingAccount(false);
     }
   };
 
@@ -251,6 +293,15 @@ export default function UnifiedAutopilot() {
             title="Force Run: Bypasses scheduling, executes all queued tasks immediately">
             <Flame className={`w-3.5 h-3.5 ${isForceRunning ? 'animate-pulse' : ''}`} />
             {isForceRunning ? 'Force Running...' : '⚡ Force Run'}
+          </Button>
+
+          <Button size="sm"
+            onClick={createAccountAutonomously} disabled={isCreatingAccount}
+            className="text-white text-xs h-9 gap-1.5"
+            style={{ background: 'linear-gradient(135deg, #8b5cf6, #a855f7)', border: '1px solid rgba(139,92,246,0.5)' }}
+            title="Create account on platform autonomously">
+            <Zap className={`w-3.5 h-3.5 ${isCreatingAccount ? 'animate-pulse' : ''}`} />
+            {isCreatingAccount ? 'Creating...' : 'Create Account'}
           </Button>
 
           <Link to="/AutopilotLogs">

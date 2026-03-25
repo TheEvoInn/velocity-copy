@@ -20,7 +20,7 @@ export default function AdminCompliance() {
     refetchInterval: 300000 // 5 min
   });
 
-  const { data: riskData = {}, isLoading: riskLoading } = useQuery({
+  const { data: riskData = [], isLoading: riskLoading } = useQuery({
     queryKey: ['opportunityRisks'],
     queryFn: async () => {
       const res = await base44.functions.invoke('riskComplianceEngine', {
@@ -33,6 +33,7 @@ export default function AdminCompliance() {
 
   const kyc = report.kyc || {};
   const tax = report.tax || {};
+  const safeRiskData = Array.isArray(riskData) ? riskData : [];
 
   const getRiskColor = (level) => {
     switch(level) {
@@ -52,8 +53,8 @@ export default function AdminCompliance() {
     }
   };
 
-  const blockedOpps = riskData.filter(o => o.recommendation === 'BLOCK');
-  const reviewOpps = riskData.filter(o => o.recommendation === 'REVIEW');
+  const blockedOpps = safeRiskData.filter(o => o.recommendation === 'BLOCK');
+  const reviewOpps = safeRiskData.filter(o => o.recommendation === 'REVIEW');
 
   return (
     <div className="space-y-6">

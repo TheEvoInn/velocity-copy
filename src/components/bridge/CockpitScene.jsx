@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as THREE from 'three';
+import { useRealtimePlatformSync } from '@/hooks/useRealtimeSync';
 
 // Department planet definitions
 export const DEPARTMENTS = [
@@ -110,12 +111,36 @@ function spawnTrajectoryTrail(scene, targetPos, color) {
   requestAnimationFrame(tick);
 }
 
-export default function CockpitScene({ onModuleSelect, onHover, activityLevels = {} }) {
+export default function CockpitScene({ onModuleSelect, onHover, activityLevels: externalActivityLevels = {} }) {
   const mountRef = useRef(null);
+  const [activityLevels, setActivityLevels] = useState(externalActivityLevels);
   const stateRef = useRef({
     scene: null, camera: null, renderer: null,
     planets: [], stations: [], animId: null,
     clock: new THREE.Clock(), hoveredObj: null,
+  });
+
+  // Real-time sync: Interventions, Tasks, Wallet, Identity
+  useRealtimePlatformSync({
+    onInterventionChange: (event) => {
+      const pending = event.data?.status === 'pending' || event.data?.status === 'in_progress' ? 1 : 0;
+      setActivityLevels(prev => ({ ...prev, Control: Math.max(0.2, (prev.Control || 0) + pending * 0.15) }));
+    },
+    onTaskChange: (event) => {
+      const isActive = ['executing', 'processing', 'navigating'].includes(event.data?.status);
+      const map = {
+        'job': 'VIPZ', 'freelance': 'AutoPilot', 'arbitrage': 'NED', 'lead_gen': 'Discovery',
+        'api_call': 'Finance', 'default': 'AutoPilot'
+      };
+      const dept = map[event.data?.opportunity_type || 'default'];
+      if (dept && isActive) {
+        setActivityLevels(prev => ({ ...prev, [dept]: Math.min(1, (prev[dept] || 0) + 0.12) }));
+      }
+    },
+    onWalletChange: (event) => {
+      const walletActive = event.data?.wallet_balance > 0 ? 0.3 : 0.1;
+      setActivityLevels(prev => ({ ...prev, Finance: walletActive }));
+    }
   });
 
   const buildScene = useCallback(() => {
@@ -290,7 +315,6 @@ export default function CockpitScene({ onModuleSelect, onHover, activityLevels =
         S.cockpit.buttons?.forEach((b, i) => {
           if (b.material) b.material.emissiveIntensity = 0.5 + Math.sin(t * 3 + i * 0.7) * 0.3;
         });
-
       }
 
       // Raycaster hover
@@ -309,7 +333,7 @@ export default function CockpitScene({ onModuleSelect, onHover, activityLevels =
       renderer.render(scene, camera);
     };
     animate();
-  }, [onModuleSelect, onHover]);
+  }, [onModuleSelect, onHover, activityLevels]);
 
   useEffect(() => {
     buildScene();

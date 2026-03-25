@@ -219,39 +219,22 @@ export default function OnboardingWizard({ onComplete }) {
         console.warn('[Onboarding] Activity log failed:', err);
       }
 
-      // 7. Consolidate all onboarding data into UserDataStore for unified access
+      // 7. TRIGGER REAL MULTI-SYNC & LAUNCH SEQUENCE
       try {
-        const userDataStores = await base44.entities.UserDataStore.filter(
-          { user_email: user?.email },
-          '-created_date',
-          1
-        );
-        const consolidatedData = {
-          onboarding_completed: doNotShowAgain,
-          onboarding_completed_at: new Date().toISOString(),
-          identity_created: !!identity?.id,
-          identity_id: identity?.id,
-          identity_name: identity?.name,
-          kyc_submitted: !!kycRecord?.id,
+        const launchResult = await base44.functions.invoke('onboardingLaunchSync', {
+          identity_id: identity.id,
+          identity_name: identity.name,
           kyc_id: kycRecord?.id,
-          user_goals_saved: true,
           daily_target: prefData.daily_target,
           autopilot_enabled: prefData.autopilot_enabled,
-          withdrawal_policy_created: !!(bankingData.bank_name || bankingData.paypal_email),
+          risk_tolerance: prefData.risk_tolerance,
+          preferred_categories: prefData.preferred_categories,
           banking_configured: !!(bankingData.bank_name || bankingData.paypal_email),
-        };
-
-        if (userDataStores.length > 0) {
-          await base44.entities.UserDataStore.update(userDataStores[0].id, consolidatedData);
-        } else {
-          await base44.entities.UserDataStore.create({
-            user_email: user?.email,
-            ...consolidatedData,
-          });
-        }
-        console.log('[Onboarding] Data consolidated to UserDataStore');
+        });
+        console.log('[Onboarding] Launch sync complete:', launchResult.data);
       } catch (err) {
-        console.warn('[Onboarding] Data consolidation failed (non-fatal):', err);
+        console.error('[Onboarding] Launch sync failed:', err);
+        throw new Error(`Failed to activate VELOCITY: ${err.message}`);
       }
 
       // Invalidate queries

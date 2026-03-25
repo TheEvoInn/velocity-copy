@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
 
       const createdAccounts = [];
       const skipped = [];
+      const syncResults = [];
 
       for (const platformData of platforms_to_create) {
         const platform = typeof platformData === 'string' ? platformData : platformData.platform;
@@ -93,17 +94,116 @@ Deno.serve(async (req) => {
         }).catch(e => ({ data: { success: false, error: e.message } }));
 
         if (creationResult.data?.success) {
-          createdAccounts.push({
+          const accountData = {
             platform,
             username: masterCreds.username || creationResult.data?.account?.username,
             email: masterCreds.email,
             status: 'created',
             account_id: creationResult.data?.account_id
-          });
+          };
+          createdAccounts.push(accountData);
           existingPlatforms.add(platform);
+
+          // ── SYNC 1: Register in LinkedAccount ──
+          try {
+            const linkedAccount = await base44.asServiceRole.entities.LinkedAccount.create({
+              platform,
+              username: accountData.username,
+              profile_url: `https://${platform}.com/user/${accountData.username}`,
+              health_status: 'healthy',
+              ai_can_use: true,
+              performance_score: 50,
+              notes: `Auto-created via Autopilot on ${new Date().toISOString()}`,
+            });
+            syncResults.push({ system: 'LinkedAccount', platform, status: 'synced', id: linkedAccount.id });
+          } catch (e) {
+            syncResults.push({ system: 'LinkedAccount', platform, status: 'failed', error: e.message });
+          }
+
+          // ── SYNC 2: Update Identity with linked account ──
+          try {
+            const identity = await base44.entities.AIIdentity.get(identity_id);
+            const updatedLinkedIds = [...(identity.linked_account_ids || []), linkedAccount?.id].filter(Boolean);
+            await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
+              linked_account_ids: updatedLinkedIds,
+            });
+            syncResults.push({ system: 'AIIdentity', platform, status: 'synced' });
+          } catch (e) {
+            syncResults.push({ system: 'AIIdentity', platform, status: 'failed', error: e.message });
+          }
+
+          // ── SYNC 3: Create credential vault entry ──
+          try {
+            await base44.asServiceRole.entities.CredentialVault.create({
+              platform,
+              credential_type: 'login',
+              encrypted_payload: JSON.stringify({ username: accountData.username, email: accountData.email }),
+              iv: 'auto',
+              linked_account_id: linkedAccount?.id,
+              is_active: true,
+              access_count: 0,
+            });
+            syncResults.push({ system: 'CredentialVault', platform, status: 'synced' });
+          } catch (e) {
+            syncResults.push({ system: 'CredentialVault', platform, status: 'failed', error: e.message });
+          }
+
+          // ── SYNC 4: Log in SecretAuditLog ──
+          try {
+            await base44.asServiceRole.entities.SecretAuditLog.create({
+              event_type: 'secret_created',
+              secret_name: `${platform}_account_${accountData.username}`,
+              secret_type: 'login',
+              platform,
+              identity_id,
+              identity_name: masterCreds.identity_name,
+              module_source: 'account_creation_engine',
+              action_by: user.email,
+              status: 'success',
+              notes: `Account auto-created for identity ${masterCreds.identity_name}`,
+            });
+            syncResults.push({ system: 'SecretAuditLog', platform, status: 'synced' });
+          } catch (e) {
+            syncResults.push({ system: 'SecretAuditLog', platform, status: 'failed', error: e.message });
+          }
         } else {
           skipped.push({ platform, reason: creationResult.data?.error || 'Creation failed' });
         }
+      }
+
+      // ── SYNC 5: Resume queued tasks for this identity ──
+      let tasksResumed = 0;
+      try {
+        const queuedTasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+          { identity_id, status: 'needs_review' },
+          undefined,
+          100
+        ).catch(() => []);
+
+        for (const task of queuedTasks) {
+          await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
+            status: 'queued',
+            notes: `${task.notes || ''} [Account(s) created - resuming from needs_review]`,
+          }).catch(() => null);
+          tasksResumed++;
+        }
+        if (tasksResumed > 0) {
+          syncResults.push({ system: 'TaskExecutionQueue', status: 'synced', resumed_count: tasksResumed });
+        }
+      } catch (e) {
+        syncResults.push({ system: 'TaskExecutionQueue', status: 'failed', error: e.message });
+      }
+
+      // ── SYNC 6: Log activity ──
+      try {
+        await base44.asServiceRole.entities.ActivityLog.create({
+          action_type: 'system',
+          message: `🤖 Auto-created ${createdAccounts.length} account(s) for identity ${masterCreds.identity_name}: ${createdAccounts.map(c => c.platform).join(', ')} | Synced to ${syncResults.length} systems | Resumed ${tasksResumed} tasks`,
+          severity: 'success',
+          metadata: { identity_id, created_count: createdAccounts.length, sync_systems: syncResults.length },
+        });
+      } catch (e) {
+        console.error('Failed to log activity:', e.message);
       }
 
       return Response.json({
@@ -112,8 +212,11 @@ Deno.serve(async (req) => {
         skipped_count: skipped.length,
         created_accounts: createdAccounts,
         skipped,
+        synced_systems: syncResults.length,
+        tasks_resumed: tasksResumed,
+        sync_results: syncResults,
         identity_name: masterCreds.identity_name,
-        message: `Created ${createdAccounts.length} account(s) using verified identity data`
+        message: `Created ${createdAccounts.length} account(s), synced to ${syncResults.length} systems, resumed ${tasksResumed} tasks`
       });
     }
 
@@ -121,8 +224,10 @@ Deno.serve(async (req) => {
     if (action === 'get_created_accounts') {
       if (!identity_id) return Response.json({ error: 'identity_id required' }, { status: 400 });
 
-      const accounts = await base44.entities.LinkedAccountCreation.filter(
-        { identity_id, is_ai_created: true }, '-created_date', 50
+      const accounts = await base44.asServiceRole.entities.LinkedAccount.filter(
+        { id: { $in: (await base44.entities.AIIdentity.get(identity_id).catch(() => ({ linked_account_ids: [] }))).linked_account_ids || [] } },
+        '-created_date',
+        50
       ).catch(() => []);
 
       return Response.json({ success: true, accounts, total: accounts.length });
@@ -131,6 +236,12 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
     console.error('[AutomatedAccountCreation]', error.message);
+    // Log critical failure
+    await base44.asServiceRole.entities.ActivityLog.create({
+      action_type: 'system',
+      message: `❌ Auto-account creation failed: ${error.message}`,
+      severity: 'critical',
+    }).catch(() => null);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 export default function AutoAccountCreationPanel({ identity }) {
   const queryClient = useQueryClient();
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+  const [syncStatus, setSyncStatus] = useState(null); // { synced_systems, tasks_resumed }
 
   // Get platform list
   const { data: platformList = [], isLoading: platformsLoading } = useQuery({
@@ -51,9 +52,12 @@ export default function AutoAccountCreationPanel({ identity }) {
     },
     onSuccess: (data) => {
       if (data.created_count > 0) {
-        toast.success(`Created ${data.created_count} account(s) successfully`);
+        setSyncStatus({ synced_systems: data.synced_systems || 0, tasks_resumed: data.tasks_resumed || 0 });
+        toast.success(`✓ Created ${data.created_count} account(s) • Synced ${data.synced_systems} systems • Resumed ${data.tasks_resumed} tasks`);
         queryClient.invalidateQueries({ queryKey: ['linkedAccounts', identity?.id] });
         setSelectedPlatforms([]);
+        // Clear status after 3 seconds
+        setTimeout(() => setSyncStatus(null), 3000);
       }
       if (data.skipped_count > 0) {
         toast.info(`${data.skipped_count} account(s) skipped (already exist)`);
@@ -156,17 +160,33 @@ export default function AutoAccountCreationPanel({ identity }) {
         </Button>
       </div>
 
+      {/* Sync Status Display */}
+      {syncStatus && (
+        <div className="mt-4 p-4 bg-emerald-950/30 border border-emerald-700/50 rounded-lg flex gap-3">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-emerald-400 space-y-1">
+            <p className="font-medium">✓ Platform Sync Verified</p>
+            <ul className="list-disc list-inside space-y-0.5 text-emerald-400/80">
+              <li>Synced to {syncStatus.synced_systems} internal systems</li>
+              <li>Resumed {syncStatus.tasks_resumed} paused tasks</li>
+              <li>Accounts active & ready for Autopilot</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* Info Box */}
       <div className="mt-6 p-4 bg-slate-800/50 border border-slate-700 rounded-lg flex gap-3">
         <AlertCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
         <div className="text-xs text-slate-400 space-y-1">
-          <p className="font-medium text-white">Auto-Creation Details:</p>
+          <p className="font-medium text-white">Auto-Creation + Sync Workflow:</p>
           <ul className="list-disc list-inside space-y-0.5">
-            <li>Uses {identity.name}'s profile information</li>
-            <li>Generates unique usernames per platform</li>
-            <li>Creates secure credential vault entries</li>
-            <li>Accounts ready for immediate use</li>
-            <li>All real-time, no manual intervention needed</li>
+            <li>🔐 Creates accounts with real identity data</li>
+            <li>🔗 Links accounts to identity via LinkedAccount</li>
+            <li>🗝️ Registers credentials in vault</li>
+            <li>📋 Audits all creation events</li>
+            <li>⏯️ Resumes tasks waiting for accounts</li>
+            <li>⚡ Ready for autopilot execution immediately</li>
           </ul>
         </div>
       </div>

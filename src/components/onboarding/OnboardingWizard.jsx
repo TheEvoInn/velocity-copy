@@ -238,7 +238,11 @@ export default function OnboardingWizard({ onComplete }) {
       }
 
       // 7. TRIGGER REAL MULTI-SYNC & LAUNCH SEQUENCE
+      if (!identity?.id) {
+        throw new Error('Identity creation failed — no ID returned');
+      }
       try {
+        console.log('[Onboarding] Invoking onboardingLaunchSync with:', { identity_id: identity.id, identity_name: identity.name });
         const launchResult = await base44.functions.invoke('onboardingLaunchSync', {
           identity_id: identity.id,
           identity_name: identity.name,
@@ -250,8 +254,11 @@ export default function OnboardingWizard({ onComplete }) {
           banking_configured: !!(bankingData.bank_name || bankingData.paypal_email),
         });
         console.log('[Onboarding] Launch sync complete:', launchResult.data);
+        if (!launchResult.data?.success) {
+          throw new Error(launchResult.data?.error || 'Launch sync returned false');
+        }
       } catch (err) {
-        console.error('[Onboarding] Launch sync failed:', err);
+        console.error('[Onboarding] Launch sync failed:', err.message, err);
         throw new Error(`Failed to activate VELOCITY: ${err.message}`);
       }
 

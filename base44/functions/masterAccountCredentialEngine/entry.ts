@@ -1,12 +1,11 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+
 /**
  * MASTER ACCOUNT CREDENTIAL ENGINE
- * Resolves pre-approved, KYC-verified user data for autonomous account creation.
- * Used when: user is unavailable, opportunity is time-sensitive, or autopilot must act immediately.
- * Data source: AIIdentity.kyc_verified_data + AIIdentity fields + UserGoals
- * NEVER fabricates or simulates data. Only uses real, user-provided inputs.
+ * Single source of truth for user identity data used in account creation
+ * Validates user has provided required KYC data before returning credentials
+ * Never fabricates — always asks user for missing data via intervention system
  */
-
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 Deno.serve(async (req) => {
   try {
@@ -14,307 +13,156 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await req.json().catch(() => ({}));
-    const { action } = body;
+    const body = await req.json();
+    const { action, identity_id } = body;
 
-    // ── get_master_credentials ─────────────────────────────────────────────────
     if (action === 'get_master_credentials') {
-      const { identity_id } = body;
-
-      // Load identity
-      const identities = await base44.asServiceRole.entities.AIIdentity.filter(
-        identity_id ? { id: identity_id } : { user_email: user.email }, null, 1
-      ).catch(() => []);
-
-      const identity = identities[0] || null;
-
-      if (!identity) {
-        return Response.json({
-          success: false,
-          error: 'No identity found. User must complete onboarding first.',
-          requires_onboarding: true
-        });
-      }
-
-      const kyc = identity.kyc_verified_data || {};
-      const brand = identity.brand_assets || {};
-
-      // Build master credentials from verified sources ONLY
-      const masterCredentials = {
-        // Identity
-        full_name: kyc.full_legal_name || identity.name || null,
-        email: kyc.email || identity.email || null,
-        phone: kyc.phone_number || identity.phone || null,
-        date_of_birth: kyc.date_of_birth || null,
-
-        // Address
-        address: kyc.residential_address || null,
-        city: kyc.city || null,
-        state: kyc.state || null,
-        postal_code: kyc.postal_code || null,
-        country: kyc.country || null,
-
-        // Professional
-        bio: identity.bio || brand.work_history_summary || null,
-        tagline: identity.tagline || null,
-        skills: identity.skills || [],
-        certifications: brand.certifications || [],
-        portfolio_references: brand.portfolio_references || [],
-
-        // Platform data
-        preferred_categories: identity.preferred_categories || [],
-        preferred_platforms: identity.preferred_platforms || [],
-
-        // KYC status
-        kyc_tier: kyc.kyc_tier || 'none',
-        kyc_verified: !!kyc.full_legal_name,
-        identity_id: identity.id,
-        identity_name: identity.name
-      };
-
-      // Validate completeness
-      const missingFields = [];
-      if (!masterCredentials.full_name) missingFields.push('full_name');
-      if (!masterCredentials.email) missingFields.push('email');
-
-      const completeness = Math.round(
-        (Object.values(masterCredentials).filter(v => v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)).length /
-        Object.keys(masterCredentials).length) * 100
-      );
-
-      return Response.json({
-        success: true,
-        credentials: masterCredentials,
-        completeness_pct: completeness,
-        is_ready: missingFields.length === 0,
-        missing_fields: missingFields,
-        kyc_verified: masterCredentials.kyc_verified,
-        source: 'kyc_verified_identity'
-      });
+      return await getMasterCredentials(base44, user, identity_id);
     }
 
-    // ── match_fields ───────────────────────────────────────────────────────────
-    // Takes a list of required signup fields and returns matched values from master credentials
-    if (action === 'match_fields') {
-      const { required_fields, identity_id, platform } = body;
-
-      if (!required_fields || !Array.isArray(required_fields)) {
-        return Response.json({ error: 'required_fields array required' }, { status: 400 });
-      }
-
-      if (!identity_id) {
-        return Response.json({ error: 'identity_id required' }, { status: 400 });
-      }
-
-      // Get identity directly to avoid recursion
-      const identities = await base44.asServiceRole.entities.AIIdentity.filter(
-        { id: identity_id }, null, 1
-      ).catch(() => []);
-
-      if (!identities.length) {
-        return Response.json({ success: false, error: 'Identity not found', requires_intervention: true });
-      }
-
-      const identity = identities[0];
-      const kyc = identity.kyc_verified_data || {};
-
-      const masterCreds = {
-        full_name: kyc.full_legal_name || identity.name || null,
-        email: kyc.email || identity.email || null,
-        phone: kyc.phone_number || identity.phone || null,
-        date_of_birth: kyc.date_of_birth || null,
-        address: kyc.residential_address || null,
-        city: kyc.city || null,
-        state: kyc.state || null,
-        postal_code: kyc.postal_code || null,
-        country: kyc.country || null,
-        bio: identity.bio || null,
-        tagline: identity.tagline || null,
-        skills: identity.skills || []
-      };
-
-      if (!masterCreds.full_name || !masterCreds.email) {
-        return Response.json({ success: false, error: 'Missing required identity data: full_name and email required', requires_intervention: true });
-      }
-
-      // Field mapping table: maps common form field names to credential keys
-      const FIELD_MAP = {
-        // Name variants
-        'full_name': masterCreds.full_name,
-        'name': masterCreds.full_name,
-        'fullname': masterCreds.full_name,
-        'first_name': masterCreds.full_name?.split(' ')[0] || null,
-        'last_name': masterCreds.full_name?.split(' ').slice(1).join(' ') || null,
-        'firstname': masterCreds.full_name?.split(' ')[0] || null,
-        'lastname': masterCreds.full_name?.split(' ').slice(1).join(' ') || null,
-        // Email
-        'email': masterCreds.email,
-        'email_address': masterCreds.email,
-        // Phone
-        'phone': masterCreds.phone,
-        'phone_number': masterCreds.phone,
-        'mobile': masterCreds.phone,
-        // Address
-        'address': masterCreds.address,
-        'street_address': masterCreds.address,
-        'city': masterCreds.city,
-        'state': masterCreds.state,
-        'zip': masterCreds.postal_code,
-        'postal_code': masterCreds.postal_code,
-        'country': masterCreds.country,
-        // Professional
-        'bio': masterCreds.bio,
-        'about': masterCreds.bio,
-        'description': masterCreds.bio,
-        'tagline': masterCreds.tagline,
-        'headline': masterCreds.tagline,
-        'title': masterCreds.tagline,
-        'skills': masterCreds.skills?.join(', ') || null,
-        // Generated fields
-        'username': generateUsername(masterCreds.full_name, platform),
-        'password': generateSecurePassword(),
-        'dob': masterCreds.date_of_birth,
-        'date_of_birth': masterCreds.date_of_birth,
-        'birth_date': masterCreds.date_of_birth,
-      };
-
-      const matched = {};
-      const unmatched = [];
-
-      for (const field of required_fields) {
-        const key = field.toLowerCase().replace(/[\s-]/g, '_');
-        if (FIELD_MAP[key] !== undefined && FIELD_MAP[key] !== null) {
-          matched[field] = FIELD_MAP[key];
-        } else {
-          unmatched.push(field);
-        }
-      }
-
-      return Response.json({
-        success: true,
-        matched,
-        unmatched,
-        match_rate_pct: Math.round((Object.keys(matched).length / required_fields.length) * 100),
-        requires_intervention: unmatched.length > 0,
-        identity_id,
-        platform
-      });
-    }
-
-    // ── get_status ─────────────────────────────────────────────────────────────
-    if (action === 'get_status') {
-      const identities = await base44.asServiceRole.entities.AIIdentity.filter(
-        { user_email: user.email }, null, 1
-      ).catch(() => []);
-
-      const identity = identities[0];
-      const kyc = identity?.kyc_verified_data || {};
-
-      return Response.json({
-        success: true,
-        has_identity: !!identity,
-        has_email: !!(kyc.email || identity?.email),
-        has_kyc: !!(kyc.full_legal_name),
-        kyc_tier: kyc.kyc_tier || 'none',
-        identity_name: identity?.name || null,
-        ready_for_auto_creation: !!(identity && (kyc.email || identity?.email))
-      });
-    }
-
-    // ── update_credentials ────────────────────────────────────────────────────
     if (action === 'update_credentials') {
-      const { identity_id, field_updates } = body;
-      if (!identity_id || !field_updates) {
-        return Response.json({ error: 'identity_id and field_updates required' }, { status: 400 });
-      }
-      if (typeof identity_id !== 'string' || identity_id.length < 10) {
-        return Response.json({ error: 'Invalid identity_id format' }, { status: 400 });
-      }
-
-      const identities = await base44.asServiceRole.entities.AIIdentity.filter(
-        { id: identity_id }, null, 1
-      ).catch(() => []);
-
-      if (!identities.length) return Response.json({ error: 'Identity not found' }, { status: 404 });
-
-      const identity = identities[0];
-      const existingKyc = identity.kyc_verified_data || {};
-
-      // Merge field updates into kyc_verified_data (only allow safe fields)
-      const safeUpdates = {};
-      const ALLOWED_KYC_FIELDS = ['full_legal_name', 'date_of_birth', 'residential_address', 'city', 'state', 'postal_code', 'country', 'phone_number', 'government_id_type', 'government_id_number'];
-      
-      for (const [key, value] of Object.entries(field_updates)) {
-        if (ALLOWED_KYC_FIELDS.includes(key)) {
-          safeUpdates[key] = value;
-        }
-      }
-
-      await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
-        kyc_verified_data: { ...existingKyc, ...safeUpdates, updated_at: new Date().toISOString() }
-      });
-
-      await base44.asServiceRole.entities.ActivityLog.create({
-        action_type: 'system',
-        message: `🔄 Master credentials updated for identity "${identity.name}"`,
-        severity: 'info',
-        metadata: { identity_id, fields_updated: Object.keys(safeUpdates) }
-      }).catch(() => null);
-
-      return Response.json({ success: true, fields_updated: Object.keys(safeUpdates), ignored_fields: Object.keys(field_updates).filter(k => !ALLOWED_KYC_FIELDS.includes(k)) });
-    }
-
-    // ── get_all_accounts_status ───────────────────────────────────────────────
-    if (action === 'get_all_accounts_status') {
-      const [identities, linkedAccounts, linkedCreations] = await Promise.all([
-        base44.asServiceRole.entities.AIIdentity.filter({ user_email: user.email }, '-created_date', 100).catch(() => []),
-        base44.asServiceRole.entities.LinkedAccount.filter({ created_by: user.email }, '-created_date', 200).catch(() => []),
-        base44.asServiceRole.entities.LinkedAccountCreation.filter({ created_by: user.email }, '-created_date', 200).catch(() => [])
-      ]);
-
-      const report = identities.map(identity => {
-        const accounts = linkedAccounts.filter(a => (identity.linked_account_ids || []).includes(a.id));
-        const creations = linkedCreations.filter(a => a.identity_id === identity.id);
-        return {
-          identity_id: identity.id,
-          identity_name: identity.name,
-          kyc_tier: identity.kyc_verified_data?.kyc_tier || 'none',
-          linked_accounts: accounts.map(a => ({ id: a.id, platform: a.platform, health: a.health_status })),
-          auto_created_accounts: creations.map(a => ({ id: a.id, platform: a.platform, status: a.account_status, completeness: a.profile_completeness })),
-          total_accounts: accounts.length + creations.length,
-          platforms_covered: [...new Set([...accounts.map(a => a.platform), ...creations.map(a => a.platform)])]
-        };
-      });
-
-      return Response.json({
-        success: true,
-        total_identities: identities.length,
-        total_linked_accounts: linkedAccounts.length,
-        total_auto_created: linkedCreations.length,
-        report
-      });
+      return await updateCredentials(base44, user, body);
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
-
   } catch (error) {
     console.error('[MasterAccountCredentialEngine]', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
 
-function generateUsername(fullName, platform) {
-  if (!fullName) return null;
-  const base = fullName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-  const suffix = Math.random().toString(36).substring(2, 6);
-  return `${base}_${suffix}`;
+/**
+ * Get verified master credentials for identity
+ * Sources: User entity + AIIdentity KYC data
+ */
+async function getMasterCredentials(base44, user, identity_id) {
+  try {
+    if (!identity_id) {
+      return Response.json({
+        success: false,
+        error: 'identity_id required'
+      });
+    }
+
+    // Fetch AIIdentity with KYC data
+    const identity = await base44.entities.AIIdentity.get(identity_id).catch(() => null);
+    if (!identity) {
+      return Response.json({
+        success: false,
+        error: 'Identity not found'
+      });
+    }
+
+    const kyc = identity.kyc_verified_data || {};
+
+    // Validate minimum required fields
+    const requiredFields = {
+      email: identity.email || user.email,
+      full_name: kyc.full_legal_name || user.full_name,
+      phone: kyc.phone_number || null,
+      identity_name: identity.name
+    };
+
+    // Check for missing critical fields
+    if (!requiredFields.email) {
+      // Trigger intervention for missing email
+      await base44.asServiceRole.entities.UserIntervention.create({
+        user_email: user.email,
+        task_id: 'system_account_creation',
+        requirement_type: 'missing_data',
+        required_data: 'Email address required for account creation',
+        data_schema: {
+          type: 'object',
+          properties: { email: { type: 'string', format: 'email' } }
+        },
+        status: 'pending',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      }).catch(() => null);
+
+      return Response.json({
+        success: false,
+        error: 'Email required. User intervention requested.',
+        requires_intervention: true,
+        missing_fields: ['email']
+      });
+    }
+
+    if (!requiredFields.full_name) {
+      // Trigger intervention for missing name
+      await base44.asServiceRole.entities.UserIntervention.create({
+        user_email: user.email,
+        task_id: 'system_account_creation',
+        requirement_type: 'missing_data',
+        required_data: 'Full name required for account creation',
+        status: 'pending',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      }).catch(() => null);
+
+      return Response.json({
+        success: false,
+        error: 'Full name required. User intervention requested.',
+        requires_intervention: true,
+        missing_fields: ['full_name']
+      });
+    }
+
+    // Generate consistent username from real data
+    const username = (requiredFields.full_name || 'user')
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '')
+      .substring(0, 20);
+
+    return Response.json({
+      success: true,
+      credentials: {
+        ...requiredFields,
+        username,
+        kyc_verified: kyc.kyc_id ? true : false,
+        kyc_tier: kyc.kyc_tier || 'none'
+      }
+    });
+  } catch (error) {
+    return Response.json({
+      success: false,
+      error: error.message
+    });
+  }
 }
 
-function generateSecurePassword(length = 16) {
-  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*_+-=';
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
-  let pwd = '';
-  for (let i = 0; i < length; i++) pwd += charset[array[i] % charset.length];
-  return pwd;
+/**
+ * Update master credentials if user provides missing data
+ */
+async function updateCredentials(base44, user, body) {
+  try {
+    const { identity_id, updates } = body;
+
+    if (!identity_id) {
+      return Response.json({ success: false, error: 'identity_id required' });
+    }
+
+    // Update AIIdentity with new data
+    const identity = await base44.entities.AIIdentity.get(identity_id);
+    const currentKyc = identity.kyc_verified_data || {};
+
+    const updated = await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
+      email: updates.email || identity.email,
+      kyc_verified_data: {
+        ...currentKyc,
+        full_legal_name: updates.full_name || currentKyc.full_legal_name,
+        phone_number: updates.phone || currentKyc.phone_number
+      }
+    });
+
+    return Response.json({
+      success: true,
+      message: 'Credentials updated',
+      identity_id: updated.id
+    });
+  } catch (error) {
+    return Response.json({
+      success: false,
+      error: error.message
+    });
+  }
 }

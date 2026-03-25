@@ -1,290 +1,11 @@
-/**
- * REAL BROWSER AUTOMATION ENGINE
- * Replaces simulated execution with actual browser automation
- * Uses Puppeteer/Browserbase for real form filling and submission
- */
-
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 /**
- * Execute task via real browser automation
- * Navigates to URL, analyzes page, fills forms, submits
+ * REAL BROWSER AUTOMATION
+ * Executes actual browser-based account creation and verification
+ * For MVP: queues tasks to user intervention system (browser-less)
+ * For production: integrates with Browserbase/Playwright for real automation
  */
-async function executeTaskViaRealBrowser(base44, userEmail, task) {
-  /**
-   * task object should contain:
-   * {
-   *   id: 'task_123',
-   *   url: 'https://example.com/apply',
-   *   opportunity_id: 'opp_456',
-   *   platform: 'upwork',
-   *   form_fields: { email: 'user@example.com', ... },
-   *   credentials: { username, password }, // from credentialInjection
-   *   authorization_headers: { ... }
-   * }
-   */
-
-  const executionLog = [];
-  const execution = {
-    task_id: task.id,
-    url: task.url,
-    platform: task.platform,
-    status: 'starting',
-    steps_completed: 0,
-    screenshots: [],
-    form_data_submitted: {},
-    confirmation: null,
-    error: null,
-    proxy_used: null,
-    started_at: new Date().toISOString(),
-  };
-
-  try {
-    // Step 0: Select and configure proxy
-    executionLog.push({
-      step: 0,
-      action: 'proxy_selection',
-      status: 'in_progress',
-      timestamp: new Date().toISOString(),
-    });
-
-    const proxyResult = await base44.functions.invoke('proxyManagementEngine', {
-      action: 'get_proxy_config',
-      platform: task.platform || 'default'
-    }).catch(e => ({ data: { use_proxy: false, error: e.message } }));
-
-    const proxyConfig = proxyResult.data || { use_proxy: false };
-    execution.proxy_used = proxyConfig.use_proxy ? proxyConfig.proxy_id : null;
-
-    if (proxyConfig.use_proxy) {
-      executionLog[0].status = 'completed';
-      executionLog[0].proxy_id = proxyConfig.proxy_id;
-      executionLog[0].rotation_strategy = proxyConfig.rotation_strategy;
-    } else {
-      executionLog[0].status = 'skipped';
-      executionLog[0].reason = proxyConfig.message || 'No proxy configured';
-    }
-
-    // Step 1: Navigate to URL with optional proxy
-    executionLog.push({
-      step: 1,
-      action: 'navigate',
-      url: task.url,
-      status: 'in_progress',
-      timestamp: new Date().toISOString(),
-      proxy_config: proxyConfig.use_proxy ? {
-        rotation_interval: proxyConfig.rotation_strategy?.rotation_interval,
-        delay_between_requests: proxyConfig.rotation_strategy?.delay_between_requests
-      } : null
-    });
-
-    // TODO: In production, use Browserbase or Puppeteer to navigate
-    // For now: simulate navigation with error handling
-    // const browser = await puppeteer.launch();
-    // const page = await browser.newPage();
-    // await page.goto(task.url, { waitUntil: 'networkidle2' });
-
-    execution.steps_completed = 1;
-    executionLog[1].status = 'completed';
-
-    // Step 2: Analyze page structure (forms, inputs, buttons)
-    executionLog.push({
-      step: 2,
-      action: 'analyze_page',
-      status: 'in_progress',
-      timestamp: new Date().toISOString(),
-      delay_before_action: proxyConfig.rotation_strategy?.delay_between_requests || 0
-    });
-
-    // TODO: Extract form fields from page
-    // const forms = await page.evaluate(() => {
-    //   return Array.from(document.querySelectorAll('form')).map(form => ({
-    //     id: form.id,
-    //     name: form.name,
-    //     fields: Array.from(form.querySelectorAll('input, textarea, select')).map(field => ({
-    //       type: field.type,
-    //       name: field.name,
-    //       placeholder: field.placeholder,
-    //     }))
-    //   }));
-    // });
-
-    execution.steps_completed = 2;
-    executionLog[2].status = 'completed';
-
-    // Step 3: Fill form fields with data
-    executionLog.push({
-      step: 3,
-      action: 'fill_forms',
-      fields_to_fill: Object.keys(task.form_fields || {}).length,
-      status: 'in_progress',
-      timestamp: new Date().toISOString(),
-    });
-
-    // TODO: Fill each form field
-    // for (const [fieldName, fieldValue] of Object.entries(task.form_fields || {})) {
-    //   await page.type(`input[name="${fieldName}"]`, String(fieldValue));
-    //   execution.form_data_submitted[fieldName] = fieldValue;
-    // }
-
-    execution.steps_completed = 3;
-    executionLog[3].status = 'completed';
-
-    // Step 4: Handle CAPTCHA if present
-    executionLog.push({
-      step: 4,
-      action: 'check_captcha',
-      status: 'in_progress',
-      timestamp: new Date().toISOString(),
-    });
-
-    // TODO: Detect CAPTCHA on page
-    // const hasCaptcha = await page.evaluate(() => {
-    //   return !!(document.querySelector('[data-sitekey]') || document.querySelector('.g-recaptcha'));
-    // });
-
-    // if (hasCaptcha) {
-    //   // Call captchaSolver
-    //   const captchaResult = await solveCaptcha(page, task);
-    //   if (!captchaResult.success) {
-    //     throw new Error('CAPTCHA solving failed');
-    //   }
-    // }
-
-    execution.steps_completed = 4;
-    executionLog[4].status = 'completed';
-
-    // Step 5: Submit form
-    executionLog.push({
-      step: 5,
-      action: 'submit_form',
-      status: 'in_progress',
-      timestamp: new Date().toISOString(),
-    });
-
-    // TODO: Find and click submit button
-    // const submitButton = await page.$('button[type="submit"]') || await page.$('input[type="submit"]');
-    // if (submitButton) {
-    //   await submitButton.click();
-    //   await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 });
-    // }
-
-    execution.steps_completed = 5;
-    executionLog[5].status = 'completed';
-
-    // Step 6: Capture confirmation
-    executionLog.push({
-      step: 6,
-      action: 'capture_confirmation',
-      status: 'in_progress',
-      timestamp: new Date().toISOString(),
-    });
-
-    // TODO: Extract confirmation message/number from page
-    // const confirmationText = await page.evaluate(() => {
-    //   const successEl = document.querySelector('.success, [class*="confirm"], .thank-you');
-    //   return successEl?.innerText || document.body.innerText.substring(0, 500);
-    // });
-
-    // execution.confirmation = {
-    //   text: confirmationText,
-    //   url: page.url(),
-    //   timestamp: new Date().toISOString(),
-    // };
-
-    execution.status = 'completed';
-    execution.steps_completed = 6;
-    executionLog[6].status = 'completed';
-
-    // Log execution to database
-    await base44.asServiceRole.entities.ActivityLog.create({
-      action_type: 'system',
-      message: `✅ Real browser automation: Task ${task.id} executed successfully${proxyConfig.use_proxy ? ` via ${proxyConfig.provider}` : ''}`,
-      severity: 'success',
-      metadata: {
-        task_id: task.id,
-        url: task.url,
-        platform: task.platform,
-        steps_completed: execution.steps_completed,
-        status: execution.status,
-        proxy_used: execution.proxy_used,
-      },
-    }).catch(() => null);
-
-    return {
-      success: true,
-      execution,
-      execution_log: executionLog,
-    };
-  } catch (error) {
-    execution.error = error.message;
-    execution.status = 'failed';
-
-    executionLog.push({
-      step: execution.steps_completed + 1,
-      action: 'error',
-      error: error.message,
-      status: 'failed',
-      timestamp: new Date().toISOString(),
-    });
-
-    // Log failure
-    await base44.asServiceRole.entities.ActivityLog.create({
-      action_type: 'system',
-      message: `❌ Real browser automation failed: ${error.message}`,
-      severity: 'critical',
-      metadata: {
-        task_id: task.id,
-        url: task.url,
-        error: error.message,
-        steps_completed: execution.steps_completed,
-      },
-    }).catch(() => null);
-
-    return {
-      success: false,
-      execution,
-      execution_log: executionLog,
-      error: error.message,
-    };
-  }
-}
-
-/**
- * Analyze page structure before form filling
- * Returns form fields, buttons, and page structure
- */
-async function analyzePageStructure(url) {
-  try {
-    // TODO: In production, use Puppeteer
-    // const browser = await puppeteer.launch();
-    // const page = await browser.newPage();
-    // await page.goto(url, { waitUntil: 'domcontentloaded' });
-
-    // const structure = await page.evaluate(() => {
-    //   return {
-    //     forms: Array.from(document.querySelectorAll('form')).map(form => ({...})),
-    //     inputs: Array.from(document.querySelectorAll('input, textarea, select')).map(input => ({...})),
-    //     buttons: Array.from(document.querySelectorAll('button, input[type="submit"]')).map(btn => ({...})),
-    //   };
-    // });
-
-    return {
-      success: true,
-      url,
-      structure: {
-        forms: [],
-        inputs: [],
-        buttons: [],
-      },
-    };
-  } catch (e) {
-    return {
-      success: false,
-      error: e.message,
-    };
-  }
-}
 
 Deno.serve(async (req) => {
   try {
@@ -293,31 +14,120 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { action, task, url } = body;
+    const { action, platform, form_data } = body;
 
-    // ── Execute task via real browser ──────────────────────────────────
-    if (action === 'execute_task') {
-      if (!task) {
-        return Response.json({ error: 'Task required' }, { status: 400 });
-      }
-
-      const result = await executeTaskViaRealBrowser(base44, user.email, task);
-      return Response.json(result);
+    if (action === 'execute_account_creation') {
+      return await executeAccountCreation(base44, user, platform, form_data);
     }
 
-    // ── Analyze page structure ─────────────────────────────────────────
-    if (action === 'analyze_page') {
-      if (!url) {
-        return Response.json({ error: 'URL required' }, { status: 400 });
-      }
-
-      const result = await analyzePageStructure(url);
-      return Response.json(result);
+    if (action === 'verify_login') {
+      return await verifyLogin(base44, user, body.platform);
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
-    console.error('[BrowserAutomationReal] Error:', error.message);
+    console.error('[BrowserAutomationReal]', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+
+/**
+ * MVP: Queue account creation to user for manual completion
+ * Production: Use Browserbase/Playwright for automation
+ */
+async function executeAccountCreation(base44, user, platform, formData) {
+  try {
+    // For MVP: Create user intervention task
+    // This allows user to manually complete signup while system tracks progress
+    const intervention = await base44.asServiceRole.entities.UserIntervention.create({
+      user_email: user.email,
+      task_id: `account_creation_${platform}`,
+      requirement_type: 'manual_review',
+      required_data: `Please complete ${platform} signup with these credentials:\nEmail: ${formData.email}\nPassword: [Generated]\nUsername: ${formData.username}\n\nAccount will be auto-verified once created.`,
+      data_schema: {
+        type: 'object',
+        properties: {
+          verification_code: { type: 'string', description: 'Confirmation code from email' },
+          profile_url: { type: 'string', description: 'Link to your new profile' }
+        }
+      },
+      status: 'pending',
+      priority: 90,
+      expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+    });
+
+    return Response.json({
+      success: true,
+      message: 'Account creation queued for user',
+      intervention_id: intervention.id,
+      steps: [
+        '1. Navigate to ' + getSignupUrl(platform),
+        '2. Sign up with provided credentials',
+        '3. Verify email',
+        '4. Return verification code here'
+      ]
+    });
+  } catch (error) {
+    return Response.json({
+      success: false,
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Verify account was actually created
+ */
+async function verifyLogin(base44, user, platform) {
+  try {
+    // Check if user intervention was resolved with verification data
+    const interventions = await base44.asServiceRole.entities.UserIntervention.filter(
+      {
+        user_email: user.email,
+        task_id: `account_creation_${platform}`,
+        status: 'resolved'
+      },
+      '-created_date',
+      1
+    ).catch(() => []);
+
+    if (interventions.length === 0) {
+      return Response.json({
+        success: false,
+        message: 'Account creation not yet verified'
+      });
+    }
+
+    const intervention = interventions[0];
+    const response = intervention.user_response || {};
+
+    return Response.json({
+      success: !!response.profile_url,
+      verified: !!response.profile_url,
+      profile_url: response.profile_url,
+      message: 'Account verified successfully'
+    });
+  } catch (error) {
+    return Response.json({
+      success: false,
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Get signup URL for platform
+ */
+function getSignupUrl(platform) {
+  const urls = {
+    upwork: 'https://www.upwork.com/ab/account-signup',
+    fiverr: 'https://www.fiverr.com/join',
+    freelancer: 'https://www.freelancer.com/signup',
+    guru: 'https://www.guru.com/d/users/register/',
+    peopleperhour: 'https://www.peopleperhour.com/register',
+    github: 'https://github.com/signup',
+    ebay: 'https://registration.ebay.com/reg/register',
+    etsy: 'https://www.etsy.com/registration'
+  };
+  return urls[platform.toLowerCase()] || `https://${platform}.com/signup`;
+}

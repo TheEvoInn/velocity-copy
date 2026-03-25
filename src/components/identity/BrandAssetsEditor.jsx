@@ -190,14 +190,38 @@ export default function BrandAssetsEditor({ identity }) {
   const set = (k, v) => setBrand(p => ({ ...p, [k]: v }));
 
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('idle'); // idle | saving | syncing | saved
 
   const saveMutation = useMutation({
-    mutationFn: () => base44.entities.AIIdentity.update(identity.id, { brand_assets: brand }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['userIdentities'] });
-      toast.success('Brand assets saved');
+    mutationFn: async () => {
+      // Step 1: Save to AIIdentity
+      await base44.entities.AIIdentity.update(identity.id, { brand_assets: brand });
+      
+      // Step 2: Sync across platform
+      setSaveStatus('syncing');
+      const syncResult = await base44.functions.invoke('syncBrandAssetsAcrossPlatform', {
+        identity_id: identity.id,
+        brand_assets: brand,
+      });
+      
+      if (!syncResult.data?.success) {
+        throw new Error('Platform sync failed');
+      }
+      
+      return syncResult.data;
     },
-    onError: err => toast.error(`Save failed: ${err.message}`),
+    onSuccess: (syncData) => {
+      setSaveStatus('saved');
+      queryClient.invalidateQueries({ queryKey: ['userIdentities'] });
+      toast.success(`✓ Saved! Synced ${syncData.synced_systems} platform systems`);
+      
+      // Show "Saved" for 2 seconds, then reset
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    },
+    onError: err => {
+      setSaveStatus('idle');
+      toast.error(`Save failed: ${err.message}`);
+    },
   });
 
   const generateBrandWithAI = async (section) => {
@@ -381,7 +405,7 @@ export default function BrandAssetsEditor({ identity }) {
       {/* AI Suggestions Button */}
       <Button
         onClick={getSuggestionsForBrand}
-        disabled={aiGenerating}
+        disabled={aiGenerating || saveStatus !== 'idle'}
         variant="outline"
         className="w-full border-cyan-500/30 text-cyan-400 hover:bg-cyan-600/10 gap-2"
       >
@@ -389,14 +413,25 @@ export default function BrandAssetsEditor({ identity }) {
         Get AI Suggestions for Easy Brand Creation
       </Button>
 
-      {/* Save */}
+      {/* Save with Multi-Sync */}
       <Button
-        onClick={() => saveMutation.mutate()}
-        disabled={saveMutation.isPending || aiGenerating}
-        className="w-full bg-violet-600 hover:bg-violet-500 gap-2"
+        onClick={() => { setSaveStatus('saving'); saveMutation.mutate(); }}
+        disabled={saveMutation.isPending || aiGenerating || saveStatus === 'saved'}
+        className={`w-full gap-2 transition-all ${
+          saveStatus === 'saved'
+            ? 'bg-emerald-600 hover:bg-emerald-600 text-white'
+            : 'bg-violet-600 hover:bg-violet-500'
+        }`}
       >
-        <Save className="w-4 h-4" />
-        {saveMutation.isPending ? 'Saving Brand Assets...' : 'Save Brand Assets'}
+        {saveStatus === 'saving' && <Loader2 className="w-4 h-4 animate-spin" />}
+        {saveStatus === 'syncing' && <Loader2 className="w-4 h-4 animate-spin" />}
+        {saveStatus === 'saved' && <Save className="w-4 h-4 text-emerald-300" />}
+        {saveStatus === 'idle' && <Save className="w-4 h-4" />}
+        
+        {saveStatus === 'saving' && 'Saving Brand Assets...'}
+        {saveStatus === 'syncing' && 'Syncing Across Platform...'}
+        {saveStatus === 'saved' && '✓ Saved & Synced'}
+        {saveStatus === 'idle' && 'Save Brand Assets'}
       </Button>
 
       {/* Preview of injected prompt */}

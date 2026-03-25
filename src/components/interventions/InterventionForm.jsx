@@ -63,11 +63,10 @@ export default function InterventionForm({ intervention, onSubmit, onClose }) {
     setError(null);
 
     try {
-      const res = await base44.functions.invoke('accountCreationEngine', {
-        action: 'check_and_create_account',
-        platform: intervention.requirement_type === 'missing_data' ? 'generic' : 'upwork',
+      const res = await base44.functions.invoke('automatedAccountCreation', {
+        action: 'create_accounts',
         identity_id: intervention.opportunity_id || 'autopilot-default',
-        on_demand: true
+        platforms_to_create: [intervention.requirement_type === 'missing_data' ? 'upwork' : 'fiverr']
       });
 
       if (res.data?.success) {

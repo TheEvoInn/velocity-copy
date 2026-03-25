@@ -101,8 +101,8 @@ Deno.serve(async (req) => {
 
         // Queue + execute top AI-compatible opportunities
         addLog('execute', 'running', 'Executing queued opportunities');
-        const queuedOpps = await base44.asServiceRole.entities.WorkOpportunity.filter(
-          { user_email: userEmail, autopilot_queued: true, status: 'evaluating' }, '-score', 5
+        const queuedOpps = await base44.asServiceRole.entities.Opportunity.filter(
+          { auto_execute: true, status: 'queued' }, '-overall_score', 5
         ).catch(() => []);
         
         let executed = 0;
@@ -112,28 +112,26 @@ Deno.serve(async (req) => {
         for (const opp of queuedArray) {
           if (!opp?.id) continue;
           try {
-            // Check if task has execution queue entry
-            const taskQueue = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
-              { opportunity_id: opp.id, status: 'completed' },
-              '-completion_timestamp',
+            // Check for any active/executing tasks for this opportunity
+            const activeTasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+              { opportunity_id: opp.id, status: { $in: ['processing', 'executing'] } },
+              '-start_timestamp',
               1
             ).catch(() => []);
 
-            if (taskQueue && taskQueue.length > 0) {
-              // Task completed — sync opportunity
-              const task = taskQueue[0];
-              await completeTaskExecution(base44, task.id, opp.id, {
-                confirmation_id: task.confirmation_number,
-                confirmation: task.confirmation_text,
-                platform: opp.platform,
-                earnings: opp.estimated_pay
-              });
-              completed++;
+            const taskArray = Array.isArray(activeTasks) ? activeTasks : [];
+            
+            if (taskArray.length > 0) {
+              // Task is executing — mark opportunity as executing
+              await base44.asServiceRole.entities.Opportunity.update(opp.id, {
+                status: 'executing',
+                task_execution_id: taskArray[0].id
+              }).catch(() => null);
+              executed++;
             } else {
-              // Mark as active (indicating it's been picked up by autopilot)
-              await base44.asServiceRole.entities.WorkOpportunity.update(opp.id, {
-                status: 'active',
-                autopilot_queued: false
+              // No active task yet — queue for execution via opportunityExecutor
+              await base44.asServiceRole.entities.Opportunity.update(opp.id, {
+                status: 'executing'
               }).catch(() => null);
               executed++;
             }

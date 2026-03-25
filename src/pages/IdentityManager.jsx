@@ -103,6 +103,21 @@ export default function IdentityManager() {
      qc.invalidateQueries({ queryKey: ['identities'] });
     }
 
+  async function handleEdit(identity) {
+    setEditingIdentity(identity);
+    setShowForm(true);
+  }
+
+  async function handleSwitch(identity) {
+    if (!identity?.id) return;
+    await switchTo(identity.id);
+  }
+
+  async function handleResumeOnboarding(identity) {
+    if (!identity?.id) return;
+    setOnboardingIdentity(identity);
+  }
+
   async function handleDelete(id) {
     if (!id) return;
     remove(id);

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Bell, X, Trash2 } from 'lucide-react';
+import { Bell, X, Trash2, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useRealTimeNotifications } from '@/hooks/useRealTimeNotifications';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -7,32 +8,27 @@ export default function NotificationBell() {
   const { notifications, unreadCount, clearNotifications, markAsRead } = useRealTimeNotifications();
   const [isOpen, setIsOpen] = useState(false);
 
-  const getNotificationColor = (type) => {
-    const colors = {
-      opportunity: 'border-l-cyber-gold',
-      task_completed: 'border-l-green-500',
-      crypto_transaction: 'border-l-cyber-cyan',
-      execution_completed: 'border-l-green-500',
-      execution_failed: 'border-l-red-500',
-      kyc_approved: 'border-l-green-500',
-      kyc_rejected: 'border-l-red-500',
-      wallet_updated: 'border-l-cyber-magenta'
-    };
-    return colors[type] || 'border-l-slate-500';
+  const NOTIF_CONFIG = {
+    opportunity:           { color: 'border-l-amber-400',   icon: '🎯', bg: 'rgba(245,158,11,0.06)' },
+    task_completed:        { color: 'border-l-emerald-500', icon: '✓',  bg: 'rgba(16,185,129,0.06)' },
+    crypto_transaction:    { color: 'border-l-teal-400',    icon: '💰', bg: 'rgba(0,255,217,0.06)'  },
+    execution_completed:   { color: 'border-l-emerald-500', icon: '✓',  bg: 'rgba(16,185,129,0.06)' },
+    execution_failed:      { color: 'border-l-red-500',     icon: '✗',  bg: 'rgba(239,68,68,0.06)'  },
+    kyc_approved:          { color: 'border-l-emerald-500', icon: '🛡️', bg: 'rgba(16,185,129,0.06)' },
+    kyc_rejected:          { color: 'border-l-red-500',     icon: '✗',  bg: 'rgba(239,68,68,0.06)'  },
+    wallet_updated:        { color: 'border-l-pink-500',    icon: '💼', bg: 'rgba(236,72,153,0.06)' },
+    crypto_alert:          { color: 'border-l-red-500',     icon: '⚠️', bg: 'rgba(239,68,68,0.08)'  },
+    storefront_alert:      { color: 'border-l-pink-400',    icon: '🛍️', bg: 'rgba(236,72,153,0.06)' },
+    autopilot_block:       { color: 'border-l-orange-500',  icon: '🚫', bg: 'rgba(249,115,22,0.08)' },
+    credential_alert:      { color: 'border-l-amber-500',   icon: '🔑', bg: 'rgba(245,158,11,0.06)' },
   };
 
-  const getNotificationIcon = (type) => {
-    const icons = {
-      opportunity: '🎯',
-      task_completed: '✓',
-      crypto_transaction: '💰',
-      execution_completed: '✓',
-      execution_failed: '✗',
-      kyc_approved: '✓',
-      kyc_rejected: '✗',
-      wallet_updated: '💼'
-    };
-    return icons[type] || '•';
+  const getConfig = (type) => NOTIF_CONFIG[type] || { color: 'border-l-slate-500', icon: '•', bg: 'transparent' };
+
+  const getSeverityBadge = (severity) => {
+    if (severity === 'critical') return <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-red-500/20 text-red-400 ml-1">CRITICAL</span>;
+    if (severity === 'warning') return <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-500/20 text-amber-400 ml-1">WARN</span>;
+    return null;
   };
 
   return (
@@ -75,29 +71,47 @@ export default function NotificationBell() {
               </div>
             ) : (
               <div className="space-y-0">
-                {notifications.map((notif) => (
-                  <div
-                    key={notif.id}
-                    className={`border-l-4 ${getNotificationColor(notif.type)} px-3 py-2 border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <span className="text-lg flex-shrink-0">
-                        {getNotificationIcon(notif.type)}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-xs text-slate-200">
-                          {notif.title}
-                        </div>
-                        <div className="text-xs text-slate-400 line-clamp-2 mt-0.5">
-                          {notif.message}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          {formatDistanceToNow(notif.timestamp, { addSuffix: true })}
+                {notifications.map((notif) => {
+                  const cfg = getConfig(notif.type);
+                  const actionUrl = notif.metadata?.action_url;
+                  const actionLabel = notif.metadata?.action_label;
+                  return (
+                    <div
+                      key={notif.id}
+                      className={`border-l-4 ${cfg.color} px-3 py-2.5 border-b border-slate-800/50 transition-colors`}
+                      style={{ background: cfg.bg }}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="text-base flex-shrink-0 mt-0.5">{cfg.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-xs text-slate-200 flex items-center flex-wrap gap-1">
+                            {notif.title}
+                            {getSeverityBadge(notif.severity)}
+                          </div>
+                          <div className="text-xs text-slate-400 line-clamp-2 mt-0.5">
+                            {notif.message}
+                          </div>
+                          <div className="flex items-center justify-between mt-1.5 gap-2">
+                            <div className="text-[10px] text-slate-600">
+                              {notif.timestamp ? formatDistanceToNow(notif.timestamp, { addSuffix: true }) : ''}
+                            </div>
+                            {actionUrl && actionLabel && (
+                              <Link
+                                to={actionUrl}
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-lg transition-all shrink-0"
+                                style={{ background: 'rgba(0,232,255,0.1)', border: '1px solid rgba(0,232,255,0.25)', color: '#00e8ff' }}
+                              >
+                                <ExternalLink className="w-2.5 h-2.5" />
+                                {actionLabel}
+                              </Link>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

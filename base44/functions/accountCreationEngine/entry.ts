@@ -27,7 +27,6 @@ function generateSecurePassword(length = 18) {
   crypto.getRandomValues(array);
   let pwd = '';
   for (let i = 0; i < length; i++) pwd += charset[array[i] % charset.length];
-  // Ensure complexity: at least 1 upper, lower, digit, special
   return pwd;
 }
 
@@ -56,7 +55,6 @@ async function getOrCreateAutopilotIdentity(base44, userEmail) {
     
     if (existing && existing.length > 0) return existing[0];
     
-    // Create default Autopilot identity
     const newIdentity = await base44.asServiceRole.entities.AIIdentity.create({
       user_email: userEmail,
       name: 'Autopilot Default',
@@ -100,7 +98,6 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'platform and identity_id required' }, { status: 400 });
       }
 
-      // DEDUPLICATION GUARD: check both LinkedAccount + LinkedAccountCreation
       const dupCheck = await accountAlreadyExists(base44, platform, identity_id);
       if (dupCheck.exists) {
         return Response.json({
@@ -111,59 +108,34 @@ Deno.serve(async (req) => {
         });
       }
 
-      const identity = (await base44.asServiceRole.entities.AIIdentity.filter({ id: identity_id }).catch(() => [])) || [];
-      if (!Array.isArray(identity) || !identity.length) return Response.json({ error: 'Identity not found' }, { status: 404 });
+      const identities = await base44.asServiceRole.entities.AIIdentity.filter({ id: identity_id }).catch(() => []);
+      if (!Array.isArray(identities) || !identities.length) return Response.json({ error: 'Identity not found' }, { status: 404 });
 
-      const ident = identity[0];
+      const ident = identities[0];
       if (!ident || !ident.id) return Response.json({ error: 'Invalid identity data' }, { status: 400 });
 
       // Generate account creation strategy
+      let strategy;
       try {
-        const strategy = await base44.asServiceRole.integrations.Core.InvokeLLM({
-          prompt: `Generate account creation strategy for:
-
-      Platform: ${platform || 'unknown'}
-      Identity: ${ident?.name || 'Unknown'} (${ident?.role_label || 'Freelancer'})
-      Email: ${ident?.email || 'auto@system.local'}
-      Skills: ${Array.isArray(ident?.skills) ? ident.skills.join(', ') : 'General'}
-      Bio: ${ident?.bio || ''}
-
-Provide a step-by-step strategy including:
-1. Username generation (3 suggestions)
-2. Password requirements
-3. Required profile fields
-4. Verification steps
-5. Initial profile content (using the identity's skills and bio)
-6. Platform-specific considerations
-7. Time estimate to full activation
-
-Return JSON:
-{
-  "username_suggestions": [string],
-  "password_requirements": string,
-  "required_fields": [{ name: string, value: string }],
-  "verification_steps": [string],
-  "profile_content": {
-    "bio": string,
-    "tagline": string,
-    "headline": string
-  },
-  "estimated_hours_to_activate": number,
-  "critical_warnings": [string]
-}`,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            username_suggestions: { type: 'array', items: { type: 'string' } },
-            password_requirements: { type: 'string' },
-            required_fields: { type: 'array', items: { type: 'object' } },
-            verification_steps: { type: 'array', items: { type: 'string' } },
-            profile_content: { type: 'object' },
-            estimated_hours_to_activate: { type: 'number' },
-            critical_warnings: { type: 'array', items: { type: 'string' } }
+        strategy = await base44.asServiceRole.integrations.Core.InvokeLLM({
+          prompt: `Generate account creation strategy for:\n\n      Platform: ${platform || 'unknown'}\n      Identity: ${ident?.name || 'Unknown'} (${ident?.role_label || 'Freelancer'})\n      Email: ${ident?.email || 'auto@system.local'}\n      Skills: ${Array.isArray(ident?.skills) ? ident.skills.join(', ') : 'General'}\n      Bio: ${ident?.bio || ''}\n\nProvide a step-by-step strategy including:\n1. Username generation (3 suggestions)\n2. Password requirements\n3. Required profile fields\n4. Verification steps\n5. Initial profile content (using the identity's skills and bio)\n6. Platform-specific considerations\n7. Time estimate to full activation\n\nReturn JSON:\n{\n  "username_suggestions": [string],\n  "password_requirements": string,\n  "required_fields": [{ name: string, value: string }],\n  "verification_steps": [string],\n  "profile_content": {\n    "bio": string,\n    "tagline": string,\n    "headline": string\n  },\n  "estimated_hours_to_activate": number,\n  "critical_warnings": [string]\n}`,
+          response_json_schema: {
+            type: 'object',
+            properties: {
+              username_suggestions: { type: 'array', items: { type: 'string' } },
+              password_requirements: { type: 'string' },
+              required_fields: { type: 'array', items: { type: 'object' } },
+              verification_steps: { type: 'array', items: { type: 'string' } },
+              profile_content: { type: 'object' },
+              estimated_hours_to_activate: { type: 'number' },
+              critical_warnings: { type: 'array', items: { type: 'string' } }
+            }
           }
-        }
-      });
+        });
+      } catch (e) {
+        console.error('Strategy generation error:', e.message);
+        throw e;
+      }
 
       // Create account record
       const suggestions = Array.isArray(strategy?.username_suggestions) ? strategy.username_suggestions : [];
@@ -201,10 +173,6 @@ Return JSON:
       await base44.asServiceRole.entities.LinkedAccountCreation.update(account.id, {
         credential_vault_id: vault.id
       }).catch(e => console.error('Failed to link vault:', e.message));
-      } catch (e) {
-      console.error('Account creation error:', e.message);
-      throw e;
-      }
 
       // Log account creation
       await base44.asServiceRole.entities.ActivityLog.create({
@@ -237,22 +205,20 @@ Return JSON:
         return Response.json({ error: 'account_id and step required' }, { status: 400 });
       }
 
-      const account = (await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id }).catch(() => [])) || [];
-      const safeAccount = Array.isArray(account) ? account : [];
+      const accounts = await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id }).catch(() => []);
+      const safeAccount = Array.isArray(accounts) ? accounts : [];
       if (!safeAccount.length || !safeAccount[0]) {
         return Response.json({ error: 'Account not found' }, { status: 404 });
       }
 
       const acct = safeAccount[0];
-      const identity = (await base44.asServiceRole.entities.AIIdentity.filter({ id: acct.identity_id }).catch(() => [])) || [];
-      const safeIdentity = Array.isArray(identity) && identity.length ? identity[0] : null;
+      const identities = await base44.asServiceRole.entities.AIIdentity.filter({ id: acct.identity_id }).catch(() => []);
+      const safeIdentity = Array.isArray(identities) && identities.length ? identities[0] : null;
 
-      // Initialize onboarding steps if not present
       if (!acct.onboarding_steps) {
         acct.onboarding_steps = generateOnboardingSteps(acct.platform, safeIdentity);
       }
 
-      // Update current step
       const steps = acct.onboarding_steps || [];
       const stepIndex = steps.findIndex(s => s.step_id === step);
       
@@ -295,15 +261,15 @@ Return JSON:
 
       if (!account_id) return Response.json({ error: 'account_id required' }, { status: 400 });
 
-      const account = (await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id }).catch(() => [])) || [];
-      const safeAccount = Array.isArray(account) ? account : [];
+      const accounts = await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id }).catch(() => []);
+      const safeAccount = Array.isArray(accounts) ? accounts : [];
       if (!safeAccount.length || !safeAccount[0]) {
         return Response.json({ error: 'Account not found' }, { status: 404 });
       }
 
       const acct = safeAccount[0];
-      const identity = (await base44.asServiceRole.entities.AIIdentity.filter({ id: acct.identity_id }).catch(() => [])) || [];
-      const safeIdentity = Array.isArray(identity) && identity.length ? identity[0] : null;
+      const identities = await base44.asServiceRole.entities.AIIdentity.filter({ id: acct.identity_id }).catch(() => []);
+      const safeIdentity = Array.isArray(identities) && identities.length ? identities[0] : null;
 
       if (!acct.onboarding_steps) {
         acct.onboarding_steps = generateOnboardingSteps(acct.platform, safeIdentity);
@@ -339,12 +305,11 @@ Return JSON:
         return Response.json({ error: 'account_id and user_credential_data required' }, { status: 400 });
       }
 
-      const account = (await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id }).catch(() => [])) || [];
-      const safeAccount = Array.isArray(account) ? account : [];
+      const accounts = await base44.asServiceRole.entities.LinkedAccountCreation.filter({ id: account_id }).catch(() => []);
+      const safeAccount = Array.isArray(accounts) ? accounts : [];
       if (!safeAccount.length || !safeAccount[0]) return Response.json({ error: 'Account not found' }, { status: 404 });
 
       try {
-        // Store user's credentials with real AES-256-GCM encryption
         const { encrypted_payload: ep, iv: encIv } = await encryptCredentials(user_credential_data || {});
         const newVault = await base44.asServiceRole.entities.CredentialVault.create({
           platform: safeAccount[0]?.platform || 'unknown',
@@ -355,7 +320,6 @@ Return JSON:
           is_active: true
         });
 
-        // Delete old vault if exists
         if (safeAccount[0]?.credential_vault_id) {
           try {
             await base44.asServiceRole.entities.CredentialVault.delete(safeAccount[0].credential_vault_id).catch(() => {});
@@ -364,7 +328,6 @@ Return JSON:
           }
         }
 
-        // Update account as user-overridden
         const updated = await base44.asServiceRole.entities.LinkedAccountCreation.update(account_id, {
           is_user_override: true,
           user_override_username: user_username || 'user',
@@ -378,16 +341,16 @@ Return JSON:
           severity: 'info',
           metadata: { account_id, platform: safeAccount[0]?.platform, is_user_account: true }
         }).catch(e => console.error('Activity log error:', e.message));
+
+        return Response.json({
+          success: true,
+          account: updated,
+          message: 'User account linked successfully'
+        });
       } catch (e) {
         console.error('Override error:', e.message);
         throw e;
       }
-
-      return Response.json({
-        success: true,
-        account: updated,
-        message: 'User account linked successfully'
-      });
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
@@ -408,11 +371,7 @@ function generateOnboardingSteps(platform, identity) {
       category: 'profile',
       status: 'pending',
       required: true,
-      checklist: [
-        'Add profile photo',
-        'Fill in bio/headline',
-        'Add professional summary'
-      ]
+      checklist: ['Add profile photo', 'Fill in bio/headline', 'Add professional summary']
     },
     {
       step_id: 'identity_verification',
@@ -421,11 +380,7 @@ function generateOnboardingSteps(platform, identity) {
       category: 'verification',
       status: 'pending',
       required: true,
-      checklist: [
-        'Verify email address',
-        'Add phone number',
-        'Complete identity check'
-      ]
+      checklist: ['Verify email address', 'Add phone number', 'Complete identity check']
     },
     {
       step_id: 'skills_experience',
@@ -434,11 +389,7 @@ function generateOnboardingSteps(platform, identity) {
       category: 'profile',
       status: 'pending',
       required: identity?.skills?.length > 0,
-      checklist: [
-        'Add professional skills',
-        'Add work experience',
-        'Upload portfolio samples'
-      ]
+      checklist: ['Add professional skills', 'Add work experience', 'Upload portfolio samples']
     },
     {
       step_id: 'payment_setup',
@@ -447,11 +398,7 @@ function generateOnboardingSteps(platform, identity) {
       category: 'financial',
       status: 'pending',
       required: true,
-      checklist: [
-        'Add payment method',
-        'Configure payout account',
-        'Set up tax information'
-      ]
+      checklist: ['Add payment method', 'Configure payout account', 'Set up tax information']
     },
     {
       step_id: 'preferences',
@@ -460,61 +407,38 @@ function generateOnboardingSteps(platform, identity) {
       category: 'settings',
       status: 'pending',
       required: false,
-      checklist: [
-        'Set availability/hours',
-        'Configure notifications',
-        'Set rate/pricing'
-      ]
+      checklist: ['Set availability/hours', 'Configure notifications', 'Set rate/pricing']
     }
   ];
 
-  // Add platform-specific steps
   const platformSteps = {
-    upwork: [
-      {
-        step_id: 'proposals_setup',
-        title: 'Proposals & Cover Letter',
-        description: 'Create professional proposal templates',
-        category: 'profile',
-        status: 'pending',
-        required: true,
-        checklist: [
-          'Write default cover letter',
-          'Create proposal templates',
-          'Set proposal rate'
-        ]
-      }
-    ],
-    fiverr: [
-      {
-        step_id: 'gigs_setup',
-        title: 'Create Gigs',
-        description: 'Create your service offerings',
-        category: 'profile',
-        status: 'pending',
-        required: true,
-        checklist: [
-          'Create at least 1 gig',
-          'Add gig description',
-          'Set pricing tiers'
-        ]
-      }
-    ],
-    github: [
-      {
-        step_id: 'repositories_setup',
-        title: 'Repository Setup',
-        description: 'Create showcase repositories',
-        category: 'profile',
-        status: 'pending',
-        required: false,
-        checklist: [
-          'Create public repositories',
-          'Add project README files',
-          'Configure profile README'
-        ]
-      }
-    ]
+    upwork: [{
+      step_id: 'proposals_setup',
+      title: 'Proposals & Cover Letter',
+      description: 'Create professional proposal templates',
+      category: 'profile',
+      status: 'pending',
+      required: true,
+      checklist: ['Write default cover letter', 'Create proposal templates', 'Set proposal rate']
+    }],
+    fiverr: [{
+      step_id: 'gigs_setup',
+      title: 'Create Gigs',
+      description: 'Create your service offerings',
+      category: 'profile',
+      status: 'pending',
+      required: true,
+      checklist: ['Create at least 1 gig', 'Add gig description', 'Set pricing tiers']
+    }],
+    github: [{
+      step_id: 'repositories_setup',
+      title: 'Repository Setup',
+      description: 'Create showcase repositories',
+      category: 'profile',
+      status: 'pending',
+      required: false,
+      checklist: ['Create public repositories', 'Add project README files', 'Configure profile README']
+    }]
   };
 
   return [...baseSteps, ...(platformSteps[platform] || [])];

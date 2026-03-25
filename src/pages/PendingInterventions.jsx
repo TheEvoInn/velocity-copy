@@ -15,24 +15,37 @@ export default function PendingInterventions() {
 
   useEffect(() => {
     fetchInterventions();
+    
+    // Subscribe to real-time intervention updates
     const unsubscribe = base44.entities.UserIntervention.subscribe((event) => {
+      // Only handle events for this user's interventions
       if (event.type === 'create' || event.type === 'update') {
+        // Immediately refresh to get latest state
         fetchInterventions();
       }
     });
-    return () => unsubscribe?.();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [user?.email]);
 
   const fetchInterventions = async () => {
     if (!user?.email) return;
+    
     try {
-      // Fetch all interventions, then filter client-side for this user
+      setLoading(true);
+      
+      // Fetch all pending/in_progress interventions
       const allPending = await base44.entities.UserIntervention.filter(
         { status: { $in: ['pending', 'in_progress'] } },
         '-priority',
         100
-      );
-      const userInterventions = (allPending || []).filter(i => i.user_email === user.email);
+      ).catch(() => []);
+      
+      // Filter for current user
+      const userInterventions = (allPending || []).filter(i => i.created_by === user.email);
+      
       setInterventions(userInterventions);
     } catch (err) {
       console.error('Failed to fetch interventions:', err);
@@ -44,24 +57,42 @@ export default function PendingInterventions() {
 
   const handleReject = async (id) => {
     if (!user?.email) return;
+    
     try {
       await base44.entities.UserIntervention.update(id, {
         status: 'rejected',
-        resolved_at: new Date().toISOString(),
+        resolved_at: new Date().toISOString()
       });
-      fetchInterventions();
+      
+      // Force immediate refresh
+      await fetchInterventions();
     } catch (err) {
       console.error('Failed to reject intervention:', err);
     }
   };
 
+  const handleFormSubmit = async () => {
+    // Clear selection and force full refresh after form submission
+    setSelectedIntervention(null);
+    
+    // Delay slightly to allow backend to fully process
+    setTimeout(() => {
+      fetchInterventions();
+    }, 500);
+  };
+
   const filtered = interventions.filter(i => {
     if (filter === 'urgent') return i.priority > 80;
-    if (filter === 'expiring') return new Date(i.expires_at) - new Date() < 3600000;
+    if (filter === 'expiring') {
+      const expiresAt = new Date(i.expires_at);
+      const now = new Date();
+      const hoursLeft = (expiresAt - now) / 3600000;
+      return hoursLeft < 1 && hoursLeft > 0;
+    }
     return true;
   });
 
-  if (loading) {
+  if (loading && interventions.length === 0) {
     return (
       <div className="min-h-screen galaxy-bg flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
@@ -82,7 +113,7 @@ export default function PendingInterventions() {
             </div>
             <div>
               <h1 className="font-orbitron text-2xl font-bold text-white tracking-wider">USER INTERVENTIONS</h1>
-              <p className="text-xs text-slate-400">Autopilot blocks · Missing data · Credential requests · Decisions required</p>
+              <p className="text-xs text-slate-400">Autopilot blocks · Missing data · Credential requests</p>
             </div>
           </div>
           <div className="text-right">
@@ -99,12 +130,12 @@ export default function PendingInterventions() {
           </div>
         </div>
 
-        {/* Autopilot sync info */}
+        {/* Info */}
         <div className="flex items-start gap-3 p-3 rounded-xl mb-5"
           style={{ background: 'rgba(0,232,255,0.04)', border: '1px solid rgba(0,232,255,0.15)' }}>
           <Bot className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
           <p className="text-xs text-slate-400">
-            These requests were created by the Autopilot engine when it encountered a block. Submitting data here will immediately resume the blocked task and sync the response across all platform modules.
+            When you submit data here, the task is immediately resumed and autopilot re-engages. All modules sync automatically.
           </p>
         </div>
 
@@ -129,7 +160,15 @@ export default function PendingInterventions() {
             size="sm"
             onClick={() => setFilter('expiring')}
           >
-            Expiring Soon
+            <Clock className="w-3 h-3 mr-1" />
+            Expiring
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={fetchInterventions}
+          >
+            Refresh
           </Button>
         </div>
 
@@ -137,14 +176,16 @@ export default function PendingInterventions() {
         {selectedIntervention ? (
           <InterventionForm
             intervention={selectedIntervention}
-            onSubmit={fetchInterventions}
+            onSubmit={handleFormSubmit}
             onClose={() => setSelectedIntervention(null)}
           />
         ) : (
           <div className="space-y-3">
             {filtered.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-slate-400">No pending interventions</p>
+                <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+                <p className="text-slate-300 font-medium">No pending interventions</p>
+                <p className="text-xs text-slate-500 mt-1">All your autopilot tasks are running smoothly</p>
               </div>
             ) : (
               filtered.map(intervention => (

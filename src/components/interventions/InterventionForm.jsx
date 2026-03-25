@@ -19,6 +19,7 @@ export default function InterventionForm({ intervention, onSubmit, onClose }) {
     setError(null);
 
     try {
+      // Step 1: Submit data to intervention manager
       const res = await base44.functions.invoke('userInterventionManager', {
         action: 'provide_missing_data',
         intervention_id: intervention.id,
@@ -30,12 +31,27 @@ export default function InterventionForm({ intervention, onSubmit, onClose }) {
         return;
       }
 
+      // Step 2: Re-engage autopilot with resolved intervention data
+      if (res.data?.task_resumed && intervention.task_id) {
+        try {
+          await base44.functions.invoke('resumeTaskAfterIntervention', {
+            intervention_id: intervention.id,
+            task_id: intervention.task_id
+          });
+        } catch (e) {
+          console.warn('Autopilot re-engagement queued:', e.message);
+          // Don't error—task is queued for polling
+        }
+      }
+
       setSuccess(true);
       setTimeout(() => {
-        onSubmit?.();
-        onClose?.();
+        // Force re-fetch in parent component
+        if (onSubmit) onSubmit();
+        if (onClose) onClose();
       }, 1500);
     } catch (err) {
+      console.error('[InterventionForm] Submission error:', err);
       setError(err.message || 'Failed to submit data');
     } finally {
       setLoading(false);
@@ -55,15 +71,35 @@ export default function InterventionForm({ intervention, onSubmit, onClose }) {
       });
 
       if (res.data?.success) {
+        // Auto-created account counts as intervention resolved + data provided
+        await base44.functions.invoke('userInterventionManager', {
+          action: 'provide_missing_data',
+          intervention_id: intervention.id,
+          data: { account_created: true, platform_account: res.data.account_id }
+        });
+
+        // Re-engage autopilot
+        if (intervention.task_id) {
+          try {
+            await base44.functions.invoke('resumeTaskAfterIntervention', {
+              intervention_id: intervention.id,
+              task_id: intervention.task_id
+            });
+          } catch (e) {
+            console.warn('Autopilot re-engagement queued:', e.message);
+          }
+        }
+
         setSuccess(true);
         setTimeout(() => {
-          onSubmit?.();
-          onClose?.();
+          if (onSubmit) onSubmit();
+          if (onClose) onClose();
         }, 1500);
       } else {
         setError(res.data?.error || 'Account creation failed');
       }
     } catch (err) {
+      console.error('[InterventionForm] Account creation error:', err);
       setError(err.message || 'Failed to create account');
     } finally {
       setCreatingAccount(false);
@@ -105,7 +141,7 @@ export default function InterventionForm({ intervention, onSubmit, onClose }) {
       <Card className="bg-slate-900/50 border-slate-700 p-6 text-center">
         <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
         <p className="text-white font-semibold">Data submitted successfully</p>
-        <p className="text-xs text-slate-400 mt-2">Task resuming...</p>
+        <p className="text-xs text-slate-400 mt-2">Autopilot resuming task...</p>
       </Card>
     );
   }

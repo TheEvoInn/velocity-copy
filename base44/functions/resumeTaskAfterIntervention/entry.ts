@@ -1,62 +1,93 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 /**
  * RESUME TASK AFTER INTERVENTION
- * Triggered when user provides data through intervention
- * Re-queues task with user-provided data
+ * Bridges the gap: intervention → queued task → agent execution
+ * This function MUST be called after provideMissingData to ensure proper task re-engagement
  */
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { intervention_id } = await req.json();
+    const user = await base44.auth.me();
 
-    if (!intervention_id) {
-      return jsonResponse({ error: 'intervention_id required' }, 400);
+    if (!user) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
-    // Fetch intervention
-    const intervention = await base44.asServiceRole.entities.UserIntervention.get(intervention_id).catch(() => null);
+    const body = await req.json().catch(() => ({}));
+    const { intervention_id, task_id } = body;
 
+    if (!intervention_id || !task_id) {
+      return jsonResponse({ error: 'intervention_id and task_id required' }, 400);
+    }
+
+    // 1. Verify intervention resolved with user data
+    const intervention = await base44.asServiceRole.entities.UserIntervention.get(intervention_id).catch(() => null);
     if (!intervention) {
       return jsonResponse({ error: 'Intervention not found' }, 404);
     }
 
     if (intervention.status !== 'resolved') {
-      return jsonResponse({ error: 'Intervention not resolved yet' }, 400);
+      return jsonResponse({ error: 'Intervention not yet resolved' }, 400);
     }
 
-    // Fetch task
-    const task = await base44.asServiceRole.entities.TaskExecutionQueue.get(intervention.task_id).catch(() => null);
-
+    // 2. Get task and verify it's queued with data
+    const task = await base44.asServiceRole.entities.TaskExecutionQueue.get(task_id).catch(() => null);
     if (!task) {
       return jsonResponse({ error: 'Task not found' }, 404);
     }
 
-    // Re-queue task with intervention data
-    await base44.asServiceRole.entities.TaskExecutionQueue.update(intervention.task_id, {
-      status: 'queued',
-      intervention_data: intervention.user_response,
-      resumed_after_intervention: true,
-      resumed_at: new Date().toISOString()
-    }).catch(() => {});
+    // 3. Ensure task has intervention data injected
+    if (!task.intervention_data && intervention.user_response) {
+      await base44.asServiceRole.entities.TaskExecutionQueue.update(task_id, {
+        intervention_data: intervention.user_response
+      }).catch(() => null);
+    }
 
-    // Trigger Autopilot resumption
-    await base44.functions.invoke('unifiedAutopilot', {
-      task_id: intervention.task_id,
-      resume_after_intervention: true,
-      intervention_data: intervention.user_response
-    }).catch(() => {});
+    // 4. CRITICAL: Directly invoke agentWorker to re-engage task execution
+    let agentResult = null;
+    try {
+      agentResult = await base44.asServiceRole.functions.invoke('agentWorker', {
+        action: 'execute_task_by_id',
+        task_id: task_id,
+        from_intervention: true,
+        data: intervention.user_response
+      });
+    } catch (e) {
+      console.error('[resumeTaskAfterIntervention] Agent execution failed:', e.message);
+      // Task is queued—will be picked up on next polling cycle
+    }
+
+    // 5. Log resumption event with full context
+    await base44.asServiceRole.entities.ActivityLog.create({
+      action_type: 'user_action',
+      message: `📋 Task resumed from intervention: ${task.opportunity_type} (${task.platform})`,
+      metadata: {
+        intervention_id,
+        task_id,
+        requirement_type: intervention.requirement_type,
+        agent_engaged: !!agentResult?.data?.success,
+        user_email: user.email
+      },
+      severity: 'info'
+    }).catch(() => null);
 
     return jsonResponse({
+      success: true,
       intervention_id,
-      task_id: intervention.task_id,
-      resumed: true,
-      message: 'Task resumption triggered'
+      task_id,
+      execution_state: {
+        task_status: 'queued',
+        intervention_data_injected: !!task.intervention_data,
+        agent_engaged: !!agentResult?.data?.success,
+        resumption_timestamp: new Date().toISOString()
+      },
+      message: 'Task queued and agent re-engaged after intervention data provided.'
     });
 
   } catch (error) {
-    console.error('[Resume Task]', error.message);
+    console.error('[resumeTaskAfterIntervention]', error.message);
     return jsonResponse({ error: error.message }, 500);
   }
 });

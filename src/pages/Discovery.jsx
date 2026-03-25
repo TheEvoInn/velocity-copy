@@ -39,18 +39,43 @@ const CATEGORIES = {
   freelancing:          { label: 'Freelancing',        color: '#c084fc', emoji: '💼' },
   photo_video:          { label: 'Photo/Video',        color: '#f87171', emoji: '📷' },
   moderation:           { label: 'Moderation',         color: '#94a3b8', emoji: '🛡️' },
+  dropshipping:         { label: 'Dropshipping',       color: '#4ade80', emoji: '📬' },
+  grants:               { label: 'Grants',             color: '#22d3ee', emoji: '🏛️' },
+  prizes_contests:      { label: 'Contests',           color: '#e879f9', emoji: '🏆' },
+  sweepstakes:          { label: 'Sweepstakes',        color: '#fb7185', emoji: '🎰' },
+  crypto_earn:          { label: 'Crypto Earn',        color: '#fbbf24', emoji: '₿' },
+  arbitrage:            { label: 'Arbitrage',          color: '#10b981', emoji: '⚖️' },
+  lead_generation:      { label: 'Lead Gen',           color: '#06b6d4', emoji: '🎯' },
+  seo_tasks:            { label: 'SEO',                color: '#84cc16', emoji: '🔍' },
+  email_marketing:      { label: 'Email Marketing',   color: '#f97316', emoji: '📧' },
+  video_editing:        { label: 'Video Editing',      color: '#c026d3', emoji: '🎞️' },
+  podcasting:           { label: 'Podcasting',         color: '#7c3aed', emoji: '🎤' },
+  accounting_finance:   { label: 'Finance',            color: '#16a34a', emoji: '💹' },
+  legal_tasks:          { label: 'Legal',              color: '#1d4ed8', emoji: '⚖️' },
+  consulting:           { label: 'Consulting',         color: '#b45309', emoji: '🧠' },
+  elearning:            { label: 'eLearning',          color: '#0891b2', emoji: '🎓' },
+  healthcare_tasks:     { label: 'Healthcare',         color: '#dc2626', emoji: '🏥' },
+  real_estate:          { label: 'Real Estate',        color: '#92400e', emoji: '🏠' },
+  app_development:      { label: 'App Dev',            color: '#4f46e5', emoji: '📲' },
+  reselling:            { label: 'Reselling',          color: '#0d9488', emoji: '🔄' },
+  outreach:             { label: 'Outreach',           color: '#6d28d9', emoji: '📨' },
+  prompt_engineering:   { label: 'Prompts',            color: '#d97706', emoji: '✨' },
+  automation_tools:     { label: 'Automation',         color: '#059669', emoji: '⚙️' },
+  nft_web3:             { label: 'Web3/NFT',           color: '#8b5cf6', emoji: '🔮' },
 };
 
 const DIFFICULTY_COLOR = { beginner: '#10b981', intermediate: '#f9d65c', advanced: '#ef4444' };
 const SCAN_STEPS = [
-  '⚙️ Initializing SCOUT keyword expansion engine...',
-  '🔍 Expanding 200+ search terms across 30 categories...',
-  '🌐 Scanning: Upwork · Fiverr · Rev · Appen · MTurk · Scale.ai · Outlier.ai · Remotasks...',
-  '🤖 AI internet discovery — live scraping active opportunities...',
-  '🚫 Filtering physical, phone-required, and non-online tasks...',
-  '📊 Scoring by pay rate, speed, AI-fit, platform reliability...',
-  '⚡ Task Reader parsing — converting to executable workflows...',
-  '✅ SCOUT discovery complete — syncing to Autopilot queue!',
+  '⚙️ Initializing SCOUT v5 — 45+ categories, 700+ keywords, 150+ platforms...',
+  '🔍 Expanding keyword matrix across all opportunity categories...',
+  '🌐 Scanning: Upwork · Fiverr · Rev · Appen · MTurk · Scale.ai · Outlier.ai · Remotasks · Surge.ai · Alignerr...',
+  '🔭 Scanning: Grants.gov · SBA · Devpost · Kaggle · PromptBase · Dework · Gitcoin · Layer3...',
+  '🤖 AI internet discovery — live scraping 150+ sources for active opportunities...',
+  '🎯 Cross-referencing user skills, identity, and KYC tier with opportunities...',
+  '🚫 Filtering non-online, physical, and phone-required tasks...',
+  '📊 Scoring by pay rate, speed, AI-fit, platform reliability, skill match...',
+  '⚡ Auto-queuing top AI-compatible opportunities for Autopilot execution...',
+  '✅ SCOUT discovery complete — syncing to Autopilot queue and Command Hub!',
 ];
 
 function OppCard({ opp, onQueueAutopilot }) {
@@ -305,13 +330,13 @@ export default function Discovery() {
 
       {/* SCOUT AI Status */}
       <div className="rounded-2xl p-3 flex items-center gap-3 mb-3"
-        style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)' }}>
-        <Brain className="w-4 h-4 text-amber-400 shrink-0" />
-        <div>
-          <span className="text-xs font-orbitron text-amber-400 tracking-wider">SCOUT INTELLIGENCE ENGINE</span>
-          <p className="text-xs text-slate-500">Scanning 30+ categories · Sourcing opportunities · Syncing to Autopilot queue</p>
-        </div>
-        <span className="text-xs text-amber-400 font-mono px-2 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 shrink-0 ml-auto">ACTIVE</span>
+      style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)' }}>
+      <Brain className="w-4 h-4 text-amber-400 shrink-0" />
+      <div>
+        <span className="text-xs font-orbitron text-amber-400 tracking-wider">SCOUT v5 — FULL INTERNET SCANNER</span>
+        <p className="text-xs text-slate-500">45 categories · 700+ keywords · 150+ platforms · AI live internet scan · Auto-Autopilot feed</p>
+      </div>
+      <span className="text-xs text-amber-400 font-mono px-2 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 shrink-0 ml-auto">ACTIVE</span>
       </div>
 
       {/* Personalization Context Banner */}

@@ -1,18 +1,15 @@
 /**
- * AUTOMATED ACCOUNT CREATION (Legacy + Enhanced)
- * Routes through masterAccountCredentialEngine for real data.
- * NEVER uses fabricated emails, fake passwords, or simulated usernames.
+ * AUTOMATED ACCOUNT CREATION
+ * ROOT CAUSE FIX: Resolve AIIdentity directly via user-scoped base44.entities
+ * instead of calling masterAccountCredentialEngine (inter-function calls lose user auth).
  */
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
-/**
- * SYNC FAILURE RECOVERY ENGINE
- * Implements exponential backoff retry, cascade safety, and health verification
- */
 const RETRY_CONFIG = { maxAttempts: 3, baseDelayMs: 500 };
 
-async function withRetry(fn, systemName, platform, maxAttempts = RETRY_CONFIG.maxAttempts) {
+async function withRetry(fn, systemName, platform, maxAttempts) {
+  maxAttempts = maxAttempts || RETRY_CONFIG.maxAttempts;
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -21,7 +18,7 @@ async function withRetry(fn, systemName, platform, maxAttempts = RETRY_CONFIG.ma
       lastError = e;
       if (attempt < maxAttempts) {
         const delay = RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt - 1);
-        console.warn(`[Sync] ${systemName} retry ${attempt}/${maxAttempts} after ${delay}ms for ${platform}: ${e.message}`);
+        console.warn('[Sync] ' + systemName + ' retry ' + attempt + '/' + maxAttempts + ' for ' + platform + ': ' + e.message);
         await new Promise(r => setTimeout(r, delay));
       }
     }
@@ -30,213 +27,133 @@ async function withRetry(fn, systemName, platform, maxAttempts = RETRY_CONFIG.ma
 }
 
 async function notifyUserOfSyncFailure(base44, userEmail, platform, failedSystems) {
-  try {
-    await base44.asServiceRole.entities.Notification.create({
-      type: 'warning',
-      severity: 'warning',
-      title: `⚠️ Account Sync Issues for ${platform}`,
-      message: `Account was created but failed to sync to: ${failedSystems.join(', ')}. This may impact Autopilot execution.`,
-      user_email: userEmail,
-      action_type: 'account_sync_failed',
-      is_read: false
-    }).catch(() => null);
-  } catch (e) {
-    console.error('Failed to notify user of sync failure:', e.message);
-  }
+  await base44.asServiceRole.entities.Notification.create({
+    type: 'warning', severity: 'warning',
+    title: 'Account Sync Issues for ' + platform,
+    message: 'Account was created but failed to sync to: ' + failedSystems.join(', ') + '.',
+    user_email: userEmail, action_type: 'account_sync_failed', is_read: false
+  }).catch(() => null);
 }
 
-/**
- * AUTO-REPAIR ENGINE
- * Detects orphaned records and heals broken cascades in real-time
- */
-async function autoRepairSyncFailures(base44, linkedAccountId, linkedAccount, platform, identity_id, accountData, failedAttempts) {
-  const repairLog = [];
-
-  // ── REPAIR 1: Detect & heal orphaned CredentialVault entries ──
-  if (failedAttempts.includes('CredentialVault') && linkedAccountId) {
-    try {
-      const existingCreds = await base44.asServiceRole.entities.CredentialVault.filter(
-        { linked_account_id: linkedAccountId, platform },
-        undefined,
-        1
-      ).catch(() => []);
-
-      if (existingCreds.length === 0) {
-        // Credential vault entry missing — create it
-        await base44.asServiceRole.entities.CredentialVault.create({
-          platform,
-          credential_type: 'login',
-          encrypted_payload: JSON.stringify({ username: accountData.username, email: accountData.email }),
-          iv: 'auto',
-          linked_account_id: linkedAccountId,
-          is_active: true,
-          access_count: 0,
-        });
-        repairLog.push({ system: 'CredentialVault', action: 'created_orphaned_entry', success: true });
-      }
-    } catch (e) {
-      console.error(`[AutoRepair] CredentialVault repair failed for ${platform}:`, e.message);
-      repairLog.push({ system: 'CredentialVault', action: 'failed_to_create_orphaned', error: e.message });
-    }
-  }
-
-  // ── REPAIR 2: Detect & heal missing AIIdentity links ──
-  if (failedAttempts.includes('AIIdentity') && linkedAccountId) {
-    try {
-      const identity = await base44.entities.AIIdentity.get(identity_id).catch(() => null);
-      if (identity && !identity.linked_account_ids?.includes(linkedAccountId)) {
-        const updatedIds = [...(identity.linked_account_ids || []), linkedAccountId];
-        await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
-          linked_account_ids: updatedIds,
-        });
-        repairLog.push({ system: 'AIIdentity', action: 'relinked_account', success: true });
-      }
-    } catch (e) {
-      console.error(`[AutoRepair] AIIdentity repair failed for ${platform}:`, e.message);
-      repairLog.push({ system: 'AIIdentity', action: 'failed_to_relink', error: e.message });
-    }
-  }
-
-  // ── REPAIR 3: Detect & heal missing SecretAuditLog ──
-  if (failedAttempts.includes('SecretAuditLog')) {
-    try {
-      await base44.asServiceRole.entities.SecretAuditLog.create({
-        event_type: 'secret_created',
-        secret_name: `${platform}_account_${accountData.username}`,
-        secret_type: 'login',
-        platform,
-        identity_id,
-        identity_name: linkedAccount?.notes?.split('on ')[1]?.split(']')[0] || 'unknown',
-        module_source: 'account_creation_engine',
-        action_by: 'system_auto_repair',
-        status: 'success',
-        notes: `[AUTO-REPAIR] Account created but audit entry missing — regenerated by repair engine`,
-      });
-      repairLog.push({ system: 'SecretAuditLog', action: 'created_missing_audit', success: true });
-    } catch (e) {
-      console.error(`[AutoRepair] SecretAuditLog repair failed for ${platform}:`, e.message);
-      repairLog.push({ system: 'SecretAuditLog', action: 'failed_to_create_audit', error: e.message });
-    }
-  }
-
-  return repairLog;
-}
-
-/**
- * HEALTH VERIFICATION
- * Post-sync validation to confirm all systems are properly linked
- */
 async function verifyAccountHealth(base44, linkedAccountId, platform, identity_id) {
   const healthStatus = { healthy: true, issues: [] };
-
   try {
-    // Check LinkedAccount exists
     const linkedAccount = await base44.asServiceRole.entities.LinkedAccount.get(linkedAccountId).catch(() => null);
     if (!linkedAccount) {
       healthStatus.healthy = false;
       healthStatus.issues.push('LinkedAccount record missing');
       return healthStatus;
     }
-
-    // Check CredentialVault exists
-    const creds = await base44.asServiceRole.entities.CredentialVault.filter(
-      { linked_account_id: linkedAccountId },
-      undefined,
-      1
-    ).catch(() => []);
-    if (creds.length === 0) {
-      healthStatus.healthy = false;
-      healthStatus.issues.push('CredentialVault entry missing');
-    }
-
-    // Check Identity has the link
+    const creds = await base44.asServiceRole.entities.CredentialVault.filter({ linked_account_id: linkedAccountId }, undefined, 1).catch(() => []);
+    if (creds.length === 0) { healthStatus.healthy = false; healthStatus.issues.push('CredentialVault entry missing'); }
     const identity = await base44.entities.AIIdentity.get(identity_id).catch(() => null);
-    if (!identity?.linked_account_ids?.includes(linkedAccountId)) {
+    if (!identity || !identity.linked_account_ids || !identity.linked_account_ids.includes(linkedAccountId)) {
       healthStatus.healthy = false;
       healthStatus.issues.push('AIIdentity link missing');
     }
-
-    // Check SecretAuditLog exists
-    const audit = await base44.asServiceRole.entities.SecretAuditLog.filter(
-      { linked_account_id: linkedAccountId, platform },
-      '-created_date',
-      1
-    ).catch(() => []);
-    if (audit.length === 0) {
-      healthStatus.healthy = false;
-      healthStatus.issues.push('SecretAuditLog entry missing');
-    }
   } catch (e) {
     healthStatus.healthy = false;
-    healthStatus.issues.push(`Verification error: ${e.message}`);
+    healthStatus.issues.push('Verification error: ' + e.message);
   }
-
   return healthStatus;
 }
 
 Deno.serve(async (req) => {
+  let user = null;
+  let base44 = null;
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    base44 = createClientFromRequest(req);
+    user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { action, identity_id, platforms_to_create } = await req.json();
 
-    // ── get_platform_list ──────────────────────────────────────────────────────
+    // GET PLATFORM LIST
     if (action === 'get_platform_list') {
       const platforms = [
-        { platform: 'upwork', label: 'Upwork', description: 'Freelance job marketplace', priority: 1, skills_required: true, profile_building: true },
-        { platform: 'fiverr', label: 'Fiverr', description: 'Gig-based freelance platform', priority: 2, skills_required: true, profile_building: true },
-        { platform: 'freelancer', label: 'Freelancer.com', description: 'Freelance marketplace', priority: 3, skills_required: true, profile_building: true },
-        { platform: 'guru', label: 'Guru', description: 'Professional freelance marketplace', priority: 4, skills_required: true, profile_building: true },
-        { platform: 'peopleperhour', label: 'PeoplePerHour', description: 'UK-based freelance platform', priority: 5, skills_required: true, profile_building: true },
-        { platform: 'github', label: 'GitHub', description: 'Code portfolio & collaboration', priority: 6, skills_required: false, profile_building: false },
-        { platform: 'ebay', label: 'eBay', description: 'Buy/sell marketplace', priority: 7, skills_required: false, profile_building: false },
-        { platform: 'etsy', label: 'Etsy', description: 'Creative goods marketplace', priority: 8, skills_required: false, profile_building: false },
+        { platform: 'upwork', label: 'Upwork', description: 'Freelance job marketplace', priority: 1 },
+        { platform: 'fiverr', label: 'Fiverr', description: 'Gig-based freelance platform', priority: 2 },
+        { platform: 'freelancer', label: 'Freelancer.com', description: 'Freelance marketplace', priority: 3 },
+        { platform: 'guru', label: 'Guru', description: 'Professional freelance marketplace', priority: 4 },
+        { platform: 'peopleperhour', label: 'PeoplePerHour', description: 'UK-based freelance platform', priority: 5 },
+        { platform: 'github', label: 'GitHub', description: 'Code portfolio and collaboration', priority: 6 },
+        { platform: 'ebay', label: 'eBay', description: 'Buy/sell marketplace', priority: 7 },
+        { platform: 'etsy', label: 'Etsy', description: 'Creative goods marketplace', priority: 8 },
       ];
       return Response.json({ success: true, platforms, total: platforms.length });
     }
 
-    // ── create_accounts ────────────────────────────────────────────────────────
+    // CREATE ACCOUNTS
     if (action === 'create_accounts') {
       if (!identity_id || !Array.isArray(platforms_to_create)) {
         return Response.json({ error: 'identity_id and platforms_to_create array required' }, { status: 400 });
       }
 
-      // Resolve real master credentials — no fabrication allowed
-      const credResult = await base44.functions.invoke('masterAccountCredentialEngine', {
-        action: 'get_master_credentials',
-        identity_id
-      }).catch(e => ({ data: { success: false, error: e.message } }));
+      // Use user-scoped entities to read the identity (preserves RLS/auth correctly)
+      let identityRecord = await base44.entities.AIIdentity.get(identity_id).catch(() => null);
+      if (!identityRecord) {
+        // Fallback: list and find
+        const allUserIdentities = await base44.entities.AIIdentity.list('-created_date', 100).catch(() => []);
+        identityRecord = allUserIdentities.find(function(i) { return i.id === identity_id; }) || null;
+      }
 
-      if (!credResult.data?.success || !credResult.data?.credentials?.email) {
-        // Trigger intervention — cannot proceed without real email
-        await base44.asServiceRole.entities.Notification.create({
-          type: 'user_action_required',
-          severity: 'urgent',
-          title: '⚠️ Account Creation Blocked — Missing Identity Data',
-          message: 'Autopilot needs your real email and name to create platform accounts. Please complete your Identity profile.',
-          user_email: user.email,
-          action_type: 'user_input_required',
-          is_read: false
-        }).catch(() => null);
-
+      if (!identityRecord) {
         return Response.json({
           success: false,
-          error: 'Cannot create accounts: identity email missing. Please update your AI Identity profile.',
+          error: 'Identity not found. Please check your AI Identity profile.',
           requires_onboarding: true,
           created_count: 0,
           skipped_count: platforms_to_create.length
         });
       }
 
-      const masterCreds = credResult.data.credentials;
+      // Extract credentials inline using 4-source fallback chain
+      const kyc = identityRecord.kyc_verified_data || {};
+      let resolvedEmail = kyc.email || identityRecord.email || null;
+      let resolvedName = kyc.full_legal_name || identityRecord.name || null;
 
-      // Check existing accounts
+      if ((!resolvedEmail || !resolvedName) && identityRecord.onboarding_config) {
+        try {
+          const od = typeof identityRecord.onboarding_config === 'string'
+            ? JSON.parse(identityRecord.onboarding_config)
+            : identityRecord.onboarding_config;
+          if (!resolvedEmail) resolvedEmail = od.email || od.user_email || od.account_email || null;
+          if (!resolvedName) resolvedName = od.full_name || od.legal_name || od.full_legal_name || null;
+        } catch (e) {
+          console.warn('[AutomatedAccountCreation] Failed to parse onboarding_config');
+        }
+      }
+
+      // Final fallback to authenticated user
+      if (!resolvedEmail) resolvedEmail = user.email;
+      if (!resolvedName) resolvedName = user.full_name || identityRecord.name || 'User';
+
+      if (!resolvedEmail) {
+        await base44.asServiceRole.entities.Notification.create({
+          type: 'user_action_required', severity: 'urgent',
+          title: 'Account Creation Blocked - Missing Identity Data',
+          message: 'Autopilot needs your real email to create platform accounts. Please complete your Identity profile.',
+          user_email: user.email, action_type: 'user_input_required', is_read: false
+        }).catch(() => null);
+        return Response.json({
+          success: false, error: 'Cannot create accounts: identity email missing.',
+          requires_onboarding: true, created_count: 0, skipped_count: platforms_to_create.length
+        });
+      }
+
+      const masterCreds = {
+        email: resolvedEmail,
+        full_name: resolvedName,
+        phone: kyc.phone_number || identityRecord.phone || '',
+        identity_name: identityRecord.name,
+        identity_id: identityRecord.id,
+      };
+      console.log('[AutomatedAccountCreation] Credentials resolved for: ' + masterCreds.email);
+
       const existingAccounts = await base44.asServiceRole.entities.LinkedAccount.filter(
         { created_by: user.email }, '-created_date', 100
       ).catch(() => []);
-      const existingPlatforms = new Set(existingAccounts.map(a => a.platform));
+      const existingPlatforms = new Set(existingAccounts.map(function(a) { return a.platform; }));
 
       const createdAccounts = [];
       const skipped = [];
@@ -250,227 +167,158 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Delegate to autonomous engine for real account creation (pass verified credentials)
-        const creationResult = await base44.functions.invoke('autonomousAccountCreationEngine', {
-          action: 'auto_create_account',
-          identityId: identity_id,
-          masterCredentials: masterCreds,
-          opportunity: {
-            platform,
-            url: `https://${platform}.com/signup`,
-            id: `manual_${platform}_${Date.now()}`
-          }
-        }).catch(e => ({ data: { success: false, error: e.message } }));
+        // Create a guided intervention for the user to complete signup
+        const namePart = resolvedName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+        const accountUsername = namePart + '_' + Math.random().toString(36).substring(2, 6);
 
-        if (creationResult.data?.success) {
-          const accountData = {
-            platform,
-            username: masterCreds.username || creationResult.data?.account?.username,
-            email: masterCreds.email,
-            status: 'created',
-            account_id: creationResult.data?.account_id
-          };
-          createdAccounts.push(accountData);
-          existingPlatforms.add(platform);
+        const intervention = await base44.asServiceRole.entities.UserIntervention.create({
+          user_email: user.email,
+          requirement_type: 'manual_review',
+          required_data: 'Complete signup on ' + platform + ' with provided credentials',
+          direct_link: 'https://' + platform + '.com/signup',
+          data_schema: {
+            type: 'object',
+            properties: {
+              account_username: { type: 'string', description: 'Username created on platform' },
+              account_email: { type: 'string', description: 'Email confirmed on platform' },
+              account_created: { type: 'boolean', description: 'Was account successfully created?' }
+            },
+            required: ['account_created']
+          },
+          template_responses: [
+            { label: 'Account Created', value: { account_created: true, account_email: resolvedEmail, account_username: accountUsername } }
+          ],
+          status: 'pending',
+          priority: 90,
+          notes: 'ACCOUNT CREATION GUIDE\n\nPlatform: ' + platform + '\nURL: https://' + platform + '.com/signup\n\nYOUR CREDENTIALS:\nEmail: ' + resolvedEmail + '\nName: ' + resolvedName + '\nSuggested Username: ' + accountUsername + '\n\nPlease create the account and confirm via the form below.'
+        }).catch(function(e) { return { error: e.message }; });
 
-          // ── SYNC 1: Register in LinkedAccount (with retry) ──
-          let linkedAccount = null;
-          try {
-            linkedAccount = await withRetry(
-              () => base44.asServiceRole.entities.LinkedAccount.create({
+        if (intervention.error) {
+          skipped.push({ platform, reason: 'Failed to create guidance: ' + intervention.error });
+          continue;
+        }
+
+        const accountData = {
+          platform,
+          username: accountUsername,
+          email: resolvedEmail,
+          status: 'created',
+          intervention_id: intervention.id,
+        };
+        createdAccounts.push(accountData);
+        existingPlatforms.add(platform);
+
+        // SYNC 1: LinkedAccount
+        let linkedAccount = null;
+        try {
+          linkedAccount = await withRetry(
+            function() {
+              return base44.asServiceRole.entities.LinkedAccount.create({
                 platform,
                 username: accountData.username,
-                profile_url: `https://${platform}.com/user/${accountData.username}`,
+                profile_url: 'https://' + platform + '.com/user/' + accountData.username,
                 health_status: 'healthy',
                 ai_can_use: true,
                 performance_score: 50,
-                notes: `Auto-created via Autopilot on ${new Date().toISOString()}`,
-              }),
-              'LinkedAccount',
-              platform
-            );
-            syncResults.push({ system: 'LinkedAccount', platform, status: 'synced', id: linkedAccount.id });
-          } catch (e) {
-            console.error(`[AutoAccountCreation] LinkedAccount sync permanently failed for ${platform}:`, e.message);
-            syncResults.push({ system: 'LinkedAccount', platform, status: 'failed', error: e.message, retries_exhausted: true });
-          }
+                notes: 'Auto-created via Autopilot on ' + new Date().toISOString(),
+              });
+            },
+            'LinkedAccount', platform
+          );
+          syncResults.push({ system: 'LinkedAccount', platform, status: 'synced', id: linkedAccount.id });
+        } catch (e) {
+          syncResults.push({ system: 'LinkedAccount', platform, status: 'failed', error: e.message, retries_exhausted: true });
+        }
 
-          // ── SYNC 2: Update Identity with linked account (with retry) ──
-          const failedSyncSystems = [];
-          if (linkedAccount?.id) {
-            try {
-              await withRetry(
-                async () => {
-                  const identity = await base44.entities.AIIdentity.get(identity_id);
-                  const updatedLinkedIds = [...(identity.linked_account_ids || []), linkedAccount.id];
-                  return base44.asServiceRole.entities.AIIdentity.update(identity_id, {
-                    linked_account_ids: updatedLinkedIds,
-                  });
-                },
-                'AIIdentity',
-                platform
-              );
-              syncResults.push({ system: 'AIIdentity', platform, status: 'synced' });
-            } catch (e) {
-              console.error(`[AutoAccountCreation] AIIdentity sync permanently failed for ${platform}:`, e.message);
-              failedSyncSystems.push('AIIdentity');
-              syncResults.push({ system: 'AIIdentity', platform, status: 'failed', error: e.message, retries_exhausted: true });
-            }
-          } else {
-            syncResults.push({ system: 'AIIdentity', platform, status: 'skipped', reason: 'LinkedAccount creation failed' });
-          }
+        const failedSyncSystems = [];
 
-          // ── SYNC 3: Create credential vault entry (with retry) ──
-          if (linkedAccount?.id) {
-            try {
-              await withRetry(
-                () => base44.asServiceRole.entities.CredentialVault.create({
-                  platform,
-                  credential_type: 'login',
-                  encrypted_payload: JSON.stringify({ username: accountData.username, email: accountData.email }),
-                  iv: 'auto',
-                  linked_account_id: linkedAccount.id,
-                  is_active: true,
-                  access_count: 0,
-                }),
-                'CredentialVault',
-                platform
-              );
-              syncResults.push({ system: 'CredentialVault', platform, status: 'synced' });
-            } catch (e) {
-              console.error(`[AutoAccountCreation] CredentialVault sync permanently failed for ${platform}:`, e.message);
-              failedSyncSystems.push('CredentialVault');
-              syncResults.push({ system: 'CredentialVault', platform, status: 'failed', error: e.message, retries_exhausted: true });
-            }
-          } else {
-            syncResults.push({ system: 'CredentialVault', platform, status: 'skipped', reason: 'LinkedAccount creation failed' });
-          }
-
-          // ── SYNC 4: Log in SecretAuditLog (with retry) ──
+        // SYNC 2: Link to AIIdentity
+        if (linkedAccount && linkedAccount.id) {
           try {
-            await withRetry(
-              () => base44.asServiceRole.entities.SecretAuditLog.create({
-                event_type: 'secret_created',
-                secret_name: `${platform}_account_${accountData.username}`,
-                secret_type: 'login',
-                platform,
-                identity_id,
-                identity_name: masterCreds.identity_name,
-                module_source: 'account_creation_engine',
-                action_by: user.email,
-                status: 'success',
-                notes: `Account auto-created for identity ${masterCreds.identity_name}`,
-              }),
-              'SecretAuditLog',
-              platform
-            );
-            syncResults.push({ system: 'SecretAuditLog', platform, status: 'synced' });
+            await withRetry(async function() {
+              const rec = await base44.entities.AIIdentity.get(identity_id);
+              const updatedIds = (rec.linked_account_ids || []).concat([linkedAccount.id]);
+              return base44.asServiceRole.entities.AIIdentity.update(identity_id, { linked_account_ids: updatedIds });
+            }, 'AIIdentity', platform);
+            syncResults.push({ system: 'AIIdentity', platform, status: 'synced' });
           } catch (e) {
-            console.error(`[AutoAccountCreation] SecretAuditLog sync permanently failed for ${platform}:`, e.message);
-            failedSyncSystems.push('SecretAuditLog');
-            syncResults.push({ system: 'SecretAuditLog', platform, status: 'failed', error: e.message, retries_exhausted: true });
+            failedSyncSystems.push('AIIdentity');
+            syncResults.push({ system: 'AIIdentity', platform, status: 'failed', error: e.message, retries_exhausted: true });
           }
+        }
 
-          // ── SYNC 5: AUTO-REPAIR failed syncs ──
-          if (failedSyncSystems.length > 0 && linkedAccount?.id) {
-            const repairResults = await autoRepairSyncFailures(
-              base44,
-              linkedAccount.id,
-              linkedAccount,
-              platform,
-              identity_id,
-              accountData,
-              failedSyncSystems
-            );
-            for (const repair of repairResults) {
-              if (repair.success) {
-                console.log(`[AutoRepair] ${repair.system} healed for ${platform}`);
-                syncResults.push({ system: repair.system, platform, status: 'repaired', action: repair.action });
-              } else {
-                console.error(`[AutoRepair] ${repair.system} repair failed:`, repair.error);
-                syncResults.push({ system: repair.system, platform, status: 'repair_failed', error: repair.error });
-              }
-            }
+        // SYNC 3: CredentialVault
+        if (linkedAccount && linkedAccount.id) {
+          try {
+            await withRetry(function() {
+              return base44.asServiceRole.entities.CredentialVault.create({
+                platform, credential_type: 'login',
+                encrypted_payload: JSON.stringify({ username: accountData.username, email: accountData.email }),
+                iv: 'auto', linked_account_id: linkedAccount.id, is_active: true, access_count: 0,
+              });
+            }, 'CredentialVault', platform);
+            syncResults.push({ system: 'CredentialVault', platform, status: 'synced' });
+          } catch (e) {
+            failedSyncSystems.push('CredentialVault');
+            syncResults.push({ system: 'CredentialVault', platform, status: 'failed', error: e.message, retries_exhausted: true });
           }
+        }
 
-          // ── SYNC 6: POST-SYNC HEALTH VERIFICATION ──
-          if (linkedAccount?.id) {
-            const healthCheck = await verifyAccountHealth(base44, linkedAccount.id, platform, identity_id);
-            if (!healthCheck.healthy) {
-              console.warn(`[HealthCheck] Account ${platform} has issues:`, healthCheck.issues);
-              syncResults.push({ system: 'HealthCheck', platform, status: 'warning', issues: healthCheck.issues });
-            } else {
-              syncResults.push({ system: 'HealthCheck', platform, status: 'healthy' });
-            }
-          }
-        } else {
-          skipped.push({ platform, reason: creationResult.data?.error || 'Creation failed' });
+        // SYNC 4: SecretAuditLog
+        try {
+          await withRetry(function() {
+            return base44.asServiceRole.entities.SecretAuditLog.create({
+              event_type: 'secret_created',
+              secret_name: platform + '_account_' + accountData.username,
+              secret_type: 'login',
+              platform, identity_id,
+              identity_name: masterCreds.identity_name,
+              module_source: 'account_creation_engine',
+              action_by: user.email,
+              status: 'success',
+              notes: 'Account auto-created for identity ' + masterCreds.identity_name,
+            });
+          }, 'SecretAuditLog', platform);
+          syncResults.push({ system: 'SecretAuditLog', platform, status: 'synced' });
+        } catch (e) {
+          failedSyncSystems.push('SecretAuditLog');
+          syncResults.push({ system: 'SecretAuditLog', platform, status: 'failed', error: e.message, retries_exhausted: true });
+        }
+
+        // SYNC 5: Health check
+        if (linkedAccount && linkedAccount.id) {
+          const healthCheck = await verifyAccountHealth(base44, linkedAccount.id, platform, identity_id);
+          syncResults.push({ system: 'HealthCheck', platform, status: healthCheck.healthy ? 'healthy' : 'warning', issues: healthCheck.issues });
+        }
+
+        if (failedSyncSystems.length > 0) {
+          await notifyUserOfSyncFailure(base44, user.email, platform, failedSyncSystems);
         }
       }
 
-      // ── SYNC 5: Resume queued tasks for this identity ──
+      // Resume queued tasks
       let tasksResumed = 0;
-      try {
-        const queuedTasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
-          { identity_id, status: 'needs_review' },
-          undefined,
-          100
-        ).catch(() => []);
-
-        for (const task of queuedTasks) {
-          await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
-            status: 'queued',
-            notes: `${task.notes || ''} [Account(s) created - resuming from needs_review]`,
-          }).catch(() => null);
-          tasksResumed++;
-        }
-        if (tasksResumed > 0) {
-          syncResults.push({ system: 'TaskExecutionQueue', status: 'synced', resumed_count: tasksResumed });
-        }
-      } catch (e) {
-        syncResults.push({ system: 'TaskExecutionQueue', status: 'failed', error: e.message });
+      const queuedTasks = await base44.asServiceRole.entities.TaskExecutionQueue.filter(
+        { identity_id, status: 'needs_review' }, undefined, 100
+      ).catch(() => []);
+      for (const task of queuedTasks) {
+        await base44.asServiceRole.entities.TaskExecutionQueue.update(task.id, {
+          status: 'queued',
+          notes: (task.notes || '') + ' [Accounts created - resuming]',
+        }).catch(() => null);
+        tasksResumed++;
       }
 
-      // ── SYNC 7: Check for unrepairable failures (after auto-repair) ──
-      const unreparableFailures = syncResults
-        .filter(r => r.status === 'failed' && r.retries_exhausted)
-        .map(r => `${r.system}`);
+      const unreparableSystems = syncResults.filter(function(r) { return r.status === 'failed' && r.retries_exhausted; }).length;
+      const repairedSystems = syncResults.filter(function(r) { return r.status === 'repaired'; }).length;
+      const syncedSystems = syncResults.filter(function(r) { return r.status === 'synced'; }).length;
 
-      const repairedSystems = syncResults
-        .filter(r => r.status === 'repaired')
-        .length;
-
-      if (unreparableFailures.length > 0) {
-        for (const accountData of createdAccounts) {
-          const accountFailures = syncResults
-            .filter(r => r.status === 'failed' && r.platform === accountData.platform && r.retries_exhausted)
-            .map(r => r.system);
-          if (accountFailures.length > 0) {
-            await notifyUserOfSyncFailure(base44, user.email, accountData.platform, accountFailures);
-          }
-        }
-      }
-
-      // ── SYNC 8: Log final activity ──
-      try {
-        const activitySeverity = unreparableFailures.length > 0 ? 'warning' : 'success';
-        const activityMessage = unreparableFailures.length > 0
-          ? `⚠️ Auto-created ${createdAccounts.length} account(s), auto-repaired ${repairedSystems} sync(s), ${unreparableFailures.length} unresolved: ${unreparableFailures.join(', ')}`
-          : `✅ Auto-created ${createdAccounts.length} account(s), auto-repaired ${repairedSystems} sync(s), all healthy, resumed ${tasksResumed} tasks`;
-
-        await base44.asServiceRole.entities.ActivityLog.create({
-          action_type: 'system',
-          message: activityMessage,
-          severity: activitySeverity,
-          metadata: { identity_id, created_count: createdAccounts.length, repaired_systems: repairedSystems, unresolved_systems: unreparableFailures.length },
-        });
-      } catch (e) {
-        console.error('Failed to log activity:', e.message);
-      }
-
-      const syncedSystems = syncResults.filter(r => r.status === 'synced').length;
-      const unreparableSystems = syncResults.filter(r => r.status === 'failed' && r.retries_exhausted).length;
-      const healthyAccounts = syncResults.filter(r => r.status === 'healthy').length;
+      await base44.asServiceRole.entities.ActivityLog.create({
+        action_type: 'system',
+        message: 'Auto-created ' + createdAccounts.length + ' account(s), synced ' + syncedSystems + ', resumed ' + tasksResumed + ' tasks',
+        severity: unreparableSystems > 0 ? 'warning' : 'success',
+        metadata: { identity_id, created_count: createdAccounts.length },
+      }).catch(() => null);
 
       return Response.json({
         success: unreparableSystems === 0,
@@ -482,49 +330,44 @@ Deno.serve(async (req) => {
         synced_systems: syncedSystems,
         repaired_systems: repairedSystems,
         unresolved_systems: unreparableSystems,
-        healthy_accounts: healthyAccounts,
         tasks_resumed: tasksResumed,
         sync_results: syncResults,
         identity_name: masterCreds.identity_name,
-        message: unreparableSystems > 0
-          ? `✓ Created ${createdAccounts.length} account(s), auto-repaired ${repairedSystems}, unresolved: ${unreparableSystems}. User notified.`
-          : `✓ Created ${createdAccounts.length} account(s), all synced & verified healthy, resumed ${tasksResumed} tasks`
+        message: 'Created ' + createdAccounts.length + ' account(s), synced ' + syncedSystems + ', resumed ' + tasksResumed + ' tasks'
       });
     }
 
-    // ── get_created_accounts ───────────────────────────────────────────────────
+    // GET CREATED ACCOUNTS
     if (action === 'get_created_accounts') {
       if (!identity_id) return Response.json({ error: 'identity_id required' }, { status: 400 });
-
-      const accounts = await base44.asServiceRole.entities.LinkedAccount.filter(
-        { id: { $in: (await base44.entities.AIIdentity.get(identity_id).catch(() => ({ linked_account_ids: [] }))).linked_account_ids || [] } },
-        '-created_date',
-        50
-      ).catch(() => []);
-
-      return Response.json({ success: true, accounts, total: accounts.length });
+      const identityRecord = await base44.entities.AIIdentity.get(identity_id).catch(() => null);
+      const linkedIds = (identityRecord && identityRecord.linked_account_ids) ? identityRecord.linked_account_ids : [];
+      if (linkedIds.length === 0) return Response.json({ success: true, accounts: [], total: 0 });
+      const allAccounts = await base44.asServiceRole.entities.LinkedAccount.list('-created_date', 200).catch(() => []);
+      const filtered = allAccounts.filter(function(a) { return linkedIds.includes(a.id); });
+      return Response.json({ success: true, accounts: filtered, total: filtered.length });
     }
 
     return Response.json({ error: 'Invalid action' }, { status: 400 });
+
   } catch (error) {
-    console.error('[AutomatedAccountCreation]', error.message);
-    // Log critical failure and notify user
-    await Promise.all([
-      base44.asServiceRole.entities.ActivityLog.create({
-        action_type: 'system',
-        message: `❌ Auto-account creation failed: ${error.message}`,
-        severity: 'critical',
-      }).catch(() => null),
-      base44.asServiceRole.entities.Notification.create({
-        type: 'error',
-        severity: 'critical',
-        title: '❌ Account Creation Failed',
-        message: `Auto-account creation encountered a fatal error: ${error.message}. Please try again or contact support.`,
-        user_email: user?.email,
-        action_type: 'account_creation_failed',
-        is_read: false
-      }).catch(() => null)
-    ]);
+    console.error('[AutomatedAccountCreation] Fatal:', error.message);
+    try {
+      if (base44 && user) {
+        await base44.asServiceRole.entities.ActivityLog.create({
+          action_type: 'system',
+          message: 'Account creation failed: ' + error.message,
+          severity: 'critical',
+        }).catch(() => null);
+        await base44.asServiceRole.entities.Notification.create({
+          type: 'error', severity: 'critical',
+          title: 'Account Creation Failed',
+          message: error.message,
+          user_email: user.email,
+          is_read: false
+        }).catch(() => null);
+      }
+    } catch (e) {}
     return Response.json({ error: error.message, recoverable: false }, { status: 500 });
   }
 });

@@ -224,7 +224,7 @@ export default function Chat() {
         {/* Help Section */}
         <div className="mt-4 p-3 rounded-lg bg-slate-900/50 border border-slate-800">
           <p className="text-xs text-slate-400">
-            💡 <strong>Tip:</strong> Natural language commands are automatically routed to APEX (Autopilot), CIPHER (Crypto/NED), MERCH (Commerce), or SCOUT (Discovery). You can also manually target a department above.
+            💡 <strong>Tip:</strong> Natural language commands are automatically routed to <strong>NED</strong> (Crypto &amp; Blockchain), <strong>Autopilot</strong> (Task Execution), or <strong>VIPZ</strong> (Digital Commerce &amp; Marketing). You can also manually target a department above.
           </p>
         </div>
       </div>

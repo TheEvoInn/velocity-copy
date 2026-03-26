@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Send, Zap, Bot, Sparkles, HelpCircle } from 'lucide-react';
 
 const COMMAND_SUGGESTIONS = [
-  { text: 'Scale marketing spend in commerce by 20%', agent: 'vipz', icon: '📈' },
-  { text: 'Adjust crypto exposure', agent: 'ned', icon: '💰' },
+  { text: 'Scale digital commerce storefront by 20%', agent: 'vipz', icon: '📈' },
+  { text: 'Adjust crypto staking exposure', agent: 'ned', icon: '💰' },
   { text: 'Execute and complete high-value tasks', agent: 'autopilot', icon: '⚡' },
   { text: 'Scan for new staking opportunities', agent: 'ned', icon: '📊' },
   { text: 'Generate and launch email campaigns', agent: 'vipz', icon: '✉️' },
   { text: 'Claim all eligible airdrops', agent: 'ned', icon: '🎁' },
+  { text: 'Discover digital resell products', agent: 'vipz', icon: '🛒' },
+  { text: 'Scan and queue new opportunities', agent: 'autopilot', icon: '🔍' },
 ];
 
 export default function CommandInput({ onSendCommand, isLoading, agents }) {
@@ -52,9 +54,9 @@ export default function CommandInput({ onSendCommand, isLoading, agents }) {
 
   const getAgentLabel = (agent) => {
     const labels = {
-      ned: '🔷 NED (Crypto)',
+      ned: '🔷 NED (Crypto & Blockchain)',
       autopilot: '⚡ Autopilot (Execution)',
-      vipz: '📱 VIPZ (Marketing)'
+      vipz: '📱 VIPZ (Commerce & Marketing)'
     };
     return labels[agent] || agent;
   };
@@ -140,7 +142,7 @@ export default function CommandInput({ onSendCommand, isLoading, agents }) {
       {/* Helper Text */}
       <p className="text-xs text-slate-500 flex items-center gap-2">
         <HelpCircle className="w-3 h-3" />
-        Select an agent or type naturally. Commands are routed to the appropriate autonomous agent.
+        Commands are routed to NED (Crypto), Autopilot (Execution), or VIPZ (Commerce). Select an agent above or type naturally.
       </p>
     </div>
   );

@@ -4,7 +4,7 @@
  * Supports NED (crypto), Autopilot (execution), VIPZ (marketing)
  */
 
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 Deno.serve(async (req) => {
   try {
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
         vipz: null
       };
 
-      // Check NED (Crypto)
+      // Check NED — Unified crypto + blockchain agent
       const nedIdentities = await base44.entities.AIIdentity.filter(
         { created_by: user.email, role_label: 'NED' },
         '-last_used_at',
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
           name: 'NED',
           status: nedIdentities[0].is_active ? 'active' : 'inactive',
           last_active: nedIdentities[0].last_used_at,
-          capabilities: ['execute_trades', 'stake_tokens', 'claim_airdrops', 'deploy_mining']
+          capabilities: ['execute_trades', 'stake_tokens', 'claim_airdrops', 'deploy_mining', 'crypto_arbitrage', 'blockchain_execution']
         };
       }
 
@@ -129,11 +129,12 @@ Deno.serve(async (req) => {
           name: 'Autopilot',
           status: autopilotConfig[0].autopilot_enabled ? 'active' : 'inactive',
           daily_target: autopilotConfig[0].autopilot_enabled ? autopilotConfig[0].ai_daily_target : 0,
+          wallet_balance: autopilotConfig[0].wallet_balance || 0,
           capabilities: ['auto_apply', 'scan_opportunities', 'execute_tasks', 'manage_identities']
         };
       }
 
-      // Check VIPZ (Marketing)
+      // Check VIPZ — Unified digital commerce + marketing agent
       const resellConfig = await base44.entities.ResellAutopilotConfig.filter(
         { created_by: user.email },
         '-created_date',
@@ -144,9 +145,23 @@ Deno.serve(async (req) => {
           name: 'VIPZ',
           status: resellConfig[0].autopilot_enabled ? 'active' : 'inactive',
           target_revenue: resellConfig[0].target_monthly_revenue,
-          capabilities: ['generate_pages', 'send_emails', 'scale_campaigns', 'track_revenue']
+          capabilities: ['generate_pages', 'send_emails', 'scale_campaigns', 'track_revenue', 'digital_reselling', 'landing_pages']
         };
       }
+
+      // Linked accounts summary
+      const accounts = await base44.entities.LinkedAccount.filter(
+        { created_by: user.email },
+        '-performance_score',
+        50
+      ).catch(() => []);
+      agents.accounts = {
+        name: 'Accounts',
+        status: accounts.filter(a => a.health_status === 'healthy').length > 0 ? 'active' : 'inactive',
+        healthy_count: accounts.filter(a => a.health_status === 'healthy').length,
+        total_count: accounts.length,
+        capabilities: ['auto_apply', 'account_health', 'platform_routing', 'credential_management']
+      };
 
       return Response.json({
         status: 'success',
@@ -167,29 +182,29 @@ Deno.serve(async (req) => {
  */
 function parseIntent(instruction) {
   const keywords = {
-    // NED (Crypto) keywords
-    crypto: ['crypto', 'stake', 'airdrop', 'yield', 'mining', 'ethereum', 'bitcoin', 'token', 'defi'],
+    // NED (Crypto) keywords — unified NED agent
+    crypto: ['crypto', 'stake', 'staking', 'airdrop', 'yield', 'mining', 'ethereum', 'bitcoin', 'token', 'defi', 'blockchain', 'nft', 'wallet', 'arbitrage'],
     // Autopilot (Execution) keywords
-    execution: ['execute', 'apply', 'submit', 'complete', 'task', 'opportunity', 'scan'],
-    // VIPZ (Marketing) keywords
-    marketing: ['marketing', 'storefront', 'page', 'email', 'campaign', 'commerce', 'sales', 'convert'],
+    execution: ['execute', 'apply', 'submit', 'complete', 'task', 'opportunity', 'scan', 'automate', 'queue'],
+    // VIPZ (Commerce + Marketing) keywords — unified VIPZ agent
+    commerce: ['marketing', 'storefront', 'page', 'email', 'campaign', 'commerce', 'sales', 'convert', 'resell', 'product', 'landing', 'digital', 'shop'],
     // General multi-agent keywords
-    general: ['scale', 'adjust', 'optimize', 'increase', 'decrease', 'manage', 'orchestrate']
+    general: ['scale', 'adjust', 'optimize', 'increase', 'decrease', 'manage', 'orchestrate', 'all', 'platform']
   };
 
   let recommendedAgent = 'autopilot'; // default
   let type = 'general';
 
-  for (const [agent, words] of Object.entries(keywords)) {
+  for (const [domain, words] of Object.entries(keywords)) {
     for (const word of words) {
       if (instruction.includes(word)) {
-        if (agent === 'crypto') recommendedAgent = 'ned';
-        if (agent === 'execution') recommendedAgent = 'autopilot';
-        if (agent === 'marketing') recommendedAgent = 'vipz';
-        if (agent !== 'general') type = agent;
+        if (domain === 'crypto') { recommendedAgent = 'ned'; type = 'crypto'; }
+        if (domain === 'execution') { recommendedAgent = 'autopilot'; type = 'execution'; }
+        if (domain === 'commerce') { recommendedAgent = 'vipz'; type = 'commerce'; }
         break;
       }
     }
+    if (type !== 'general') break;
   }
 
   return {
@@ -259,7 +274,7 @@ async function buildCommandPlan(instruction, intent, agent, userEmail, base44) {
   }
 
   if (agent === 'vipz') {
-    if (instLower.includes('scale') || instLower.includes('marketing')) {
+    if (instLower.includes('scale') || instLower.includes('marketing') || instLower.includes('resell')) {
       actions.push({
         action: 'analyze_storefront_performance',
         parameters: {}
@@ -281,6 +296,16 @@ async function buildCommandPlan(instruction, intent, agent, userEmail, base44) {
       actions.push({
         action: 'schedule_email_sequences',
         parameters: {}
+      });
+    }
+    if (instLower.includes('product') || instLower.includes('digital') || instLower.includes('storefront')) {
+      actions.push({
+        action: 'discover_digital_resell_opportunities',
+        parameters: { instruction }
+      });
+      actions.push({
+        action: 'generate_product_landing_page',
+        parameters: { auto_publish: true }
       });
     }
   }

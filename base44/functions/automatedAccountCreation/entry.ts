@@ -163,6 +163,18 @@ Deno.serve(async (req) => {
         const platform = typeof platformData === 'string' ? platformData : platformData.platform;
 
         if (existingPlatforms.has(platform)) {
+          // Ensure existing account is linked to this identity
+          const existingAcct = existingAccounts.find(function(a) { return a.platform === platform; });
+          if (existingAcct && identityRecord) {
+            const currentIds = identityRecord.linked_account_ids || [];
+            if (!currentIds.includes(existingAcct.id)) {
+              await base44.asServiceRole.entities.AIIdentity.update(identity_id, {
+                linked_account_ids: currentIds.concat([existingAcct.id])
+              }).catch(() => null);
+              // Keep local copy in sync for subsequent iterations
+              identityRecord.linked_account_ids = currentIds.concat([existingAcct.id]);
+            }
+          }
           skipped.push({ platform, reason: 'Account already exists' });
           continue;
         }
@@ -342,10 +354,28 @@ Deno.serve(async (req) => {
       if (!identity_id) return Response.json({ error: 'identity_id required' }, { status: 400 });
       const identityRecord = await base44.entities.AIIdentity.get(identity_id).catch(() => null);
       const linkedIds = (identityRecord && identityRecord.linked_account_ids) ? identityRecord.linked_account_ids : [];
-      if (linkedIds.length === 0) return Response.json({ success: true, accounts: [], total: 0 });
-      const allAccounts = await base44.asServiceRole.entities.LinkedAccount.list('-created_date', 200).catch(() => []);
-      const filtered = allAccounts.filter(function(a) { return linkedIds.includes(a.id); });
-      return Response.json({ success: true, accounts: filtered, total: filtered.length });
+
+      // Dual-path lookup: by linked_account_ids AND by created_by (catches accounts not yet linked)
+      const allUserAccounts = await base44.asServiceRole.entities.LinkedAccount.filter(
+        { created_by: user.email }, '-created_date', 200
+      ).catch(() => []);
+
+      const seen = new Set();
+      const merged = [];
+      for (const acct of allUserAccounts) {
+        if (!seen.has(acct.id)) { seen.add(acct.id); merged.push(acct); }
+      }
+      // Also include any explicitly linked that weren't in created_by results
+      if (linkedIds.length > 0) {
+        const linkedAccounts = await base44.asServiceRole.entities.LinkedAccount.list('-created_date', 200).catch(() => []);
+        for (const acct of linkedAccounts) {
+          if (linkedIds.includes(acct.id) && !seen.has(acct.id)) {
+            seen.add(acct.id);
+            merged.push(acct);
+          }
+        }
+      }
+      return Response.json({ success: true, accounts: merged, total: merged.length });
     }
 
     return Response.json({ error: 'Invalid action' }, { status: 400 });

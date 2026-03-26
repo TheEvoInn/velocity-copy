@@ -18,6 +18,24 @@ Deno.serve(async (req) => {
 
     const { action, campaign_id, storefront_id, optimization_type } = await req.json();
 
+    if (action === 'get_status') {
+      const storefronts = await base44.asServiceRole.entities.DigitalStorefront.filter({ created_by: user.email }, '-created_date', 10).catch(() => []);
+      const sequences = await base44.asServiceRole.entities.EmailSequence.filter({ created_by: user.email }, '-created_date', 10).catch(() => []);
+      const leads = await base44.asServiceRole.entities.EmailCampaignLead.filter({ created_by: user.email }, '-created_date', 100).catch(() => []);
+      const config = await base44.asServiceRole.entities.ResellAutopilotConfig.filter({ created_by: user.email }, '-created_date', 1).catch(() => []);
+      return Response.json({
+        success: true,
+        agent: 'VIPZ',
+        status: config[0]?.autopilot_enabled ? 'active' : 'standby',
+        storefronts: storefronts.length,
+        email_sequences: sequences.length,
+        total_leads: leads.length,
+        active_campaigns: sequences.filter(s => s.schedule_status === 'scheduled').length,
+        target_revenue: config[0]?.target_monthly_revenue || 0,
+        capabilities: ['generate_landing_page', 'auto_schedule_campaign', 'optimize_campaign', 'create_ab_test', 'auto_segment_audience']
+      });
+    }
+
     if (action === 'generate_landing_page') {
       return await generateLandingPage(base44, user, campaign_id);
     }

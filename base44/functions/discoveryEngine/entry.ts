@@ -477,8 +477,8 @@ Deno.serve(async (req) => {
       // Phase 1: Curated base library
       let allOpportunities = getCuratedOpportunities(userEmail);
 
-      // Phase 2: AI-powered internet scan — prioritized by user skills
-      const hasLLM = !!(GEMINI_KEY || OPENAI_KEY);
+      // Phase 2: AI-powered internet scan — always available via Base44 InvokeLLM
+      const hasLLM = true; // Base44 InvokeLLM is always available via asServiceRole
       const prioritizedCats = prioritizeCategoriesByUser(userSkills, preferredCategories);
       const scanCategories = categories.length > 0 ? categories : prioritizedCats;
 

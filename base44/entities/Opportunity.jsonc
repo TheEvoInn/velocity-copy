@@ -1,0 +1,195 @@
+{
+  "name": "Opportunity",
+  "type": "object",
+  "rls": {
+    "create": true,
+    "read": true,
+    "update": true,
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  },
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Short title of the opportunity"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of what the opportunity is"
+    },
+    "url": {
+      "type": "string",
+      "description": "Direct link to opportunity for Agent Worker execution"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "arbitrage",
+        "service",
+        "lead_gen",
+        "digital_flip",
+        "auction",
+        "market_inefficiency",
+        "trend_surge",
+        "freelance",
+        "resale",
+        "grant",
+        "contest",
+        "giveaway"
+      ],
+      "description": "Category of profit opportunity"
+    },
+    "opportunity_type": {
+      "type": "string",
+      "enum": [
+        "job",
+        "grant",
+        "contest",
+        "giveaway",
+        "raffle",
+        "signup",
+        "application",
+        "survey",
+        "other"
+      ],
+      "description": "Type for agent execution"
+    },
+    "platform": {
+      "type": "string",
+      "description": "Platform/service (upwork, fiverr, grant.gov, etc.)"
+    },
+    "profit_estimate_low": {
+      "type": "number",
+      "description": "Low end of estimated profit in USD"
+    },
+    "profit_estimate_high": {
+      "type": "number",
+      "description": "High end of estimated profit in USD"
+    },
+    "capital_required": {
+      "type": "number",
+      "default": 0,
+      "description": "Capital needed to execute this opportunity"
+    },
+    "velocity_score": {
+      "type": "number",
+      "description": "Score 1-100 for how fast this can generate income"
+    },
+    "risk_score": {
+      "type": "number",
+      "description": "Score 1-100 for risk level (100 = highest risk)"
+    },
+    "overall_score": {
+      "type": "number",
+      "description": "Combined priority score 1-100"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "reviewing",
+        "queued",
+        "executing",
+        "submitted",
+        "completed",
+        "expired",
+        "dismissed",
+        "failed"
+      ],
+      "default": "new"
+    },
+    "time_sensitivity": {
+      "type": "string",
+      "enum": [
+        "immediate",
+        "hours",
+        "days",
+        "weeks",
+        "ongoing"
+      ],
+      "description": "How time-sensitive this opportunity is"
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When opportunity expires"
+    },
+    "required_identity_type": {
+      "type": "string",
+      "description": "Preferred identity type"
+    },
+    "identity_id": {
+      "type": "string",
+      "description": "AI identity assigned to this opportunity"
+    },
+    "identity_name": {
+      "type": "string"
+    },
+    "required_documents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Documents needed"
+    },
+    "execution_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string"
+          },
+          "completed": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "source": {
+      "type": "string",
+      "description": "Where this opportunity was found"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "auto_execute": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether Autopilot should execute this automatically"
+    },
+    "task_execution_id": {
+      "type": "string",
+      "description": "Linked TaskExecutionQueue ID"
+    },
+    "proposal_id": {
+      "type": "string",
+      "description": "Generated proposal ID if applicable"
+    },
+    "submission_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "submission_confirmed": {
+      "type": "boolean",
+      "default": false
+    },
+    "confirmation_number": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "category"
+  ]
+}

@@ -11,6 +11,27 @@ Deno.serve(async (req) => {
 
     const { action, payload } = await req.json();
 
+    if (action === 'get_status') {
+      const wallets = await base44.entities.CryptoWallet.filter({ created_by: user.email }, '-created_date', 10).catch(() => []);
+      const positions = await base44.entities.StakingPosition.filter({ created_by: user.email, status: 'active' }, '-created_date', 20).catch(() => []);
+      const mining = await base44.entities.MiningOperation.filter({ created_by: user.email, status: 'active' }, '-created_date', 10).catch(() => []);
+      const opps = await base44.entities.CryptoOpportunity.filter({ created_by: user.email }, '-created_date', 20).catch(() => []);
+      const totalStaked = positions.reduce((s, p) => s + (p.value_usd_at_stake || 0), 0);
+      const dailyYield = positions.reduce((s, p) => s + (p.daily_reward_usd || 0), 0) + mining.reduce((s, m) => s + (m.daily_revenue_usd || 0), 0);
+      return Response.json({
+        success: true,
+        agent: 'NED',
+        status: 'active',
+        wallets: wallets.length,
+        staking_positions: positions.length,
+        mining_operations: mining.length,
+        opportunities: opps.length,
+        total_staked_usd: totalStaked,
+        estimated_daily_yield: dailyYield,
+        capabilities: ['scan_opportunities', 'execute_airdrop', 'setup_mining', 'setup_staking', 'claim_rewards', 'scan_arbitrage', 'generate_profit_report']
+      });
+    }
+
     if (action === 'scan_opportunities') {
       return await handleOpportunityScan(base44, user, payload);
     } else if (action === 'evaluate_opportunity') {

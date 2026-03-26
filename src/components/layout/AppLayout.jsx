@@ -27,7 +27,7 @@ const DEPARTMENTS = [
     activeBorder: 'border-cyan-400/60',
     textActive: 'text-cyan-300',
     planet: '🌐',
-    ai: 'ARIA',
+    ai: 'CMD',
   },
   {
     id: 'identity',
@@ -83,7 +83,7 @@ const DEPARTMENTS = [
     activeBorder: 'border-pink-400/60',
     textActive: 'text-pink-300',
     planet: '🛍️',
-    ai: 'MERCH',
+    ai: 'VIPZ',
   },
   {
     id: 'crypto',
@@ -97,7 +97,7 @@ const DEPARTMENTS = [
     activeBorder: 'border-teal-400/60',
     textActive: 'text-teal-300',
     planet: '🚀',
-    ai: 'CIPHER',
+    ai: 'NED',
   },
 ];
 

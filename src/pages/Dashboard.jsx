@@ -159,7 +159,7 @@ export default function Dashboard() {
       subtitle: 'Autonomous 24/7 execution — tasks, workflows, strategies, all in one',
       color: '#fbbf24', stat: activeTasks > 0 ? activeTasks : (isAutopilotOn ? 'ON' : 'OFF'),
       statLabel: activeTasks > 0 ? 'active tasks' : 'status', active: isAutopilotOn,
-      aiLabel: 'APEX',
+      aiLabel: 'AUTOPILOT',
     },
     {
       to: '/Discovery', icon: Search, title: 'DISCOVERY HUB',
@@ -183,13 +183,13 @@ export default function Dashboard() {
       to: '/DigitalResellers', icon: ShoppingCart, title: 'COMMERCE HUB',
       subtitle: 'Digital storefronts, product sourcing, and automated commerce',
       color: '#ec4899', stat: null, statLabel: '', active: false,
-      aiLabel: 'MERCH',
+      aiLabel: 'VIPZ',
     },
     {
       to: '/CryptoAutomation', icon: Coins, title: 'CRYPTO HUB',
       subtitle: 'Wallets, NED integration, yield strategies, and crypto execution',
       color: '#00ffd9', stat: null, statLabel: '', active: false,
-      aiLabel: 'CIPHER',
+      aiLabel: 'NED',
     },
     {
       to: '/StarshipBridge', icon: Rocket, title: 'STARSHIP BRIDGE',
@@ -450,7 +450,7 @@ export default function Dashboard() {
 
         {/* ── FOOTER ── */}
         <div className="mt-8 flex items-center justify-between text-xs font-mono text-slate-700">
-          <span>VELO AI ENGINE v3.0 · Six-Department Architecture · Per-User Autonomous</span>
+          <span>VELO AI ENGINE v3.0 · Agents: NED · VIPZ · Autopilot · Per-User Autonomous</span>
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>ALL SYSTEMS OPERATIONAL</span>

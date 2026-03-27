@@ -3,6 +3,7 @@
  * AI Assistant: APEX
  * Master switch, task queue, execution logs, and workflow management
  */
+import { useActiveIdentity } from '@/hooks/useUserData';
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -24,7 +25,7 @@ export default function VeloAutopilotControl() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [dailyTarget, setDailyTarget] = useState(100);
   const [riskTolerance, setRiskTolerance] = useState('moderate');
-  const activeIdentity = null; // Placeholder for active identity from sync hook
+  const { data: activeIdentity } = useActiveIdentity(); // Placeholder for active identity from sync hook
 
   const { data: goals } = useQuery({
     queryKey: ['userGoals', user?.email],

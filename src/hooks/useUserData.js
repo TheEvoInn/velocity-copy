@@ -10,17 +10,17 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/Layout';
 
 export function useCurrentUser() {
-  const { user } = useAuth();
-  // Return useQuery-compatible shape so every downstream hook works unchanged
-  return {
-    data: user,
-    isLoading: false,
-    isError: false,
-    error: null,
-    isSuccess: !!user,
-    refetch: async () => user,
-  };
+  const auth = useAuth();
+  const ctxUser = auth?.user || null;
+
+  return useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => ctxUser ? Promise.resolve(ctxUser) : base44.auth.me(),
+    staleTime: ctxUser ? Infinity : 60000,
+    initialData: ctxUser || undefined,
+  });
 }
+
 
 export function useUserProfile() {
   const { data: user } = useCurrentUser();

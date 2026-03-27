@@ -79,7 +79,6 @@ const AuthenticatedApp = () => {
         <Route path="/StarshipBridge" element={<StarshipBridge />} />
         <Route path="/Control" element={<Control />} />
         <Route path="/AutoPilot" element={<UnifiedAutopilot />} />
-        <Route path="/Execution" element={<UnifiedAutopilot />} />
         <Route path="/Discovery" element={<Discovery />} />
         <Route path="/ProactiveScout" element={<ProactiveScout />} />
         <Route path="/WorkDiscovery" element={<WorkDiscovery />} />

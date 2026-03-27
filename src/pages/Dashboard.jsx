@@ -155,7 +155,7 @@ export default function Dashboard() {
   // Six core department modules
   const MODULES = [
     {
-      to: '/VeloAutopilotControl', icon: Bot, title: 'AUTOPILOT HUB',
+      to: '/AutoPilot', icon: Bot, title: 'AUTOPILOT HUB',
       subtitle: 'Autonomous 24/7 execution — tasks, workflows, strategies, all in one',
       color: '#fbbf24', stat: activeTasks > 0 ? activeTasks : (isAutopilotOn ? 'ON' : 'OFF'),
       statLabel: activeTasks > 0 ? 'active tasks' : 'status', active: isAutopilotOn,
@@ -168,13 +168,13 @@ export default function Dashboard() {
       aiLabel: 'SCOUT',
     },
     {
-      to: '/VeloIdentityHub', icon: Users, title: 'IDENTITY HUB',
+      to: '/IdentityManager', icon: Users, title: 'IDENTITY HUB',
       subtitle: 'Personas, KYC, credentials, and platform account management',
       color: '#818cf8', stat: null, statLabel: '', active: false,
       aiLabel: 'NEXUS',
     },
     {
-      to: '/VeloFinanceCommand', icon: Wallet, title: 'FINANCE COMMAND',
+      to: '/WalletDashboard', icon: Wallet, title: 'FINANCE COMMAND',
       subtitle: 'Real-time wallet, earnings, payouts, and transaction logs',
       color: '#10b981', stat: `$${todayEarnings.toFixed(0)}`, statLabel: 'today', active: todayEarnings > 0,
       aiLabel: 'VAULT',
@@ -197,7 +197,7 @@ export default function Dashboard() {
       color: '#b537f2', stat: null, statLabel: '', active: false,
     },
     {
-      to: '/PendingInterventions', icon: AlertTriangle, title: 'INTERVENTIONS',
+      to: '/Execution', icon: AlertTriangle, title: 'INTERVENTIONS',
       subtitle: 'Autopilot blocked — provide missing data, credentials, or decisions',
       color: '#f97316', stat: pendingInterventions, statLabel: 'pending', active: pendingInterventions > 0,
     },
@@ -230,7 +230,8 @@ export default function Dashboard() {
                 <p className="text-[10px] text-slate-600 font-mono tracking-widest">COMMAND HUB · SIX DEPARTMENTS</p>
               </div>
             </div>
-            <p className="text-xs text-slate-500 ml-5 font-mono tracking-widest">
+            <p className="text-xs
+ text-slate-500 ml-5 font-mono tracking-widest">
               AUTONOMOUS PROFIT ENGINE · {currentTime.toLocaleTimeString()}
             </p>
           </div>
@@ -303,7 +304,7 @@ export default function Dashboard() {
 
         {/* ── ONBOARDING BANNER ── */}
         {!isOnboarded && (
-          <Link to="/Onboarding">
+          <Link to="/IdentityManager">
             <div className="mb-4 px-5 py-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
               style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.5)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(124,58,237,0.15)'}
@@ -326,7 +327,7 @@ export default function Dashboard() {
 
         {/* ── INTERVENTION ALERT BANNER ── */}
         {pendingInterventions > 0 && (
-          <Link to="/PendingInterventions">
+          <Link to="/Execution">
             <div className="mb-4 px-5 py-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
               style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.4)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(249,115,22,0.12)'}
@@ -412,17 +413,18 @@ export default function Dashboard() {
 
           {/* Quick Actions */}
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(10,15,42,0.65)', border: '1px solid rgba(255,46,196,0.12)', backdropFilter: 'blur(20px)' }}>
+            style={{
+ background: 'rgba(10,15,42,0.65)', border: '1px solid rgba(255,46,196,0.12)', backdropFilter: 'blur(20px)' }}>
             <div className="px-5 py-3 border-b" style={{ borderColor: 'rgba(255,46,196,0.1)' }}>
               <span className="font-orbitron text-xs tracking-widest text-pink-400/70">QUICK ACTIONS</span>
             </div>
             <div className="p-4 space-y-2.5">
               {[
-                { to: '/VeloAutopilotControl', label: 'Autopilot Hub — Configure Engine', color: '#fbbf24', icon: Bot },
-                { to: '/PendingInterventions', label: `Resolve Interventions${pendingInterventions > 0 ? ` (${pendingInterventions})` : ''}`, color: '#f97316', icon: AlertTriangle },
+                { to: '/AutoPilot', label: 'Autopilot Hub — Configure Engine', color: '#fbbf24', icon: Bot },
+                { to: '/Execution', label: `Resolve Interventions${pendingInterventions > 0 ? ` (${pendingInterventions})` : ''}`, color: '#f97316', icon: AlertTriangle },
                 { to: '/Discovery', label: 'Discovery Hub — Scan for Opportunities', color: '#f59e0b', icon: Search },
-                { to: '/VeloFinanceCommand', label: 'Finance Command — Wallet & Earnings', color: '#10b981', icon: Wallet },
-                { to: '/VeloIdentityHub', label: 'Identity Hub — Personas & KYC', color: '#818cf8', icon: Users },
+                { to: '/WalletDashboard', label: 'Finance Command — Wallet & Earnings', color: '#10b981', icon: Wallet },
+                { to: '/IdentityManager', label: 'Identity Hub — Personas & KYC', color: '#818cf8', icon: Users },
                 { to: '/StarshipBridge', label: 'Starship Bridge — 3D Cockpit', color: '#b537f2', icon: Rocket },
               ].map(action => (
                 <Link key={action.to} to={action.to}>

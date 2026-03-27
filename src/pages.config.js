@@ -66,7 +66,7 @@ import IdentityManager from './pages/IdentityManager';
 import AdminControlPanel from './pages/AdminControlPanel';
 import Chat from './pages/Chat';
 import SystemAuditDashboard from './pages/SystemAuditDashboard';
-
+import __Layout from './Layout.jsx';
 
 export const PAGES = {
 	"Dashboard": Dashboard,
@@ -90,6 +90,7 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-	mainPage: "Dashboard",
-	Pages: PAGES
+ mainPage: "Dashboard",
+ Pages: PAGES,
+ Layout: __Layout,
 }

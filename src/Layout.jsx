@@ -10,9 +10,7 @@ import {
 const AuthContext = createContext(null);
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside Layout');
-  return ctx;
+  return useContext(AuthContext);
 }
 
 const NAV_GROUPS = [

@@ -1,23 +1,22 @@
 /**
- * useUserData - Per-user isolated data hook
+ * useUserData - Per-user isolated data hooks
  * All queries are filtered by the current user's email
  * ensuring full multi-tenant isolation.
- * Auth source: Layout.jsx AuthContext (single source of truth)
+ * Auth source: @/lib/AuthContext (real provider mounted by App.jsx)
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/Layout';
+import { useAuth } from '@/lib/AuthContext';
 
 export function useCurrentUser() {
-  const auth = useAuth();
-  const ctxUser = auth?.user || null;
+  const { user } = useAuth();
 
   return useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => ctxUser ? Promise.resolve(ctxUser) : base44.auth.me(),
-    staleTime: ctxUser ? Infinity : 60000,
-    initialData: ctxUser || undefined,
+    queryFn: () => user ? Promise.resolve(user) : base44.auth.me(),
+    staleTime: user ? Infinity : 60000,
+    initialData: user || undefined,
   });
 }
 
@@ -60,7 +59,6 @@ export function useUserOpportunities(statusFilter) {
       if (!user?.email) return [];
       const filter = { created_by: user.email };
       if (statusFilter) filter.status = statusFilter;
-      // WorkOpportunity is the primary scan result entity used by Discovery
       try {
         return await base44.entities.WorkOpportunity.filter(filter, '-created_date', 100);
       } catch (_) {
@@ -82,7 +80,6 @@ export function useUserTasks(statusFilter) {
       if (!user?.email) return [];
       const filter = { created_by: user.email };
       if (statusFilter) filter.status = statusFilter;
-      // Try AITask first (primary), fallback to TaskExecution
       try {
         return await base44.entities.AITask.filter(filter, '-created_date', 50);
       } catch (_) {
@@ -96,9 +93,8 @@ export function useUserTasks(statusFilter) {
 }
 
 export function useUserWallet() {
-  const { data: user } = useCurrentUser();  
+  const { data: user } = useCurrentUser();
 
-  // Authoritative balance source: UserGoals (has wallet_balance + total_earned)
   const goalsQuery = useQuery({
     queryKey: ['userGoals', user?.email],
     queryFn: async () => {
@@ -110,7 +106,6 @@ export function useUserWallet() {
     staleTime: 15000,
   });
 
-  // Transaction history for time-window earnings
   const txQuery = useQuery({
     queryKey: ['walletTxs', user?.email],
     queryFn: async () => {
@@ -187,9 +182,9 @@ export function useUserIdentities() {
   const createIdentity = useMutation({
     mutationFn: (data) => base44.entities.AIIdentity.create({
       ...data,
-      is_active: false,              // must complete onboarding before activation
+      is_active: false,
       onboarding_complete: false,
-      onboarding_status: 'pending',  // triggers onboarding wizard in UI
+      onboarding_status: 'pending',
     }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['identities', user?.email] }),
   });
@@ -201,7 +196,6 @@ export function useUserIdentities() {
 
   const switchIdentity = useMutation({
     mutationFn: async (identityId) => {
-      // Deactivate all, activate target — optimistic per-user scope
       const all = query.data || [];
       await Promise.all(all.map(id =>
         base44.entities.AIIdentity.update(id.id, { is_active: id.id === identityId })
@@ -234,7 +228,6 @@ export function useActiveIdentity() {
     queryKey: ['activeIdentity', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      // AIIdentity RLS uses created_by; user_email is a denormalized field
       const identities = await base44.entities.AIIdentity.filter(
         { created_by: user.email, is_active: true },
         '-last_used_at',

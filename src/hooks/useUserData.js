@@ -1,18 +1,25 @@
 /**
  * useUserData - Per-user isolated data hook
  * All queries are filtered by the current user's email
- * ensuring full multi-tenant isolation
+ * ensuring full multi-tenant isolation.
+ * Auth source: Layout.jsx AuthContext (single source of truth)
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/Layout';
 
 export function useCurrentUser() {
-  return useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-    staleTime: 60000,
-  });
+  const { user } = useAuth();
+  // Return useQuery-compatible shape so every downstream hook works unchanged
+  return {
+    data: user,
+    isLoading: false,
+    isError: false,
+    error: null,
+    isSuccess: !!user,
+    refetch: async () => user,
+  };
 }
 
 export function useUserProfile() {

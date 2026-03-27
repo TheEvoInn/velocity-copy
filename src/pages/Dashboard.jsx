@@ -168,7 +168,7 @@ export default function Dashboard() {
       aiLabel: 'SCOUT',
     },
     {
-      to: '/IdentityManager', icon: Users, title: 'IDENTITY HUB',
+      to: '/VeloIdentityHub.', icon: Users, title: 'IDENTITY HUB',
       subtitle: 'Personas, KYC, credentials, and platform account management',
       color: '#818cf8', stat: null, statLabel: '', active: false,
       aiLabel: 'NEXUS',
@@ -304,7 +304,7 @@ export default function Dashboard() {
 
         {/* ── ONBOARDING BANNER ── */}
         {!isOnboarded && (
-          <Link to="/IdentityManager">
+          <Link to="/VeloIdentityHub.">
             <div className="mb-4 px-5 py-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
               style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.5)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(124,58,237,0.15)'}
@@ -424,7 +424,7 @@ export default function Dashboard() {
                 { to: '/Execution', label: `Resolve Interventions${pendingInterventions > 0 ? ` (${pendingInterventions})` : ''}`, color: '#f97316', icon: AlertTriangle },
                 { to: '/Discovery', label: 'Discovery Hub — Scan for Opportunities', color: '#f59e0b', icon: Search },
                 { to: '/WalletDashboard', label: 'Finance Command — Wallet & Earnings', color: '#10b981', icon: Wallet },
-                { to: '/IdentityManager', label: 'Identity Hub — Personas & KYC', color: '#818cf8', icon: Users },
+                { to: '/VeloIdentityHub.', label: 'Identity Hub — Personas & KYC', color: '#818cf8', icon: Users },
                 { to: '/StarshipBridge', label: 'Starship Bridge — 3D Cockpit', color: '#b537f2', icon: Rocket },
               ].map(action => (
                 <Link key={action.to} to={action.to}>

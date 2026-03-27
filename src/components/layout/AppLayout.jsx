@@ -59,7 +59,7 @@ const DEPARTMENTS = [
   },
   {
     id: 'autopilot',
-    path: '/AutoPilot'
+    path: '/AutoPilot',
     icon: Zap,
     label: 'Autopilot',
     subtitle: 'Execution & Workflows',

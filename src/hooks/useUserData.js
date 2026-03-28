@@ -175,7 +175,7 @@ export function useUserIdentities() {
     mutationFn: ({ id, data }) => base44.entities.AIIdentity.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['identities', user?.email] });
-      qc.invalidateQueries({ queryKey: ['active_identity', user?.email] });
+      qc.invalidateQueries({ queryKey: ['activeIdentity', user?.email] });
     },
   });
 
@@ -204,7 +204,7 @@ export function useUserIdentities() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['identities', user?.email] });
-      qc.invalidateQueries({ queryKey: ['active_identity', user?.email] });
+      qc.invalidateQueries({ queryKey: ['activeIdentity', user?.email] });
     },
   });
 

@@ -96,12 +96,6 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(true);
       
-      // Trigger KYC consolidation in background (non-blocking)
-      try {
-        await base44.functions.invoke('kycConsolidationTrigger', {});
-      } catch (e) {
-        console.warn('KYC consolidation trigger skipped:', e.message);
-      }
       
       setIsLoadingAuth(false);
     } catch (error) {

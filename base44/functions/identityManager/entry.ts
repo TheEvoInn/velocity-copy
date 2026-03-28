@@ -69,7 +69,7 @@ Return JSON:
         bio: typeof content?.bio === 'string' ? content.bio : '',
         skills: Array.isArray(content?.skills) ? content.skills : [],
         proposal_style: typeof content?.communication_tone === 'string' ? content.communication_tone : 'professional',
-        is_active: false,
+        is_active: true,
         color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
         icon: 'User'
       });

@@ -7,7 +7,6 @@ import { useActiveIdentity } from '@/hooks/useUserData';
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,7 +18,6 @@ import { Link as RouterLink } from 'react-router-dom';
 export default function VeloAutopilotControl() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  useIdentitySyncAcrossApp();
 
   const [autopilotEnabled, setAutopilotEnabled] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { useIdentitySyncAcrossApp } from '@/hooks/useIdentitySyncAcrossApp';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Shield, Zap, Users, Trash2, Edit, Brain, Key, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,6 @@ import PersonaWorkflowGenerator from '@/components/identity/PersonaWorkflowGener
 export default function VeloIdentityHub() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  useIdentitySyncAcrossApp();
   
   const [selectedIdentity, setSelectedIdentity] = useState(null);
   const [showProfileEditor, setShowProfileEditor] = useState(false);

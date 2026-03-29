@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePersistentUserData } from '@/hooks/usePersistentUserData';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import { Save } from 'lucide-react';
@@ -18,32 +17,72 @@ const STEP_LABELS = ['Welcome', 'Identity', 'KYC', 'Preferences', 'Banking', 'Wo
 const STEP_COLORS = ['#8b5cf6', '#7c3aed', '#f59e0b', '#06b6d4', '#10b981', '#8b5cf6', '#7c3aed'];
 
 const DEFAULT_IDENTITY = {
-  name: '', first_name: '', last_name: '', role_labels: [], skills: [], communication_tone: 'professional',
-  tagline: '', bio: '', proposal_style: '', email: '', portfolio_url: '',
-  linkedin: '', social_other: '', auto_select_for_task_types: [],
-  can_create_accounts: true, can_communicate: true, color: '#10b981', is_active: true,
+  name: '',
+  first_name: '',
+  last_name: '',
+  role_labels: [],
+  skills: [],
+  communication_tone: 'professional',
+  tagline: '',
+  bio: '',
+  proposal_style: '',
+  email: '',
+  portfolio_url: '',
+  linkedin: '',
+  social_other: '',
+  auto_select_for_task_types: [],
+  can_create_accounts: true,
+  can_communicate: true,
+  color: '#10b981',
+  is_active: true,
 };
 
 const DEFAULT_KYC = {
-  full_legal_name: '', date_of_birth: '', residential_address: '', city: '',
-  state: '', postal_code: '', country: '', government_id_type: 'passport',
-  id_document_front_url: '', id_document_back_url: '', selfie_url: '',
+  full_legal_name: '',
+  date_of_birth: '',
+  residential_address: '',
+  city: '',
+  state: '',
+  postal_code: '',
+  country: '',
+  government_id_type: 'passport',
+  id_document_front_url: '',
+  id_document_back_url: '',
+  selfie_url: '',
 };
 
 const DEFAULT_PREFS = {
-  daily_target: 1000, available_capital: 0, hours_per_day: 8, max_daily_spend: 500,
-  risk_tolerance: 'moderate', preferred_categories: [], autopilot_enabled: true,
-  timezone: 'America/Los_Angeles', region: '', ai_instructions: '',
-  notify_email_completion: true, notify_email_errors: true,
-  notify_daily_summary: true, notify_weekly_report: true,
-  consent_account_creation: true, consent_client_communication: true, consent_analytics: true,
+  daily_target: 1000,
+  available_capital: 0,
+  hours_per_day: 8,
+  max_daily_spend: 500,
+  risk_tolerance: 'moderate',
+  preferred_categories: [],
+  autopilot_enabled: true,
+  timezone: 'America/Los_Angeles',
+  region: '',
+  ai_instructions: '',
+  notify_email_completion: true,
+  notify_email_errors: true,
+  notify_daily_summary: true,
+  notify_weekly_report: true,
+  consent_account_creation: true,
+  consent_client_communication: true,
+  consent_analytics: true,
 };
 
 const DEFAULT_BANKING = {
-  payout_method: 'bank_transfer', bank_name: '', account_number: '',
-  routing_number: '', account_type: 'checking', paypal_email: '',
-  wise_email: '', tax_classification: 'individual', min_payout: 100,
-  payout_frequency: 'weekly', backup_email: '',
+  payout_method: 'bank_transfer',
+  bank_name: '',
+  account_number: '',
+  routing_number: '',
+  account_type: 'checking',
+  paypal_email: '',
+  wise_email: '',
+  tax_classification: 'individual',
+  min_payout: 100,
+  payout_frequency: 'weekly',
+  backup_email: '',
 };
 
 export default function OnboardingWizard({ onComplete }) {
@@ -58,7 +97,6 @@ export default function OnboardingWizard({ onComplete }) {
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { updateField } = usePersistentUserData();
 
   // Load saved draft on mount
   useEffect(() => {
@@ -121,6 +159,7 @@ export default function OnboardingWizard({ onComplete }) {
     }
 
     setIsLaunching(true);
+
     try {
       // PRE-LAUNCH DATA SAVE
       try {
@@ -144,7 +183,7 @@ export default function OnboardingWizard({ onComplete }) {
           '-created_date',
           1
         );
-        
+
         if (existingIdentities.length > 0) {
           const existingId = existingIdentities[0].id;
           await base44.entities.AIIdentity.update(existingId, {
@@ -180,7 +219,7 @@ export default function OnboardingWizard({ onComplete }) {
         throw new Error(`Failed to create identity: ${err.message}`);
       }
 
-      // 2. SUBMIT KYC IF PROVIDED
+      // 2. SUBMIT KYC IF PROVIDED — linked to user_email only (1 user = 1 KYC)
       let kycRecord;
       if (kycData.full_legal_name) {
         try {
@@ -189,7 +228,6 @@ export default function OnboardingWizard({ onComplete }) {
             user_email: user?.email,
             status: 'submitted',
             verification_type: 'standard',
-            identity_id: identity.id,
           });
           console.log('[Onboarding] ✓ KYC submitted:', kycRecord.id);
         } catch (err) {
@@ -204,7 +242,7 @@ export default function OnboardingWizard({ onComplete }) {
           '-created_date',
           1
         );
-        
+
         // Delete old record if exists (bypass RLS update block)
         if (existingGoals.length > 0) {
           try {
@@ -214,7 +252,7 @@ export default function OnboardingWizard({ onComplete }) {
             console.warn('[Onboarding] Could not delete old goals:', delErr.message);
           }
         }
-        
+
         // Create fresh record
         const goalsData = {
           daily_target: prefData.daily_target,
@@ -247,6 +285,7 @@ export default function OnboardingWizard({ onComplete }) {
             '-created_date',
             1
           );
+
           const policyData = {
             label: 'Primary',
             engine_enabled: true,
@@ -260,6 +299,7 @@ export default function OnboardingWizard({ onComplete }) {
               is_primary: true,
             }],
           };
+
           if (existingPolicies.length > 0) {
             await base44.entities.WithdrawalPolicy.update(existingPolicies[0].id, policyData);
             console.log('[Onboarding] ✓ WithdrawalPolicy updated');
@@ -272,21 +312,7 @@ export default function OnboardingWizard({ onComplete }) {
         }
       }
 
-      // 5. PERSIST USER PREFERENCES
-      try {
-        await updateField('onboarding_completed', doNotShowAgain);
-        await updateField('autopilot_preferences', {
-          enabled: prefData.autopilot_enabled,
-          mode: 'continuous',
-          max_daily_spend: prefData.max_daily_spend,
-          preferred_categories: prefData.preferred_categories,
-        });
-        console.log('[Onboarding] ✓ User preferences persisted');
-      } catch (err) {
-        console.warn('[Onboarding] Preference persistence failed (non-fatal):', err);
-      }
-
-      // 6. LOG COMPLETION
+      // 5. LOG COMPLETION
       try {
         await base44.entities.ActivityLog.create({
           action_type: 'system',
@@ -299,13 +325,11 @@ export default function OnboardingWizard({ onComplete }) {
         console.warn('[Onboarding] Activity log failed:', err);
       }
 
-      // 7. TRIGGER MULTI-SYNC & LAUNCH SEQUENCE (REAL ACTIVATION)
-      if (!identity?.id) {
-        throw new Error('Identity creation failed — no ID returned');
-      }
+      // 6. SYNC COMPLETION VIA identityOnboardingCompleteSync (NON-FATAL)
+      // All data is already saved to the database above — this sync is a best-effort
+      // notification to the cloud function. If it fails, onboarding still completes.
       try {
-        console.log('[Onboarding] → Invoking onboardingLaunchSync with:', { identity_id: identity.id, identity_name: identity.name });
-        const launchResult = await base44.functions.invoke('onboardingLaunchSync', {
+        await base44.functions.invoke('identityOnboardingCompleteSync', {
           identity_id: identity.id,
           identity_name: identity.name,
           kyc_id: kycRecord?.id,
@@ -315,20 +339,17 @@ export default function OnboardingWizard({ onComplete }) {
           preferred_categories: prefData.preferred_categories,
           banking_configured: !!(bankingData.bank_name || bankingData.paypal_email),
         });
-        console.log('[Onboarding] ✓ Launch sync complete:', launchResult.data);
-        if (!launchResult.data?.success) {
-          throw new Error(launchResult.data?.error || 'Launch sync returned false');
-        }
+        console.log('[Onboarding] ✓ identityOnboardingCompleteSync completed');
       } catch (err) {
-        console.error('[Onboarding] Launch sync FAILED:', err.message, err);
-        throw new Error(`Failed to activate VELOCITY: ${err.message}`);
+        console.warn('[Onboarding] identityOnboardingCompleteSync failed (non-fatal):', err);
       }
 
-      // Invalidate queries
+      // Invalidate queries — prefix matching catches user-scoped variants
       queryClient.invalidateQueries({ queryKey: ['userGoals'] });
       queryClient.invalidateQueries({ queryKey: ['aiIdentities'] });
-      queryClient.invalidateQueries({ queryKey: ['userGoals', user?.email] });
-      queryClient.invalidateQueries({ queryKey: ['userDataStore'] });
+      queryClient.invalidateQueries({ queryKey: ['identities'] });
+      queryClient.invalidateQueries({ queryKey: ['activeIdentity'] });
+      queryClient.invalidateQueries({ queryKey: ['kycVerification'] });
 
       // Clear localStorage ONLY after successful full launch
       if (user?.email) {
@@ -342,6 +363,7 @@ export default function OnboardingWizard({ onComplete }) {
 
       toast.success('🚀 VELOCITY launched! Autopilot is now running.');
       setIsLaunching(false);
+
       setTimeout(() => {
         if (onComplete && typeof onComplete === 'function') {
           onComplete();
@@ -360,11 +382,19 @@ export default function OnboardingWizard({ onComplete }) {
     <div className="w-full max-w-3xl mx-auto px-4 py-8">
       {step > 0 && step < 6 && (
         <div className="mb-4 flex justify-end">
-          <button onClick={saveDraft} disabled={isSavingDraft} className={`flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition-colors ${isSavingDraft ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300 cursor-not-allowed' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}>
-            <Save className={`w-3 h-3 ${isSavingDraft ? 'animate-pulse' : ''}`} /> {isSavingDraft ? 'Saving...' : 'Save Draft'}
+          <button
+            onClick={saveDraft}
+            disabled={isSavingDraft}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition-colors ${isSavingDraft
+              ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300 cursor-not-allowed'
+              : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}
+          >
+            <Save className={`w-3 h-3 ${isSavingDraft ? 'animate-pulse' : ''}`} />
+            {isSavingDraft ? 'Saving...' : 'Save Draft'}
           </button>
         </div>
       )}
+
       {/* Progress bar */}
       {step > 0 && (
         <div className="mb-8">
@@ -374,9 +404,12 @@ export default function OnboardingWizard({ onComplete }) {
               const isDone = i < step;
               return (
                 <div key={label} className="flex items-center gap-2 flex-1">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0 ${
-                    isDone ? 'bg-emerald-500 text-white' : isActive ? 'text-white' : 'text-slate-500'
-                  }`} style={isActive ? { background: activeColor } : isDone ? {} : { background: '#1e293b' }}>
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0 ${
+                      isDone ? 'bg-emerald-500 text-white' : isActive ? 'text-white' : 'text-slate-500'
+                    }`}
+                    style={isActive ? { background: activeColor } : isDone ? {} : { background: '#1e293b' }}
+                  >
                     {isDone ? '✓' : i + 1}
                   </div>
                   <span className={`text-xs hidden sm:block ${isActive ? 'text-white font-semibold' : isDone ? 'text-emerald-400' : 'text-slate-600'}`}>
@@ -393,9 +426,10 @@ export default function OnboardingWizard({ onComplete }) {
       )}
 
       {/* Step content */}
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6 sm:p-8 mb-8" style={{
-        boxShadow: `0 0 40px ${activeColor}15`,
-      }}>
+      <div
+        className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6 sm:p-8 mb-8"
+        style={{ boxShadow: `0 0 40px ${activeColor}15` }}
+      >
         {step === 0 && <StepWelcome onNext={() => setStep(1)} />}
         {step === 1 && <StepIdentity data={identityData} onChange={setIdentityData} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
         {step === 2 && <StepKYC data={kycData} onChange={setKycData} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
@@ -403,15 +437,20 @@ export default function OnboardingWizard({ onComplete }) {
         {step === 4 && <StepBanking data={bankingData} onChange={setBankingData} onNext={() => setStep(5)} onBack={() => setStep(3)} />}
         {step === 5 && (
           <StepWorkflows
-            data={workflowData} onChange={setWorkflowData}
-            identityData={identityData} prefData={prefData}
-            onNext={() => setStep(6)} onBack={() => setStep(4)}
+            data={workflowData}
+            onChange={setWorkflowData}
+            identityData={identityData}
+            prefData={prefData}
+            onNext={() => setStep(6)}
+            onBack={() => setStep(4)}
           />
         )}
         {step === 6 && (
           <StepLaunch
-            identityData={identityData} kycData={kycData}
-            prefData={prefData} bankingData={bankingData}
+            identityData={identityData}
+            kycData={kycData}
+            prefData={prefData}
+            bankingData={bankingData}
             workflowData={workflowData}
             onLaunch={handleLaunch}
             onForceSave={forceSaveAndLaunch}

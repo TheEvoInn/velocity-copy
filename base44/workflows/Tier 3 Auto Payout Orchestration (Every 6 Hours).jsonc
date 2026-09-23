@@ -1,0 +1,46 @@
+{
+  "name": "Tier 3: Auto Payout Orchestration (Every 6 Hours)",
+  "description": "Autonomous payout orchestration: syncs platform earnings, intelligently routes across accounts, triggers auto-withdrawal if policy thresholds met",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 6,
+      "interval_unit": "hours",
+      "interval_anchor": "2026-03-25T07:27:09.242000",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "tier_3_auto_payout_orchestration_every_6_hours",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "payoutOrchestrationEngine",
+            "args": {
+              "action": "sync_and_auto_withdraw"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "payoutOrchestrationEngine"
+  }
+}

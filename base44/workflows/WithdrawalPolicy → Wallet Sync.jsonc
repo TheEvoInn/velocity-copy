@@ -1,0 +1,40 @@
+{
+  "name": "WithdrawalPolicy \u2192 Wallet Sync",
+  "description": "When WithdrawalPolicy is created or updated, sync payout settings to the Wallet Engine and all financial modules.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update",
+        "create"
+      ],
+      "entity_name": "WithdrawalPolicy"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "withdrawalpolicy_wallet_sync",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "syncOnboardingDataToModules",
+            "args": {
+              "entity_type": "WithdrawalPolicy"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "syncOnboardingDataToModules"
+  }
+}

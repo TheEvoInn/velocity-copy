@@ -1,0 +1,37 @@
+{
+  "name": "Autopilot Task Notifier",
+  "description": "Sends email notifications when Autopilot completes high-value tasks (\u2265$25) or encounters critical errors requiring manual attention.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update"
+      ],
+      "entity_name": "WorkOpportunity"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "autopilot_task_notifier",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "autopilotNotifier",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "autopilotNotifier"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "Tier 5: Risk Monitoring & Health Check (Every 15 Minutes)",
+  "description": "Continuous risk surveillance: account health, fraud signals, rate limits, compliance auditing. Prevents execution on degraded systems.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 15,
+      "interval_unit": "minutes",
+      "interval_anchor": "2026-03-25T07:36:20.454000",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "tier_5_risk_monitoring_health_check_every_15_minutes",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "advancedRiskManagementEngine",
+            "args": {
+              "action": "get_risk_profile"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "advancedRiskManagementEngine"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "Phase 10 - Error Recovery Trigger",
+  "description": "Auto-analyze and remediate task failures on update",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update"
+      ],
+      "entity_name": "TaskExecutionQueue"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "phase_10_error_recovery_trigger",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "intelligentErrorRecovery",
+            "args": {
+              "action": "analyze_task_failure"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "intelligentErrorRecovery"
+  }
+}

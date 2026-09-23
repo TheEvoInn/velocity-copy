@@ -1,0 +1,47 @@
+{
+  "name": "Real-Time Issue Audit Monitor",
+  "description": "Monitors dawnvernor@yahoo.com task execution in real-time, detects errors, credential issues, rate-limits, and logs issues to ActivityLog",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 5,
+      "interval_unit": "minutes",
+      "interval_anchor": "2026-03-25T04:18:57.027000",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "real_time_issue_audit_monitor",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "realtimeIssueAudit",
+            "args": {
+              "action": "audit_active_tasks",
+              "user_email": "dawnvernor@yahoo.com"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "realtimeIssueAudit"
+  }
+}

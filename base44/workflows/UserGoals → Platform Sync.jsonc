@@ -1,0 +1,40 @@
+{
+  "name": "UserGoals \u2192 Platform Sync",
+  "description": "When UserGoals are created or updated, sync daily targets, autopilot settings, and preferences to Dashboard and all modules.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update",
+        "create"
+      ],
+      "entity_name": "UserGoals"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "usergoals_platform_sync",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "syncOnboardingDataToModules",
+            "args": {
+              "entity_type": "UserGoals"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "syncOnboardingDataToModules"
+  }
+}

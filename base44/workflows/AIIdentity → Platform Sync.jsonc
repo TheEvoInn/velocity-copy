@@ -1,0 +1,39 @@
+{
+  "name": "AIIdentity \u2192 Platform Sync",
+  "description": "When an AI Identity is updated, sync the changes to PlatformState and Dashboard so all modules reflect the current active identity.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update"
+      ],
+      "entity_name": "AIIdentity"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "aiidentity_platform_sync",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "syncOnboardingDataToModules",
+            "args": {
+              "entity_type": "AIIdentity"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "syncOnboardingDataToModules"
+  }
+}
